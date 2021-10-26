@@ -12,16 +12,12 @@
 		>
 			<h1 class="title">Settings</h1>
 
-			<div>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.advanced"
-						type="checkbox"
-						name="advanced"
-					/>
-					Advanced settings
-				</label>
-			</div>
+			<Input
+				type="checkbox"
+				title="Advanced settings"
+				name="advanced"
+				:checked="$store.state.settings.advanced"
+			/>
 
 			<div v-if="canRegisterProtocol || hasInstallPromptEvent">
 				<h2>Native app</h2>
@@ -45,14 +41,12 @@
 
 			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
 				<h2>Settings synchronisation</h2>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.syncSettings"
-						type="checkbox"
-						name="syncSettings"
-					/>
-					Synchronize settings with other clients
-				</label>
+				<Input
+					:checked="$store.state.settings.syncSettings"
+					type="checkbox"
+					name="syncSettings"
+					title="Synchronize settings with other clients"
+				/>
 				<template v-if="!$store.state.settings.syncSettings">
 					<div v-if="$store.state.serverHasSettings" class="settings-sync-panel">
 						<p>
@@ -78,191 +72,120 @@
 			</div>
 
 			<h2>Messages</h2>
-			<div>
-				<label class="opt">
-					<input :checked="$store.state.settings.motd" type="checkbox" name="motd" />
-					Show <abbr title="Message Of The Day">MOTD</abbr>
-				</label>
-			</div>
-			<div>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.showSeconds"
-						type="checkbox"
-						name="showSeconds"
-					/>
-					Include seconds in timestamp
-				</label>
-			</div>
-			<div>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.use12hClock"
-						type="checkbox"
-						name="use12hClock"
-					/>
-					Use 12-hour timestamps
-				</label>
-			</div>
+			<Input
+				type="checkbox"
+				title="Show MOTD"
+				name="motd"
+				:checked="$store.state.settings.motd"
+				description="Message Of The Day"
+			/>
+			<Input
+				type="checkbox"
+				title="Include seconds in timestamp"
+				name="showSeconds"
+				:checked="$store.state.settings.showSeconds"
+			/>
+			<Input
+				type="checkbox"
+				title="Use 12-hour timestamps"
+				name="use12hClock"
+				:checked="$store.state.settings.use12hClock"
+			/>
+
 			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
 				<h2>Automatic away message</h2>
 
-				<label class="opt">
-					<label for="awayMessage" class="sr-only">Automatic away message</label>
-					<input
-						id="awayMessage"
-						:value="$store.state.settings.awayMessage"
-						type="text"
-						name="awayMessage"
-						class="input"
-						placeholder="Away message if The Lounge is not open"
-					/>
-				</label>
+				<Textbox
+					:value="$store.state.settings.awayMessage"
+					id="awayMessage"
+					name="awayMessage"
+					placeholder="Away message if The Lounge is not open"
+					screenReaderTitle
+					title="Automatic away message"
+				/>
 			</div>
 			<h2 id="label-status-messages">
 				Status messages
-				<span
-					class="tooltipped tooltipped-n tooltipped-no-delay"
-					aria-label="Joins, parts, quits, kicks, nick changes, and mode changes"
-				>
-					<button class="extra-help" />
-				</span>
+				<HoverHelp text="Joins, parts, quits, kicks, nick changes, and mode changes" />
 			</h2>
-			<div role="group" aria-labelledby="label-status-messages">
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.statusMessages === 'shown'"
-						type="radio"
-						name="statusMessages"
-						value="shown"
-					/>
-					Show all status messages individually
-				</label>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.statusMessages === 'condensed'"
-						type="radio"
-						name="statusMessages"
-						value="condensed"
-					/>
-					Condense status messages together
-				</label>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.statusMessages === 'hidden'"
-						type="radio"
-						name="statusMessages"
-						value="hidden"
-					/>
-					Hide all status messages
-				</label>
-			</div>
+			<Radio
+				name="statusMessages"
+				:value="$store.state.settings.statusMessages"
+				:items="[
+					{value: 'shown', title: 'Show all status messages individually'},
+					{value: 'condensed', title: 'Condense status messages together'},
+					{value: 'hidden', title: 'Hide all status messages'},
+				]"
+			/>
+
 			<h2>Visual Aids</h2>
-			<div>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.coloredNicks"
-						type="checkbox"
-						name="coloredNicks"
-					/>
-					Enable colored nicknames
-				</label>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.autocomplete"
-						type="checkbox"
-						name="autocomplete"
-					/>
-					Enable autocomplete
-				</label>
-			</div>
-			<div v-if="$store.state.settings.advanced">
-				<label class="opt">
-					<label for="nickPostfix" class="opt">
-						Nick autocomplete postfix
-						<span
-							class="tooltipped tooltipped-n tooltipped-no-delay"
-							aria-label="Nick autocomplete postfix (for example a comma)"
-						>
-							<button class="extra-help" />
-						</span>
-					</label>
-					<input
-						id="nickPostfix"
-						:value="$store.state.settings.nickPostfix"
-						type="text"
-						name="nickPostfix"
-						class="input"
-						placeholder="Nick autocomplete postfix (e.g. ', ')"
-					/>
-				</label>
-			</div>
+			<Input
+				:checked="$store.state.settings.coloredNicks"
+				name="coloredNicks"
+				title="Enable colored nicknames"
+				type="checkbox"
+			/>
+			<Input
+				:checked="$store.state.settings.autocomplete"
+				name="autocomplete"
+				title="Enable autocomplete"
+				type="checkbox"
+			/>
+
+			<Textbox
+				:value="$store.state.settings.nickPostfix"
+				advanced
+				description="Nick autocomplete postfix (for example a comma)"
+				id="nickPostfix"
+				name="nickPostfix"
+				placeholder="Nick autocomplete postfix (e.g. ', ')"
+				title="Nick autocomplete postfix"
+			/>
 
 			<h2>Theme</h2>
-			<div>
-				<label for="theme-select" class="sr-only">Theme</label>
-				<select
-					id="theme-select"
-					:value="$store.state.settings.theme"
-					name="theme"
-					class="input"
-				>
-					<option
-						v-for="theme in $store.state.serverConfiguration.themes"
-						:key="theme.name"
-						:value="theme.name"
-					>
-						{{ theme.displayName }}
-					</option>
-				</select>
-			</div>
+			<Dropdown
+				:items="
+					$store.state.serverConfiguration.themes.map((item) => ({
+						value: item.name,
+						title: item.displayName,
+					}))
+				"
+				:value="$store.state.settings.theme"
+				id="theme-select"
+				name="theme"
+				screenReaderTitle
+				title="Theme"
+			/>
 
 			<template v-if="$store.state.serverConfiguration.prefetch">
 				<h2>Link previews</h2>
-				<div>
-					<label class="opt">
-						<input
-							:checked="$store.state.settings.media"
-							type="checkbox"
-							name="media"
-						/>
-						Auto-expand media
-					</label>
-				</div>
-				<div>
-					<label class="opt">
-						<input
-							:checked="$store.state.settings.links"
-							type="checkbox"
-							name="links"
-						/>
-						Auto-expand websites
-					</label>
-				</div>
+				<Input
+					:checked="$store.state.settings.media"
+					name="media"
+					title="Auto-expand media"
+					type="checkbox"
+				/>
+				<Input
+					:checked="$store.state.settings.links"
+					name="links"
+					title="Auto-expand websites"
+					type="checkbox"
+				/>
 			</template>
 
-			<div
+			<template
 				v-if="$store.state.settings.advanced && $store.state.serverConfiguration.fileUpload"
 			>
 				<h2>File uploads</h2>
-				<div>
-					<label class="opt">
-						<input
-							:checked="$store.state.settings.uploadCanvas"
-							type="checkbox"
-							name="uploadCanvas"
-						/>
-						Attempt to remove metadata from images before uploading
-						<span
-							class="tooltipped tooltipped-n tooltipped-no-delay"
-							aria-label="This option renders the image into a canvas element to remove metadata from the image.
+				<Input
+					:checked="$store.state.settings.uploadCanvas"
+					name="uploadCanvas"
+					title="Attempt to remove metadata from images before uploading"
+					type="checkbox"
+					description="This option renders the image into a canvas element to remove metadata from the image.
 This may break orientation if your browser does not support that."
-						>
-							<button class="extra-help" />
-						</span>
-					</label>
-				</div>
-			</div>
+				/>
+			</template>
 
 			<template v-if="!$store.state.serverConfiguration.public">
 				<h2>Push Notifications</h2>
@@ -308,114 +231,77 @@ This may break orientation if your browser does not support that."
 			</template>
 
 			<h2>Browser Notifications</h2>
-			<div>
-				<label class="opt">
-					<input
-						id="desktopNotifications"
-						:checked="$store.state.settings.desktopNotifications"
-						:disabled="$store.state.desktopNotificationState === 'nohttps'"
-						type="checkbox"
-						name="desktopNotifications"
-					/>
-					Enable browser notifications<br />
-					<div
-						v-if="$store.state.desktopNotificationState === 'unsupported'"
-						class="error"
-					>
-						<strong>Warning</strong>: Notifications are not supported by your browser.
-					</div>
-					<div
-						v-if="$store.state.desktopNotificationState === 'nohttps'"
-						id="warnBlockedDesktopNotifications"
-						class="error"
-					>
-						<strong>Warning</strong>: Notifications are only supported over HTTPS
-						connections.
-					</div>
-					<div
-						v-if="$store.state.desktopNotificationState === 'blocked'"
-						id="warnBlockedDesktopNotifications"
-						class="error"
-					>
-						<strong>Warning</strong>: Notifications are blocked by your browser.
-					</div>
-				</label>
+			<Input
+				:checked="$store.state.settings.desktopNotifications"
+				:disabled="$store.state.desktopNotificationState === 'nohttps'"
+				id="desktopNotifications"
+				name="desktopNotifications"
+				title="Enable browser notifications"
+				type="checkbox"
+			/>
+			<div v-if="$store.state.desktopNotificationState === 'unsupported'" class="error">
+				<strong>Warning</strong>: Notifications are not supported by your browser.
 			</div>
-			<div>
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.notification"
-						type="checkbox"
-						name="notification"
-					/>
-					Enable notification sound
-				</label>
+			<div
+				v-if="$store.state.desktopNotificationState === 'nohttps'"
+				id="warnBlockedDesktopNotifications"
+				class="error"
+			>
+				<strong>Warning</strong>: Notifications are only supported over HTTPS connections.
 			</div>
+			<div
+				v-if="$store.state.desktopNotificationState === 'blocked'"
+				id="warnBlockedDesktopNotifications"
+				class="error"
+			>
+				<strong>Warning</strong>: Notifications are blocked by your browser.
+			</div>
+
+			<Input
+				:checked="$store.state.settings.notification"
+				name="notification"
+				title="Enable notification sound"
+				type="checkbox"
+			/>
 			<div>
 				<div class="opt">
 					<button id="play" @click.prevent="playNotification">Play sound</button>
 				</div>
 			</div>
 
-			<div v-if="$store.state.settings.advanced">
-				<label class="opt">
-					<input
-						:checked="$store.state.settings.notifyAllMessages"
-						type="checkbox"
-						name="notifyAllMessages"
-					/>
-					Enable notification for all messages
-				</label>
-			</div>
+			<Input
+				:checked="$store.state.settings.notifyAllMessages"
+				advanced
+				name="notifyAllMessages"
+				title="Enable notification for all messages"
+				type="checkbox"
+			/>
 
-			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
-				<label class="opt">
-					<label for="highlights" class="opt">
-						Custom highlights
-						<span
-							class="tooltipped tooltipped-n tooltipped-no-delay"
-							aria-label="If a message contains any of these comma-separated 
+			<Textbox
+				:value="$store.state.settings.highlights"
+				advanced
+				autocomplete="off"
+				id="highlights"
+				name="highlights"
+				placeholder="Comma-separated, e.g.: word, some more words, anotherword"
+				private
+				title="Custom highlights"
+				description="If a message contains any of these comma-separated
 expressions, it will trigger a highlight."
-						>
-							<button class="extra-help" />
-						</span>
-					</label>
-					<input
-						id="highlights"
-						:value="$store.state.settings.highlights"
-						type="text"
-						name="highlights"
-						class="input"
-						autocomplete="off"
-						placeholder="Comma-separated, e.g.: word, some more words, anotherword"
-					/>
-				</label>
-			</div>
-
-			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
-				<label class="opt">
-					<label for="highlightExceptions" class="opt">
-						Highlight exceptions
-						<span
-							class="tooltipped tooltipped-n tooltipped-no-delay"
-							aria-label="If a message contains any of these comma-separated 
-expressions, it will not trigger a highlight even if it contains 
+			/>
+			<Textbox
+				:value="$store.state.settings.highlightExceptions"
+				advanced
+				autocomplete="off"
+				id="highlightExceptions"
+				name="highlightExceptions"
+				placeholder="Comma-separated, e.g.: word, some more words, anotherword"
+				private
+				title="Highlight exceptions"
+				description="If a message contains any of these comma-separated
+expressions, it will not trigger a highlight even if it contains
 your nickname or expressions defined in custom highlights."
-						>
-							<button class="extra-help" />
-						</span>
-					</label>
-					<input
-						id="highlightExceptions"
-						:value="$store.state.settings.highlightExceptions"
-						type="text"
-						name="highlightExceptions"
-						class="input"
-						autocomplete="off"
-						placeholder="Comma-separated, e.g.: word, some more words, anotherword"
-					/>
-				</label>
-			</div>
+			/>
 
 			<div
 				v-if="
@@ -427,45 +313,32 @@ your nickname or expressions defined in custom highlights."
 				aria-labelledby="label-change-password"
 			>
 				<h2 id="label-change-password">Change password</h2>
-				<div class="password-container">
-					<label for="current-password" class="sr-only"> Enter current password </label>
-					<RevealPassword v-slot:default="slotProps">
-						<input
-							id="current-password"
-							autocomplete="current-password"
-							:type="slotProps.isVisible ? 'text' : 'password'"
-							name="old_password"
-							class="input"
-							placeholder="Enter current password"
-						/>
-					</RevealPassword>
-				</div>
-				<div class="password-container">
-					<label for="new-password" class="sr-only"> Enter desired new password </label>
-					<RevealPassword v-slot:default="slotProps">
-						<input
-							id="new-password"
-							:type="slotProps.isVisible ? 'text' : 'password'"
-							name="new_password"
-							autocomplete="new-password"
-							class="input"
-							placeholder="Enter desired new password"
-						/>
-					</RevealPassword>
-				</div>
-				<div class="password-container">
-					<label for="new-password-verify" class="sr-only"> Repeat new password </label>
-					<RevealPassword v-slot:default="slotProps">
-						<input
-							id="new-password-verify"
-							:type="slotProps.isVisible ? 'text' : 'password'"
-							name="verify_password"
-							autocomplete="new-password"
-							class="input"
-							placeholder="Repeat new password"
-						/>
-					</RevealPassword>
-				</div>
+
+				<Password
+					autocomplete="current-password"
+					id="current-password"
+					name="old_password"
+					placeholder="Enter current password"
+					screenReaderTitle
+					title="Enter current password"
+				/>
+				<Password
+					autocomplete="new-password"
+					id="new-password"
+					name="new_password"
+					placeholder="Enter desired new password"
+					screenReaderTitle
+					title="Enter desired new password"
+				/>
+				<Password
+					autocomplete="new-password"
+					id="new-password-verify"
+					name="verify_password"
+					placeholder="Repeat new password"
+					screenReaderTitle
+					title="Repeat new password"
+				/>
+
 				<div
 					v-if="passwordChangeStatus && passwordChangeStatus.success"
 					class="feedback success"
@@ -487,15 +360,14 @@ your nickname or expressions defined in custom highlights."
 
 			<div v-if="$store.state.settings.advanced">
 				<h2>Custom Stylesheet</h2>
-				<label for="user-specified-css-input" class="sr-only">
-					Custom stylesheet. You can override any style with CSS here.
-				</label>
-				<textarea
-					id="user-specified-css-input"
+				<Textbox
 					:value="$store.state.settings.userStyles"
-					class="input"
+					id="user-specified-css-input"
 					name="userStyles"
 					placeholder="/* You can override any style with CSS here */"
+					screenReaderTitle
+					title="Custom stylesheet. You can override any style with CSS here."
+					type="textarea"
 				/>
 			</div>
 
@@ -539,9 +411,14 @@ textarea#user-specified-css-input {
 <script>
 import socket from "../../js/socket";
 import webpush from "../../js/webpush";
-import RevealPassword from "../RevealPassword.vue";
 import Session from "../Session.vue";
 import SidebarToggle from "../SidebarToggle.vue";
+import Dropdown from "../Inputs/Dropdown.vue";
+import Generic from "../Inputs/Generic.vue";
+import HoverHelp from "../Special/HoverHelp.vue";
+import Password from "../Inputs/Password.vue";
+import Radio from "../Inputs/Radio.vue";
+import Textbox from "../Inputs/Textbox.vue";
 
 let installPromptEvent = null;
 
@@ -553,9 +430,14 @@ window.addEventListener("beforeinstallprompt", (e) => {
 export default {
 	name: "Settings",
 	components: {
-		RevealPassword,
 		Session,
 		SidebarToggle,
+		Input: Generic,
+		Dropdown,
+		HoverHelp,
+		Password,
+		Radio,
+		Textbox,
 	},
 	data() {
 		return {
