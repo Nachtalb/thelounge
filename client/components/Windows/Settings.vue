@@ -12,11 +12,10 @@
 		>
 			<h1 class="title">Settings</h1>
 
-			<Input
-				type="checkbox"
+			<Checkbox
 				title="Advanced settings"
 				name="advanced"
-				:checked="$store.state.settings.advanced"
+				v-model="$store.state.settings.advanced"
 			/>
 
 			<div v-if="canRegisterProtocol || hasInstallPromptEvent">
@@ -41,9 +40,8 @@
 
 			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
 				<h2>Settings synchronisation</h2>
-				<Input
-					:checked="$store.state.settings.syncSettings"
-					type="checkbox"
+				<Checkbox
+					v-model="$store.state.settings.syncSettings"
 					name="syncSettings"
 					title="Synchronize settings with other clients"
 				/>
@@ -72,31 +70,28 @@
 			</div>
 
 			<h2>Messages</h2>
-			<Input
-				type="checkbox"
+			<Checkbox
 				title="Show MOTD"
 				name="motd"
-				:checked="$store.state.settings.motd"
+				v-model="$store.state.settings.motd"
 				description="Message Of The Day"
 			/>
-			<Input
-				type="checkbox"
+			<Checkbox
 				title="Include seconds in timestamp"
 				name="showSeconds"
-				:checked="$store.state.settings.showSeconds"
+				v-model="$store.state.settings.showSeconds"
 			/>
-			<Input
-				type="checkbox"
+			<Checkbox
 				title="Use 12-hour timestamps"
 				name="use12hClock"
-				:checked="$store.state.settings.use12hClock"
+				v-model="$store.state.settings.use12hClock"
 			/>
 
 			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
 				<h2>Automatic away message</h2>
 
 				<Textbox
-					:value="$store.state.settings.awayMessage"
+					v-model="$store.state.settings.awayMessage"
 					id="awayMessage"
 					name="awayMessage"
 					placeholder="Away message if The Lounge is not open"
@@ -110,7 +105,7 @@
 			</h2>
 			<Radio
 				name="statusMessages"
-				:value="$store.state.settings.statusMessages"
+				v-model="$store.state.settings.statusMessages"
 				:items="[
 					{value: 'shown', title: 'Show all status messages individually'},
 					{value: 'condensed', title: 'Condense status messages together'},
@@ -119,21 +114,19 @@
 			/>
 
 			<h2>Visual Aids</h2>
-			<Input
-				:checked="$store.state.settings.coloredNicks"
+			<Checkbox
+				v-model="$store.state.settings.coloredNicks"
 				name="coloredNicks"
 				title="Enable colored nicknames"
-				type="checkbox"
 			/>
-			<Input
-				:checked="$store.state.settings.autocomplete"
+			<Checkbox
+				v-model="$store.state.settings.autocomplete"
 				name="autocomplete"
 				title="Enable autocomplete"
-				type="checkbox"
 			/>
 
 			<Textbox
-				:value="$store.state.settings.nickPostfix"
+				v-model="$store.state.settings.nickPostfix"
 				advanced
 				description="Nick autocomplete postfix (for example a comma)"
 				id="nickPostfix"
@@ -150,7 +143,7 @@
 						title: item.displayName,
 					}))
 				"
-				:value="$store.state.settings.theme"
+				v-model="$store.state.settings.theme"
 				id="theme-select"
 				name="theme"
 				screenReaderTitle
@@ -159,17 +152,15 @@
 
 			<template v-if="$store.state.serverConfiguration.prefetch">
 				<h2>Link previews</h2>
-				<Input
-					:checked="$store.state.settings.media"
+				<Checkbox
+					v-model="$store.state.settings.media"
 					name="media"
 					title="Auto-expand media"
-					type="checkbox"
 				/>
-				<Input
-					:checked="$store.state.settings.links"
+				<Checkbox
+					v-model="$store.state.settings.links"
 					name="links"
 					title="Auto-expand websites"
-					type="checkbox"
 				/>
 			</template>
 
@@ -177,11 +168,10 @@
 				v-if="$store.state.settings.advanced && $store.state.serverConfiguration.fileUpload"
 			>
 				<h2>File uploads</h2>
-				<Input
-					:checked="$store.state.settings.uploadCanvas"
+				<Checkbox
+					v-model="$store.state.settings.uploadCanvas"
 					name="uploadCanvas"
 					title="Attempt to remove metadata from images before uploading"
-					type="checkbox"
 					description="This option renders the image into a canvas element to remove metadata from the image.
 This may break orientation if your browser does not support that."
 				/>
@@ -231,13 +221,12 @@ This may break orientation if your browser does not support that."
 			</template>
 
 			<h2>Browser Notifications</h2>
-			<Input
-				:checked="$store.state.settings.desktopNotifications"
+			<Checkbox
+				v-model="$store.state.settings.desktopNotifications"
 				:disabled="$store.state.desktopNotificationState === 'nohttps'"
 				id="desktopNotifications"
 				name="desktopNotifications"
 				title="Enable browser notifications"
-				type="checkbox"
 			/>
 			<div v-if="$store.state.desktopNotificationState === 'unsupported'" class="error">
 				<strong>Warning</strong>: Notifications are not supported by your browser.
@@ -257,11 +246,10 @@ This may break orientation if your browser does not support that."
 				<strong>Warning</strong>: Notifications are blocked by your browser.
 			</div>
 
-			<Input
-				:checked="$store.state.settings.notification"
+			<Checkbox
+				v-model="$store.state.settings.notification"
 				name="notification"
 				title="Enable notification sound"
-				type="checkbox"
 			/>
 			<div>
 				<div class="opt">
@@ -269,16 +257,15 @@ This may break orientation if your browser does not support that."
 				</div>
 			</div>
 
-			<Input
-				:checked="$store.state.settings.notifyAllMessages"
+			<Checkbox
+				v-model="$store.state.settings.notifyAllMessages"
 				advanced
 				name="notifyAllMessages"
 				title="Enable notification for all messages"
-				type="checkbox"
 			/>
 
 			<Textbox
-				:value="$store.state.settings.highlights"
+				v-model="$store.state.settings.highlights"
 				advanced
 				autocomplete="off"
 				id="highlights"
@@ -290,7 +277,7 @@ This may break orientation if your browser does not support that."
 expressions, it will trigger a highlight."
 			/>
 			<Textbox
-				:value="$store.state.settings.highlightExceptions"
+				v-model="$store.state.settings.highlightExceptions"
 				advanced
 				autocomplete="off"
 				id="highlightExceptions"
@@ -361,7 +348,7 @@ your nickname or expressions defined in custom highlights."
 			<div v-if="$store.state.settings.advanced">
 				<h2>Custom Stylesheet</h2>
 				<Textbox
-					:value="$store.state.settings.userStyles"
+					v-model="$store.state.settings.userStyles"
 					id="user-specified-css-input"
 					name="userStyles"
 					placeholder="/* You can override any style with CSS here */"
@@ -419,6 +406,7 @@ import HoverHelp from "../Special/HoverHelp.vue";
 import Password from "../Inputs/Password.vue";
 import Radio from "../Inputs/Radio.vue";
 import Textbox from "../Inputs/Textbox.vue";
+import Checkbox from "../Inputs/Checkbox.vue";
 
 let installPromptEvent = null;
 
@@ -438,6 +426,7 @@ export default {
 		Password,
 		Radio,
 		Textbox,
+		Checkbox,
 	},
 	data() {
 		return {

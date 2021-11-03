@@ -18,374 +18,250 @@
 			</h1>
 			<template v-if="!config.lockNetwork">
 				<h2>Network settings</h2>
-				<div class="connect-row">
-					<label for="connect:name">Name</label>
-					<input
-						id="connect:name"
-						v-model="defaults.name"
-						class="input"
-						name="name"
-						maxlength="100"
+				<Textbox
+					id="connect:name"
+					maxlength="100"
+					name="name"
+					title="Name"
+					v-model="defaults.name"
+					class="connect-row"
+				/>
+
+				<Input separateLabel title="Server" class="connect-row">
+					<Textbox
+						class="connect:host"
+						v-model="defaults.host"
+						name="host"
+						aria-label="Server address"
+						maxlength="255"
+						required
 					/>
-				</div>
-				<div class="connect-row">
-					<label for="connect:host">Server</label>
-					<div class="input-wrap">
-						<input
-							id="connect:host"
-							v-model="defaults.host"
-							class="input"
-							name="host"
-							aria-label="Server address"
-							maxlength="255"
-							required
-						/>
-						<span id="connect:portseparator">:</span>
-						<input
-							id="connect:port"
-							v-model="defaults.port"
-							class="input"
-							type="number"
-							min="1"
-							max="65535"
-							name="port"
-							aria-label="Server port"
-						/>
-					</div>
-				</div>
-				<div class="connect-row">
-					<label for="connect:password">Password</label>
-					<RevealPassword
-						v-slot:default="slotProps"
-						class="input-wrap password-container"
-					>
-						<input
-							id="connect:password"
-							v-model="defaults.password"
-							class="input"
-							:type="slotProps.isVisible ? 'text' : 'password'"
-							placeholder="Server password (optional)"
-							name="password"
-							maxlength="300"
-						/>
-					</RevealPassword>
-				</div>
+					<span id="connect:portseparator">:</span>
+					<Textbox
+						class="connect:port"
+						v-model="defaults.port"
+						type="number"
+						min="1"
+						max="65535"
+						name="port"
+						aria-label="Server port"
+					/>
+				</Input>
+
+				<Password
+					class="connect-row"
+					id="connect:password"
+					maxlength="300"
+					name="password"
+					placeholder="Server password (optional)"
+					title="Password"
+					v-model="defaults.password"
+				/>
+
 				<div class="connect-row">
 					<label></label>
 					<div class="input-wrap">
-						<label class="tls">
-							<input
-								v-model="defaults.tls"
-								type="checkbox"
-								name="tls"
-								:disabled="defaults.hasSTSPolicy"
-							/>
-							Use secure connection (TLS)
-							<span
-								v-if="defaults.hasSTSPolicy"
-								class="tooltipped tooltipped-n tooltipped-no-delay"
-								aria-label="This network has a strict transport security policy, you will be unable to disable TLS"
-								>🔒 STS</span
-							>
-						</label>
-						<label class="tls">
-							<input
-								v-model="defaults.rejectUnauthorized"
-								type="checkbox"
-								name="rejectUnauthorized"
-							/>
-							Only allow trusted certificates
-						</label>
+						<Checkbox
+							:disabled="defaults.hasSTSPolicy"
+							class="tls"
+							name="tls"
+							title="Use secure connection (TLS)"
+							v-model="defaults.tls"
+							:descriptionShown="defaults.hasSTSPolicy"
+							description="This network has a strict transport security policy, you will be unable to disable TLS"
+							descriptionTitle="🔒 STS"
+						/>
+						<Checkbox
+							class="tls"
+							name="rejectUnauthorized"
+							title="Only allow trusted certificates"
+							v-model="defaults.rejectUnauthorized"
+						/>
 					</div>
 				</div>
 
 				<h2>Proxy Settings</h2>
 				<div class="connect-row">
 					<label></label>
-					<div class="input-wrap">
-						<label for="connect:proxyEnabled">
-							<input
-								id="connect:proxyEnabled"
-								v-model="defaults.proxyEnabled"
-								type="checkbox"
-								name="proxyEnabled"
-							/>
-							Enable Proxy
-						</label>
-					</div>
+					<Checkbox
+						class="input-wrap"
+						id="connect:proxyEnabled"
+						name="proxyEnabled"
+						title="Enable Proxy"
+						v-model="defaults.proxyEnabled"
+					/>
 				</div>
 				<template v-if="defaults.proxyEnabled">
-					<div class="connect-row">
-						<label for="connect:proxyHost">SOCKS Address</label>
-						<div class="input-wrap">
-							<input
-								id="connect:proxyHost"
-								v-model="defaults.proxyHost"
-								class="input"
-								name="proxyHost"
-								aria-label="Proxy host"
-								maxlength="255"
-							/>
-							<span id="connect:proxyPortSeparator">:</span>
-							<input
-								id="connect:proxyPort"
-								v-model="defaults.proxyPort"
-								class="input"
-								type="number"
-								min="1"
-								max="65535"
-								name="proxyPort"
-								aria-label="SOCKS port"
-							/>
-						</div>
-					</div>
-
-					<div class="connect-row">
-						<label for="connect:proxyUsername">Proxy username</label>
-						<input
-							id="connect:proxyUsername"
-							ref="proxyUsernameInput"
-							v-model="defaults.proxyUsername"
-							class="input username"
-							name="proxyUsername"
-							maxlength="100"
-							placeholder="Proxy username"
+					<Input separateLabel title="SOCKS Address" class="connect-row">
+						<Textbox
+							aria-label="Proxy host"
+							class="connect:proxyHost"
+							maxlength="255"
+							name="proxyHost"
+							v-model="defaults.proxyHost"
 						/>
-					</div>
+						<span id="connect:proxyPortSeparator">:</span>
+						<Textbox
+							aria-label="SOCKS port"
+							class="connect:proxyPort"
+							max="65535"
+							min="1"
+							name="proxyPort"
+							type="number"
+							v-model="defaults.proxyPort"
+						/>
+					</Input>
 
-					<div class="connect-row">
-						<label for="connect:proxyPassword">Proxy password</label>
-						<RevealPassword
-							v-slot:default="slotProps"
-							class="input-wrap password-container"
-						>
-							<input
-								id="connect:proxyPassword"
-								ref="proxyPassword"
-								v-model="defaults.proxyPassword"
-								class="input"
-								:type="slotProps.isVisible ? 'text' : 'password'"
-								placeholder="Proxy password"
-								name="proxyPassword"
-								maxlength="300"
-							/>
-						</RevealPassword>
-					</div>
+					<Textbox
+						separateLabel
+						id="connect:proxyUsername"
+						ref="proxyUsernameInput"
+						v-model="defaults.proxyUsername"
+						class="connect-row"
+						name="proxyUsername"
+						placeholder="Proxy username"
+						title="Proxy username"
+					/>
+
+					<Password
+						class="connect-row"
+						id="connect:proxyPassword"
+						name="proxyPassword"
+						placeholder="Proxy password"
+						title="Proxy password"
+						v-model="defaults.proxyPassword"
+					/>
 				</template>
 			</template>
 			<template v-else-if="config.lockNetwork && !$store.state.serverConfiguration.public">
 				<h2>Network settings</h2>
-				<div class="connect-row">
-					<label for="connect:name">Name</label>
-					<input
-						id="connect:name"
-						v-model="defaults.name"
-						class="input"
-						name="name"
-						maxlength="100"
-					/>
-				</div>
-				<div class="connect-row">
-					<label for="connect:password">Password</label>
-					<RevealPassword
-						v-slot:default="slotProps"
-						class="input-wrap password-container"
-					>
-						<input
-							id="connect:password"
-							v-model="defaults.password"
-							class="input"
-							:type="slotProps.isVisible ? 'text' : 'password'"
-							placeholder="Server password (optional)"
-							name="password"
-							maxlength="300"
-						/>
-					</RevealPassword>
-				</div>
+				<Textbox
+					v-model="defaults.name"
+					class="connect-row"
+					name="name"
+					maxlength="100"
+					title="Name"
+				/>
+				<Password
+					v-model="defaults.password"
+					class="connect-row"
+					name="password"
+					title="Password"
+				/>
 			</template>
 
 			<h2>User preferences</h2>
-			<div class="connect-row">
-				<label for="connect:nick">Nick</label>
-				<input
-					id="connect:nick"
-					v-model="defaults.nick"
-					class="input nick"
-					name="nick"
-					pattern="[^\s:!@]+"
-					maxlength="100"
-					required
-					@input="onNickChanged"
-				/>
-			</div>
-			<template v-if="!config.useHexIp">
+			<Textbox
+				id="connect:nick"
+				v-model="defaults.nick"
+				class="connect-row"
+				name="nick"
+				pattern="[^\s:!@]+"
+				maxlength="100"
+				required
+				@input="onNickChanged"
+				title="Nick"
+			/>
+
+			<Textbox
+				class="connect-row"
+				maxlength="100"
+				name="username"
+				ref="usernameInput"
+				title="Username"
+				v-if="!config.useHexIp"
+				v-model="defaults.username"
+			/>
+			<Textbox
+				class="connect-row"
+				maxlength="300"
+				name="realname"
+				title="Real name"
+				v-model="defaults.realname"
+			/>
+			<Textbox
+				class="connect-row"
+				name="leaveMessage"
+				title="Leave message"
+				v-model="defaults.leaveMessage"
+				autocomplete="off"
+				placeholder="The Lounge - https://thelounge.chat"
+			/>
+
+			<Textbox
+				autocomplete="off"
+				description="One /command per line.
+Each command will be executed in the server on a new connection."
+				name="commands"
+				private
+				title="Commands"
+				type="textarea"
+				v-if="defaults.uuid"
+				v-model="parsedCommands"
+			/>
+
+			<Textbox
+				name="join"
+				class="connect-row"
+				title="Channels"
+				v-if="!defaults.uuid"
+				v-model="defaults.join"
+				description="Comma separated list of #ChannelName"
+			/>
+
+			<template v-if="$store.state.serverConfiguration.public && config.lockNetwork">
 				<div class="connect-row">
-					<label for="connect:username">Username</label>
-					<input
-						id="connect:username"
-						ref="usernameInput"
-						v-model="defaults.username"
-						class="input username"
-						name="username"
-						maxlength="100"
+					<label></label>
+
+					<Checkbox
+						title="I have a password"
+						name="displayPasswordField"
+						v-model="displayPasswordField"
 					/>
 				</div>
-			</template>
-			<div class="connect-row">
-				<label for="connect:realname">Real name</label>
-				<input
-					id="connect:realname"
-					v-model="defaults.realname"
-					class="input"
-					name="realname"
-					maxlength="300"
+				<Password
+					v-if="displayPasswordField"
+					title="Password"
+					class="connect-row"
+					name="publicPassword"
+					v-model="defaults.password"
+					placeholder="Server password"
 				/>
-			</div>
-			<div class="connect-row">
-				<label for="connect:leaveMessage">Leave message</label>
-				<input
-					id="connect:leaveMessage"
-					v-model="defaults.leaveMessage"
-					autocomplete="off"
-					class="input"
-					name="leaveMessage"
-					placeholder="The Lounge - https://thelounge.chat"
-				/>
-			</div>
-			<template v-if="defaults.uuid && !$store.state.serverConfiguration.public">
-				<div class="connect-row">
-					<label for="connect:commands">
-						Commands
-						<span
-							class="tooltipped tooltipped-ne tooltipped-no-delay"
-							aria-label="One /command per line.
-Each command will be executed in
-the server tab on new connection"
-						>
-							<button class="extra-help" />
-						</span>
-					</label>
-					<textarea
-						id="connect:commands"
-						ref="commandsInput"
-						autocomplete="off"
-						:value="defaults.commands ? defaults.commands.join('\n') : ''"
-						class="input"
-						name="commands"
-						@input="resizeCommandsInput"
-					/>
-				</div>
-			</template>
-			<template v-else-if="!defaults.uuid">
-				<div class="connect-row">
-					<label for="connect:channels">Channels</label>
-					<input
-						id="connect:channels"
-						v-model="defaults.join"
-						class="input"
-						name="join"
-					/>
-				</div>
 			</template>
 
-			<template v-if="$store.state.serverConfiguration.public">
-				<template v-if="config.lockNetwork">
-					<div class="connect-row">
-						<label></label>
-						<div class="input-wrap">
-							<label class="tls">
-								<input v-model="displayPasswordField" type="checkbox" />
-								I have a password
-							</label>
-						</div>
-					</div>
-					<div v-if="displayPasswordField" class="connect-row">
-						<label for="connect:password">Password</label>
-						<RevealPassword
-							v-slot:default="slotProps"
-							class="input-wrap password-container"
-						>
-							<input
-								id="connect:password"
-								ref="publicPassword"
-								v-model="defaults.password"
-								class="input"
-								:type="slotProps.isVisible ? 'text' : 'password'"
-								placeholder="Server password (optional)"
-								name="password"
-								maxlength="300"
-							/>
-						</RevealPassword>
-					</div>
-				</template>
-			</template>
 			<template v-else>
 				<h2 id="label-auth">Authentication</h2>
-				<div class="connect-row connect-auth" role="group" aria-labelledby="label-auth">
-					<label class="opt">
-						<input
-							:checked="!defaults.sasl"
-							type="radio"
-							name="sasl"
-							value=""
-							@change="setSaslAuth('')"
-						/>
-						No authentication
-					</label>
-					<label class="opt">
-						<input
-							:checked="defaults.sasl === 'plain'"
-							type="radio"
-							name="sasl"
-							value="plain"
-							@change="setSaslAuth('plain')"
-						/>
-						Username + password (SASL PLAIN)
-					</label>
-					<label
-						v-if="!$store.state.serverConfiguration.public && defaults.tls"
-						class="opt"
-					>
-						<input
-							:checked="defaults.sasl === 'external'"
-							type="radio"
-							name="sasl"
-							value="external"
-							@change="setSaslAuth('external')"
-						/>
-						Client certificate (SASL EXTERNAL)
-					</label>
-				</div>
+				<Radio
+					class="connect-row"
+					name="sasl"
+					v-model="defaults.sasl"
+					:items="[
+						{value: '', title: 'No authentication'},
+						{value: 'plain', title: 'Username + Password (SASL PLAIN)'},
+						{
+							value: 'external',
+							title: 'Client certificate (SASL EXTERNAL)',
+							condition: !$store.state.serverConfiguration.public && defaults.tls,
+						},
+					]"
+				/>
 
 				<template v-if="defaults.sasl === 'plain'">
-					<div class="connect-row">
-						<label for="connect:username">Account</label>
-						<input
-							id="connect:saslAccount"
-							v-model="defaults.saslAccount"
-							class="input"
-							name="saslAccount"
-							maxlength="100"
-							required
-						/>
-					</div>
-					<div class="connect-row">
-						<label for="connect:password">Password</label>
-						<RevealPassword
-							v-slot:default="slotProps"
-							class="input-wrap password-container"
-						>
-							<input
-								id="connect:saslPassword"
-								v-model="defaults.saslPassword"
-								class="input"
-								:type="slotProps.isVisible ? 'text' : 'password'"
-								name="saslPassword"
-								maxlength="300"
-								required
-							/>
-						</RevealPassword>
-					</div>
+					<Textbox
+						class="connect-row"
+						id="connect:saslAccount"
+						name="saslAccount"
+						required
+						title="Account"
+						v-model="defaults.saslAccount"
+					/>
+					<Password
+						class="connect-row"
+						name="saslPassword"
+						required
+						title="Password"
+						v-model="defaults.saslPassword"
+					/>
 				</template>
 				<div v-else-if="defaults.sasl === 'external'" class="connect-sasl-external">
 					<p>The Lounge automatically generates and manages the client certificate.</p>
@@ -436,14 +312,26 @@ the server tab on new connection"
 </style>
 
 <script>
-import RevealPassword from "./RevealPassword.vue";
 import SidebarToggle from "./SidebarToggle.vue";
+import Dropdown from "./Inputs/Dropdown.vue";
+import Generic from "./Inputs/Generic.vue";
+import HoverHelp from "./Special/HoverHelp.vue";
+import Password from "./Inputs/Password.vue";
+import Radio from "./Inputs/Radio.vue";
+import Textbox from "./Inputs/Textbox.vue";
+import Checkbox from "./Inputs/Checkbox.vue";
 
 export default {
 	name: "NetworkForm",
 	components: {
-		RevealPassword,
 		SidebarToggle,
+		Input: Generic,
+		Dropdown,
+		HoverHelp,
+		Password,
+		Radio,
+		Textbox,
+		Checkbox,
 	},
 	props: {
 		handleSubmit: Function,
@@ -457,14 +345,16 @@ export default {
 			displayPasswordField: false,
 		};
 	},
+	computed: {
+		parsedCommands() {
+			return this.defaults.commands ? this.defaults.commands.join("\n") : "";
+		},
+	},
 	watch: {
 		displayPasswordField(value) {
 			if (value) {
 				this.$nextTick(() => this.$refs.publicPassword.focus());
 			}
-		},
-		"defaults.commands"() {
-			this.$nextTick(this.resizeCommandsInput);
 		},
 		"defaults.tls"(isSecureChecked) {
 			const ports = [6667, 6697];
@@ -478,9 +368,6 @@ export default {
 		},
 	},
 	methods: {
-		setSaslAuth(type) {
-			this.defaults.sasl = type;
-		},
 		onNickChanged(event) {
 			// Username input is not available when useHexIp is set
 			if (!this.$refs.usernameInput) {
@@ -503,20 +390,9 @@ export default {
 			for (const item of formData.entries()) {
 				data[item[0]] = item[1];
 			}
+			debugger;
 
 			this.handleSubmit(data);
-		},
-		resizeCommandsInput() {
-			if (!this.$refs.commandsInput) {
-				return;
-			}
-
-			// Reset height first so it can down size
-			this.$refs.commandsInput.style.height = "";
-
-			// 2 pixels to account for the border
-			this.$refs.commandsInput.style.height =
-				Math.ceil(this.$refs.commandsInput.scrollHeight + 2) + "px";
 		},
 	},
 };

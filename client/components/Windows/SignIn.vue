@@ -16,12 +16,10 @@
 				height="170"
 			/>
 
-			<label for="signin-username">Username</label>
-			<input
+			<Textbox
+				title="Username"
 				id="signin-username"
 				ref="username"
-				class="input"
-				type="text"
 				name="username"
 				autocapitalize="none"
 				autocorrect="off"
@@ -31,22 +29,17 @@
 				autofocus
 			/>
 
-			<div class="password-container">
-				<label for="signin-password">Password</label>
-				<RevealPassword v-slot:default="slotProps">
-					<input
-						id="signin-password"
-						ref="password"
-						:type="slotProps.isVisible ? 'text' : 'password'"
-						name="password"
-						class="input"
-						autocapitalize="none"
-						autocorrect="off"
-						autocomplete="current-password"
-						required
-					/>
-				</RevealPassword>
-			</div>
+			<Password
+				separateLabel
+				title="Password"
+				id="signin-password"
+				ref="password"
+				name="password"
+				autocapitalize="none"
+				autocorrect="off"
+				autocomplete="current-password"
+				required
+			/>
 
 			<div v-if="errorShown" class="error">Authentication failed.</div>
 
@@ -59,11 +52,14 @@
 import storage from "../../js/localStorage";
 import socket from "../../js/socket";
 import RevealPassword from "../RevealPassword.vue";
+import Password from "../Inputs/Password.vue";
+import Textbox from "../Inputs/Textbox.vue";
 
 export default {
 	name: "SignIn",
 	components: {
-		RevealPassword,
+		Textbox,
+		Password,
 	},
 	data() {
 		return {
@@ -98,7 +94,7 @@ export default {
 			socket.emit("auth:perform", values);
 		},
 		getStoredUser() {
-			return storage.get("user");
+			return storage.get("user") || "";
 		},
 	},
 };

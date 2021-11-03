@@ -1877,8 +1877,8 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	margin: 3px 10px 0 0;
 }
 
-#connect\:host,
-#connect\:proxyHost {
+.connect\:host,
+.connect\:proxyHost {
 	width: 70%;
 }
 
@@ -1891,7 +1891,10 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 #connect\:proxyPortSeparator {
 	width: 5%;
 	text-align: center;
-	display: inline-block;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding-bottom: 1em;
 }
 
 #connect .btn {
@@ -1989,12 +1992,8 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	padding-right: 37px;
 }
 
-#sign-in .password-container {
+#sign-in .form-field {
 	width: 100%;
-}
-
-#sign-in .password-container .reveal-password {
-	top: 31px;
 }
 
 .password-container .reveal-password {
