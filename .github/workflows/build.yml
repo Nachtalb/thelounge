@@ -9,17 +9,25 @@ jobs:
     strategy:
       matrix:
         include:
-          # EOL: April 2022
+          # LTS EOL: April 2022
           - os: ubuntu-latest
             node_version: 12.x
+          - os: macOS-latest
+            node_version: 12.x
+          - os: windows-latest
+            node_version: 12.x
 
-          # EOL: April 2023
+          # LTS EOL: April 2023
           - os: ubuntu-latest
             node_version: 14.x
 
-          # EOL: June 2021
+          # LTS EOL: April 2024
           - os: ubuntu-latest
-            node_version: 15.x
+            node_version: 16.x
+          - os: macOS-latest
+            node_version: 16.x
+          - os: windows-latest
+            node_version: 16.x
 
           # EOL: April 2024
           - os: ubuntu-latest
