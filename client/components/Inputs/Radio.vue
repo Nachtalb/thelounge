@@ -1,13 +1,13 @@
 <template>
-	<Generic v-bind="$attrs" separateLabel :name="name" class="radio-container">
+	<Generic v-bind="$attrs" separate-label :name="name" class="radio-container">
 		<div role="group" :aria-labelledby="labelledby">
 			<label v-for="item in items" :key="item.value" class="opt">
 				<input
+					v-model="value"
+					v-bind="item.attrs"
 					type="radio"
 					:name="name"
 					:value="item.value"
-					v-bind="item.attrs"
-					v-model="value"
 					@input="handle"
 				/>
 				{{ item.title }}
@@ -23,16 +23,11 @@ import HoverHelp from "../Special/HoverHelp.vue";
 
 export default {
 	name: "Radio",
-	inheritAttrs: false,
 	components: {
 		Generic,
 		HoverHelp,
 	},
-	methods: {
-		handle(event) {
-			this.$emit("input", event.target.value);
-		},
-	},
+	inheritAttrs: false,
 	props: {
 		name: String,
 		value: String,
@@ -46,6 +41,11 @@ export default {
 			labelledby:
 				"label-" + this.name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
 		};
+	},
+	methods: {
+		handle(event) {
+			this.$emit("input", event.target.value);
+		},
 	},
 };
 </script>

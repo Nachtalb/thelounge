@@ -1,8 +1,8 @@
 <template>
 	<div
 		v-if="
-			(!advanced || $store.state.settings.advanced) &&
-			(!private || !$store.state.serverConfiguration.public)
+			(!advancedOnly || $store.state.settings.advanced) &&
+			(!privateOnly || !$store.state.serverConfiguration.public)
 		"
 		class="form-field"
 	>
@@ -21,8 +21,8 @@
 					:name="name"
 					:type="type"
 					:value="value"
-					@input="handleInput"
 					v-bind="$attrs"
+					@input="handleInput"
 				/>
 			</slot>
 		</template>
@@ -33,9 +33,9 @@
 						:class="[inputClass, name ? 'field-' + name : '']"
 						:name="name"
 						:type="type"
-						@input="handleInput"
 						:value="value"
 						v-bind="$attrs"
+						@input="handleInput"
 					/>
 				</slot>
 
@@ -87,20 +87,14 @@ export default {
 			type: Boolean,
 			default: false,
 		},
-		advanced: {
+		advancedOnly: {
 			type: Boolean,
 			default: false,
 		},
-		private: {
+		privateOnly: {
 			type: Boolean,
 			default: false,
 		},
-	},
-	mounted() {
-		if (this.originalValue !== undefined) {
-			// Fix some update order and reactivity cases
-			this.$forceUpdate();
-		}
 	},
 	data() {
 		return {
@@ -111,6 +105,12 @@ export default {
 		originalValue(value) {
 			this.value = value;
 		},
+	},
+	mounted() {
+		if (this.originalValue !== undefined) {
+			// Fix some update order and reactivity cases
+			this.$forceUpdate();
+		}
 	},
 	methods: {
 		handleInput(event) {

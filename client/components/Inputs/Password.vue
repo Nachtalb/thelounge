@@ -1,11 +1,11 @@
 <template>
-	<Generic v-bind="$attrs" separateLabel class="password-container">
+	<Generic v-bind="$attrs" separate-label class="password-container">
 		<input
-			:class="['input', $attrs.name ? 'field-' + $attrs.name : '']"
-			:type="isVisible ? 'text' : 'password'"
-			@input="$emit('input', value)"
-			v-bind="$attrs"
 			v-model="value"
+			v-bind="$attrs"
+			:type="isVisible ? 'text' : 'password'"
+			:class="['input', $attrs.name ? 'field-' + $attrs.name : '']"
+			@input="$emit('input', value)"
 		/>
 		<span
 			ref="revealButton"
@@ -24,15 +24,13 @@
 
 <script>
 import Generic from "./Generic.vue";
-import RevealPassword from "../RevealPassword.vue";
 
 export default {
 	name: "Password",
-	inheritAttrs: false,
 	components: {
-		RevealPassword,
 		Generic,
 	},
+	inheritAttrs: false,
 	model: {
 		prop: "originalValue",
 	},

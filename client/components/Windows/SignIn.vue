@@ -17,28 +17,28 @@
 			/>
 
 			<Textbox
-				title="Username"
 				id="signin-username"
 				ref="username"
-				name="username"
-				autocapitalize="none"
-				autocorrect="off"
-				autocomplete="username"
 				:value="getStoredUser()"
-				required
+				autocapitalize="none"
+				autocomplete="username"
+				autocorrect="off"
 				autofocus
+				name="username"
+				required
+				title="Username"
 			/>
 
 			<Password
-				separateLabel
-				title="Password"
 				id="signin-password"
 				ref="password"
-				name="password"
 				autocapitalize="none"
-				autocorrect="off"
 				autocomplete="current-password"
+				autocorrect="off"
+				name="password"
 				required
+				separate-label
+				title="Password"
 			/>
 
 			<div v-if="errorShown" class="error">Authentication failed.</div>
@@ -51,7 +51,6 @@
 <script>
 import storage from "../../js/localStorage";
 import socket from "../../js/socket";
-import RevealPassword from "../RevealPassword.vue";
 import Password from "../Inputs/Password.vue";
 import Textbox from "../Inputs/Textbox.vue";
 

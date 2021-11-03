@@ -1,11 +1,11 @@
 <template>
-	<Generic v-bind="$attrs" separateLabel :name="name" class="dropdown-container">
+	<Generic v-bind="$attrs" separate-label :name="name" class="dropdown-container">
 		<select
+			v-model="value"
 			:class="['input', name ? 'field-' + name : '']"
 			:name="name"
-			@input="$emit('input', event.target.value)"
 			v-bind="$attrs"
-			v-model="value"
+			@input="$emit('input', event.target.value)"
 		>
 			<option v-for="item in items" :key="item.value" :value="item.value">
 				{{ item.title }}
@@ -19,10 +19,10 @@ import Generic from "./Generic.vue";
 
 export default {
 	name: "Dropdown",
-	inheritAttrs: false,
 	components: {
 		Generic,
 	},
+	inheritAttrs: false,
 	props: {
 		name: String,
 		value: String,

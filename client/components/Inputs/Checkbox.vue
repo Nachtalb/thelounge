@@ -2,13 +2,15 @@
 import Generic from "./Generic.vue";
 
 export default {
-	extends: Generic,
 	name: "Checkbox",
+	extends: Generic,
 	props: {
 		type: {
+			type: String,
 			default: "checkbox",
 		},
 		inputClass: {
+			type: String,
 			default: "",
 		},
 	},

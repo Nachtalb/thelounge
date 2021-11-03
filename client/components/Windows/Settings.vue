@@ -13,9 +13,9 @@
 			<h1 class="title">Settings</h1>
 
 			<Checkbox
-				title="Advanced settings"
-				name="advanced"
 				v-model="$store.state.settings.advanced"
+				name="advanced"
+				title="Advanced settings"
 			/>
 
 			<div v-if="canRegisterProtocol || hasInstallPromptEvent">
@@ -71,31 +71,31 @@
 
 			<h2>Messages</h2>
 			<Checkbox
-				title="Show MOTD"
-				name="motd"
 				v-model="$store.state.settings.motd"
 				description="Message Of The Day"
+				name="motd"
+				title="Show MOTD"
 			/>
 			<Checkbox
-				title="Include seconds in timestamp"
-				name="showSeconds"
 				v-model="$store.state.settings.showSeconds"
+				name="showSeconds"
+				title="Include seconds in timestamp"
 			/>
 			<Checkbox
-				title="Use 12-hour timestamps"
-				name="use12hClock"
 				v-model="$store.state.settings.use12hClock"
+				name="use12hClock"
+				title="Use 12-hour timestamps"
 			/>
 
 			<div v-if="!$store.state.serverConfiguration.public && $store.state.settings.advanced">
 				<h2>Automatic away message</h2>
 
 				<Textbox
-					v-model="$store.state.settings.awayMessage"
 					id="awayMessage"
+					v-model="$store.state.settings.awayMessage"
 					name="awayMessage"
 					placeholder="Away message if The Lounge is not open"
-					screenReaderTitle
+					screen-reader-title
 					title="Automatic away message"
 				/>
 			</div>
@@ -104,13 +104,13 @@
 				<HoverHelp text="Joins, parts, quits, kicks, nick changes, and mode changes" />
 			</h2>
 			<Radio
-				name="statusMessages"
 				v-model="$store.state.settings.statusMessages"
 				:items="[
 					{value: 'shown', title: 'Show all status messages individually'},
 					{value: 'condensed', title: 'Condense status messages together'},
 					{value: 'hidden', title: 'Hide all status messages'},
 				]"
+				name="statusMessages"
 			/>
 
 			<h2>Visual Aids</h2>
@@ -126,10 +126,10 @@
 			/>
 
 			<Textbox
-				v-model="$store.state.settings.nickPostfix"
-				advanced
-				description="Nick autocomplete postfix (for example a comma)"
 				id="nickPostfix"
+				v-model="$store.state.settings.nickPostfix"
+				advanced-only
+				description="Nick autocomplete postfix (for example a comma)"
 				name="nickPostfix"
 				placeholder="Nick autocomplete postfix (e.g. ', ')"
 				title="Nick autocomplete postfix"
@@ -137,16 +137,16 @@
 
 			<h2>Theme</h2>
 			<Dropdown
+				id="theme-select"
+				v-model="$store.state.settings.theme"
 				:items="
 					$store.state.serverConfiguration.themes.map((item) => ({
 						value: item.name,
 						title: item.displayName,
 					}))
 				"
-				v-model="$store.state.settings.theme"
-				id="theme-select"
 				name="theme"
-				screenReaderTitle
+				screen-reader-title
 				title="Theme"
 			/>
 
@@ -222,9 +222,9 @@ This may break orientation if your browser does not support that."
 
 			<h2>Browser Notifications</h2>
 			<Checkbox
+				id="desktopNotifications"
 				v-model="$store.state.settings.desktopNotifications"
 				:disabled="$store.state.desktopNotificationState === 'nohttps'"
-				id="desktopNotifications"
 				name="desktopNotifications"
 				title="Enable browser notifications"
 			/>
@@ -259,31 +259,31 @@ This may break orientation if your browser does not support that."
 
 			<Checkbox
 				v-model="$store.state.settings.notifyAllMessages"
-				advanced
+				advanced-only
 				name="notifyAllMessages"
 				title="Enable notification for all messages"
 			/>
 
 			<Textbox
-				v-model="$store.state.settings.highlights"
-				advanced
-				autocomplete="off"
 				id="highlights"
+				v-model="$store.state.settings.highlights"
+				advanced-only
+				autocomplete="off"
 				name="highlights"
 				placeholder="Comma-separated, e.g.: word, some more words, anotherword"
-				private
+				private-only
 				title="Custom highlights"
 				description="If a message contains any of these comma-separated
 expressions, it will trigger a highlight."
 			/>
 			<Textbox
-				v-model="$store.state.settings.highlightExceptions"
-				advanced
-				autocomplete="off"
 				id="highlightExceptions"
+				v-model="$store.state.settings.highlightExceptions"
+				advanced-only
+				autocomplete="off"
 				name="highlightExceptions"
 				placeholder="Comma-separated, e.g.: word, some more words, anotherword"
-				private
+				private-only
 				title="Highlight exceptions"
 				description="If a message contains any of these comma-separated
 expressions, it will not trigger a highlight even if it contains
@@ -302,27 +302,27 @@ your nickname or expressions defined in custom highlights."
 				<h2 id="label-change-password">Change password</h2>
 
 				<Password
-					autocomplete="current-password"
 					id="current-password"
+					autocomplete="current-password"
 					name="old_password"
 					placeholder="Enter current password"
-					screenReaderTitle
+					screen-reader-title
 					title="Enter current password"
 				/>
 				<Password
-					autocomplete="new-password"
 					id="new-password"
+					autocomplete="new-password"
 					name="new_password"
 					placeholder="Enter desired new password"
-					screenReaderTitle
+					screen-reader-title
 					title="Enter desired new password"
 				/>
 				<Password
-					autocomplete="new-password"
 					id="new-password-verify"
+					autocomplete="new-password"
 					name="verify_password"
 					placeholder="Repeat new password"
-					screenReaderTitle
+					screen-reader-title
 					title="Repeat new password"
 				/>
 
@@ -348,11 +348,11 @@ your nickname or expressions defined in custom highlights."
 			<div v-if="$store.state.settings.advanced">
 				<h2>Custom Stylesheet</h2>
 				<Textbox
-					v-model="$store.state.settings.userStyles"
 					id="user-specified-css-input"
+					v-model="$store.state.settings.userStyles"
 					name="userStyles"
 					placeholder="/* You can override any style with CSS here */"
-					screenReaderTitle
+					screen-reader-title
 					title="Custom stylesheet. You can override any style with CSS here."
 					type="textarea"
 				/>
@@ -401,7 +401,6 @@ import webpush from "../../js/webpush";
 import Session from "../Session.vue";
 import SidebarToggle from "../SidebarToggle.vue";
 import Dropdown from "../Inputs/Dropdown.vue";
-import Generic from "../Inputs/Generic.vue";
 import HoverHelp from "../Special/HoverHelp.vue";
 import Password from "../Inputs/Password.vue";
 import Radio from "../Inputs/Radio.vue";
@@ -420,7 +419,6 @@ export default {
 	components: {
 		Session,
 		SidebarToggle,
-		Input: Generic,
 		Dropdown,
 		HoverHelp,
 		Password,

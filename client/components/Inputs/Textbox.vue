@@ -1,20 +1,20 @@
 <template>
-	<Generic v-bind="$attrs" separateLabel class="textbox-container">
+	<Generic v-bind="$attrs" separate-label class="textbox-container">
 		<input
+			v-if="type !== 'textarea'"
+			v-model="value"
+			v-bind="$attrs"
 			:class="['input', $attrs.name ? 'field-' + $attrs.name : '']"
 			:type="type"
 			@input="$emit('input', $event.target.value)"
-			v-bind="$attrs"
-			v-if="type !== 'textarea'"
-			v-model="value"
 		/>
 		<textarea
-			:class="['input', $attrs.name ? 'field-' + $attrs.name : '']"
-			@input="$emit('input', $event.target.value)"
-			v-bind="$attrs"
 			v-else
 			ref="textarea"
 			v-model="value"
+			v-bind="$attrs"
+			:class="['input', $attrs.name ? 'field-' + $attrs.name : '']"
+			@input="$emit('input', $event.target.value)"
 		/>
 	</Generic>
 </template>
@@ -24,10 +24,10 @@ import Generic from "./Generic.vue";
 
 export default {
 	name: "Textbox",
-	inheritAttrs: false,
 	components: {
 		Generic,
 	},
+	inheritAttrs: false,
 	model: {
 		prop: "originalValue",
 	},
@@ -52,7 +52,7 @@ export default {
 		originalValue(value) {
 			this.value = value;
 		},
-		value(value) {
+		value() {
 			if (!this.$refs.textarea && this.autoresize) {
 				return;
 			}
