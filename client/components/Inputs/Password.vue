@@ -1,6 +1,12 @@
 <template>
 	<Generic v-bind="$attrs" separateLabel class="password-container">
-		<input :type="isVisible ? 'text' : 'password'" class="input" v-bind="$attrs" />
+		<input
+			:class="['input', $attrs.name ? 'field-' + $attrs.name : '']"
+			:type="isVisible ? 'text' : 'password'"
+			@input="$emit('input', value)"
+			v-bind="$attrs"
+			v-model="value"
+		/>
 		<span
 			ref="revealButton"
 			type="button"
@@ -27,7 +33,11 @@ export default {
 		RevealPassword,
 		Generic,
 	},
+	model: {
+		prop: "originalValue",
+	},
 	props: {
+		originalValue: String,
 		srOnlyTitle: {
 			type: Boolean,
 			default: false,
@@ -36,7 +46,13 @@ export default {
 	data() {
 		return {
 			isVisible: false,
+			value: this.originalValue,
 		};
+	},
+	watch: {
+		originalValue(value) {
+			this.value = value;
+		},
 	},
 	methods: {
 		onClick() {

@@ -1,13 +1,14 @@
 <template>
-	<Generic v-bind="$attrs" separateLabel :name="name">
+	<Generic v-bind="$attrs" separateLabel :name="name" class="radio-container">
 		<div role="group" :aria-labelledby="labelledby">
 			<label v-for="item in items" :key="item.value" class="opt">
 				<input
 					type="radio"
 					:name="name"
 					:value="item.value"
-					:checked="$attrs.value === item.value"
 					v-bind="item.attrs"
+					v-model="value"
+					@input="handle"
 				/>
 				{{ item.title }}
 				<HoverHelp :text="item.description" />
@@ -27,8 +28,14 @@ export default {
 		Generic,
 		HoverHelp,
 	},
+	methods: {
+		handle(event) {
+			this.$emit("input", event.target.value);
+		},
+	},
 	props: {
 		name: String,
+		value: String,
 		items: {
 			type: Array,
 			required: true,

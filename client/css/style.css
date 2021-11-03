@@ -1860,7 +1860,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	flex-grow: 1;
 }
 
-#connect label {
+#connect label:not(.opt) {
 	width: 25%;
 	flex-shrink: 0;
 	margin-top: 11px;
@@ -1934,7 +1934,8 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	text-decoration: underline;
 }
 
-#settings .opt {
+#settings .opt,
+[role=group] > label.opt {
 	display: block;
 	padding: 5px 0 5px 1px;
 }
@@ -1998,7 +1999,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 
 .password-container .reveal-password {
 	position: absolute;
-	top: 2px;
+	bottom: 10px;
 	right: 0;
 	appearance: none;
 }

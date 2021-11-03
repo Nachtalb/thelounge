@@ -1,6 +1,12 @@
 <template>
-	<Generic v-bind="$attrs" separateLabel :name="name">
-		<select v-bind="$attrs" :name="name" class="input">
+	<Generic v-bind="$attrs" separateLabel :name="name" class="dropdown-container">
+		<select
+			:class="['input', name ? 'field-' + name : '']"
+			:name="name"
+			@input="$emit('input', event.target.value)"
+			v-bind="$attrs"
+			v-model="value"
+		>
 			<option v-for="item in items" :key="item.value" :value="item.value">
 				{{ item.title }}
 			</option>
@@ -19,6 +25,7 @@ export default {
 	},
 	props: {
 		name: String,
+		value: String,
 		items: {
 			type: Array,
 			required: true,
