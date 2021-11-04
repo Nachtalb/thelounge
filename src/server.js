@@ -2,7 +2,6 @@
 
 const _ = require("lodash");
 const log = require("./log");
-const pkg = require("../package.json");
 const Client = require("./client");
 const ClientManager = require("./clientManager");
 const express = require("express");

@@ -63,13 +63,14 @@ async function fetch() {
 }
 
 function updateVersions(response) {
+	const currentDate = new Date(versions.current.date);
 	let commit;
-	let currentDate = new Date(versions.current.date);
 	let dateSet = false;
 
 	const body = JSON.parse(response.body);
 
 	versions.commits = [];
+
 	for (let i = 0; i < body.length; i++) {
 		commit = body[i];
 
@@ -92,6 +93,7 @@ function updateVersions(response) {
 				break;
 			}
 		}
+
 		if (!dateSet) {
 			versions.commits.push(versions.current);
 		}
