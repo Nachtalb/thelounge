@@ -35,7 +35,7 @@ class WebPush {
 		}
 
 		WebPushAPI.setVapidDetails(
-			"https://github.com/thelounge/thelounge",
+			"https://github.com/Nachtalb/thelounge",
 			this.vapidKeys.publicKey,
 			this.vapidKeys.privateKey
 		);

@@ -2,7 +2,7 @@
 	<img
 		width="300"
 		alt="The Lounge"
-		src="https://raw.githubusercontent.com/thelounge/thelounge/master/client/img/logo-vertical-transparent-bg.svg?sanitize=true">
+		src="https://raw.githubusercontent.com/Nachtalb/thelounge/master/client/img/logo-vertical-transparent-bg.svg?sanitize=true">
 </h1>
 
 <h3 align="center">
@@ -27,13 +27,14 @@
 	<a href="https://yarn.pm/thelounge"><img
 		alt="npm version"
 		src="https://img.shields.io/npm/v/thelounge.svg?colorA=333a41&maxAge=3600"></a>
-	<a href="https://github.com/thelounge/thelounge/actions"><img
+	<a href="https://github.com/Nachtalb/thelounge/actions"><img
 		alt="Build Status"
-		src="https://github.com/thelounge/thelounge/workflows/Build/badge.svg"></a>
+		src="https://github.com/Nachtalb/thelounge/workflows/Build/badge.svg"></a>
+	<a href="https://npm-stat.com/charts.html?package=thelounge&from=2016-02-12"><img
 </p>
 
 <p align="center">
-	<img src="https://raw.githubusercontent.com/thelounge/thelounge.github.io/master/img/thelounge-screenshot.png" width="550">
+	<img src="https://raw.githubusercontent.com/Nachtalb/thelounge.github.io/master/img/thelounge-screenshot.png" width="550">
 </p>
 
 ## Overview
@@ -51,7 +52,7 @@ The Lounge is the official and community-managed fork of [Shout](https://github.
 ## Installation and usage
 
 The Lounge requires latest [Node.js](https://nodejs.org/) LTS version or more recent.
-[Yarn package manager](https://yarnpkg.com/) is also recommended.  
+[Yarn package manager](https://yarnpkg.com/) is also recommended.
 If you want to install with npm, `--unsafe-perm` is required for a correct install.
 
 ### Running stable releases
@@ -63,7 +64,7 @@ Please refer to the [install and upgrade documentation on our website](https://t
 The following commands install and run the development version of The Lounge:
 
 ```sh
-git clone https://github.com/thelounge/thelounge.git
+git clone https://github.com/Nachtalb/thelounge.git
 cd thelounge
 yarn install
 NODE_ENV=production yarn build
@@ -82,7 +83,7 @@ fork.
 
 Before submitting any change, make sure to:
 
-- Read the [Contributing instructions](https://github.com/thelounge/thelounge/blob/master/.github/CONTRIBUTING.md#contributing)
+- Read the [Contributing instructions](https://github.com/Nachtalb/thelounge/blob/master/.github/CONTRIBUTING.md#contributing)
 - Run `yarn test` to execute linters and test suite
 - Run `yarn build` if you change or add anything in `client/js` or `client/components`
 - `yarn dev` can be used to start The Lounge with hot module reloading

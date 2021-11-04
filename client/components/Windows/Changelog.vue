@@ -29,7 +29,7 @@
 					<p>Unable to retrieve changelog for current release from GitHub.</p>
 					<p>
 						<a
-							:href="`https://github.com/thelounge/thelounge/releases/tag/v${$store.state.serverConfiguration.version}`"
+							:href="`https://github.com/Nachtalb/thelounge/releases/tag/v${$store.state.serverConfiguration.version}`"
 							target="_blank"
 							rel="noopener"
 							>View release notes for this version on GitHub</a

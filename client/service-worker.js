@@ -1,4 +1,4 @@
-// The Lounge - https://github.com/thelounge/thelounge
+// The Lounge - https://github.com/Nachtalb/thelounge
 /* global clients */
 "use strict";
 

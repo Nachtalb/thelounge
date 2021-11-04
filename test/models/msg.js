@@ -54,7 +54,7 @@ describe("Msg", function () {
 		});
 
 		it("should not find a preview that does not exist", function () {
-			expect(msg.findPreview("https://github.com/thelounge/thelounge")).to.be.undefined;
+			expect(msg.findPreview("https://github.com/Nachtalb/thelounge")).to.be.undefined;
 		});
 	});
 });
