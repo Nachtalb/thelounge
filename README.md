@@ -6,7 +6,7 @@
 </h1>
 
 <h3 align="center">
-	Modern web IRC client designed for self-hosting based on [The Lounge](https://github.com/thelounge/thelounge)
+	Modern web IRC client designed for self-hosting based on <a href="https://github.com/thelounge/thelounge/">The Lounge</a>
 	but with faster feature updates.
 </h3>
 
@@ -45,82 +45,22 @@ community-managed fork of [Shout](https://github.com/erming/shout), by [Mattias 
 
 ## Differences to the original
 
-<details>
-<summary>Rolling releases!</summary>
-Instead of waiting for eons on new releases to add features, the main feature of this version are continuous updates.
+Status definition:
+- 🟢 Fully implemented
+- 🟡 In development
+- ⚪ Planned
+- 🟣 Was already implemented but never merged or removed again
 
-I will setup a proper Docker workflow to generate new images for you to use. Maybe I'll look into a "one click to update" feature.
-
-- **Priority:** High
-- **Status:** Dockerfile image for source build is available but no automated workflow yet
-</details>
-<details>
-<summary>Jump to searchresult / mentions</summary>
-One of the main downsides of the original client is that you are not able to jump to your mentions nor to search results.
-(The search has yet to be released, currently only available in the prerelease....).
-
-- **Priority:** High
-- **Status:** Planned
-</details>
-
-<details>
-<summary>PostgreSQL backend</summary>
-Instead of using sqlite or text file based logs I want PostgreSQL support. Which should be faster and be able to handle
-much more logs / data. [PostgreSQL Website](https://www.postgresql.org/)
-
-- **Priority:** Medium
-- **Status:** Planned
-</details>
-
-<details>
-<summary>Animated WEBP support</summary>
-Animated WEBP are basically GIFs but way more spce efficient. Thus you can have looping HD reaction images which only use a few kilobytes.
-Currently they are not supported at all. (This was already developed for the official client but it was removed again)
-
-- **Priority:** High
-- **Status:** Planned
-</details>
-
-<details>
-<summary>Auto image compression (togglable)</summary>
-Enable automatic image compression (either jpg or webp). This helps to reduce bandwidth makes image previews snappier.
-
-- **Priority:** Low
-- **Status:** Planned
-</details>
-
-<details>
-<summary>Link preview before sending</summary>
-Link preview of the links yet to be sent so you won't accidentally send that embarassing photo of yours. (Like any other
-reasonable modern message client)
-
-- **Priority:** Medium
-- **Status:** Planned
-</details>
-
-<details>
-<summary>Telegram like sticker support</summary>
-I hat searching for reactions to messages in my folders and sending them when it's already too late. Intead I want to
-add Telegram stickers support. How this will look like is not yet defind but I do want to be able to convert actual
-Telegram sticker packs to packs usable for you in this client.
-
-- **Priority:** Low
-- **Status:** Planned
-</details>
-
-<details>
-<summary>Bits and pieces</summary>
-Ther are small things here and there that in my opinion are just not user friendly at all. Stuff as:
-- Changing network settins does not reconnect you (eg. when you want to enable a proxy)
-- Rightclicking networks is not possible anymore in the latest release preview
-- `/quit` instantly removes a network without warning (incl. all settings)
-- Topic box on mobile is not userfriendly
-- Disconnected networks show the disconnected icon next to the name which can't be clicked to reconnect
-	You either have to go to the network, hit the threedot menu and hit connect or write out `/connect` and hit enter.
-
-- **Priority:** Various
-- **Status:** Ongoing
-</details>
+| Feature                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Priority | Status |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------|
+| Rolling releases                | Instead of waiting for aeons on new releases to add features, the main feature of this version is continuous updates.<br>I will set up a proper Docker workflow to generate new images for you to use. Maybe I'll look into a "one-click to update" feature.                                                                                                                                                                                                                                                                             | High     | 🟡      |
+| Jump to searchresult / mentions | One of the main downsides of the original client is that you are not able to jump to your mentions nor to search results.                                                                                                                                                                                                                                                                                                                                                                                                                | High     | ⚪      |
+| PostgreSQL backend              | Instead of using SQLite or text file-based logs I want PostgreSQL support. Which should be faster and be able to handle<br>much more logs/data. [PostgreSQL Website](https://www.postgresql.org/)                                                                                                                                                                                                                                                                                                                                        | Medium   | ⚪      |
+| Animated WEBP support           | Animated WEBP are basically GIFs but way more space efficient. Thus you can have looping HD reaction images which only use a few kilobytes.<br>Currently, they are not supported at all. (This was already developed for the official client but it was removed again).                                                                                                                                                                                                                                                                  | High     | 🟣      |
+| Auto image compression          | Enable automatic image compression (either jpg or webp). This helps to reduce bandwidth makes image previews snappier.                                                                                                                                                                                                                                                                                                                                                                                                                   | Low      | ⚪      |
+| Link preview before sending     | Link preview of the links yet to be sent so you won't accidentally send that embarrassing photo of yours. (Like any other<br>reasonable modern message client)                                                                                                                                                                                                                                                                                                                                                                           | Medium   | 🟣      |
+| Telegram like sticker support   | I hate searching for reactions to messages in my folders and sending them when it's already too late. Instead I want to<br>add Telegram stickers support. How this will look like is not yet defined but I do want to be able to convert actual<br>Telegram sticker packs to packs usable for you in this client.                                                                                                                                                                                                                        | Low      | ⚪      |
+| Bits and pieces                 | - Changing network settings does not reconnect you (eg. when you want to enable a proxy)<br>- Right-clicking networks is not possible anymore in the latest release preview<br>- `/quit` instantly removes a network without warning (incl. all settings)<br>- Topic box on mobile is not userfriendly<br>- Disconnected networks show the disconnected icon next to the name which can't be clicked to reconnect<br>	You either have to go to the network, hit the three-dot menu and hit connect or write out `/connect` and hit enter. | -        | -      |
 
 ## Installation and usage
 
