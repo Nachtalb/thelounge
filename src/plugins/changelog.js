@@ -4,6 +4,7 @@ const got = require("got");
 const colors = require("chalk");
 const log = require("../log");
 const pkg = require("../../package.json");
+const {execSync} = require("child_process");
 
 const TIME_TO_LIVE = 15 * 60 * 1000; // 15 minutes, in milliseconds
 
@@ -13,10 +14,17 @@ module.exports = {
 	checkForUpdates,
 };
 
+const infoString = execSync("git show --quiet --format='%H%n%an%n%ci%n%s%n%n%b'").toString().trim();
+const info = infoString.split("\n");
 const versions = {
 	current: {
-		version: `v${pkg.version}`,
+		sha: info[0],
+		author: info[1],
+		date: info[2],
+		message: info.slice(3).join("\n"),
+		branch: execSync("git rev-parse --abbrev-ref HEAD").toString().trim(),
 	},
+	defaultBranch: "blackjack-and-hookers", // get it dynamically in the future as it might change
 };
 
 async function fetch() {
@@ -28,12 +36,15 @@ async function fetch() {
 	}
 
 	try {
-		const response = await got("https://api.github.com/repos/Nachtalb/thelounge/commits", {
-			headers: {
-				Accept: "application/vnd.github.v3.html", // Request rendered markdown
-				"User-Agent": pkg.name + "; +" + pkg.repository.url, // Identify the client
-			},
-		});
+		const response = await got(
+			"https://api.github.com/repos/Nachtalb/thelounge/commits?per_page=8",
+			{
+				headers: {
+					Accept: "application/vnd.github.v3.html", // Request rendered markdown
+					"User-Agent": pkg.name + "; +" + pkg.repository.url, // Identify the client
+				},
+			}
+		);
 
 		if (response.statusCode !== 200) {
 			return versions;
@@ -51,42 +62,43 @@ async function fetch() {
 }
 
 function updateVersions(response) {
-	let i;
-	let release;
-	let prerelease = false;
+	let commit;
+	let currentDate = new Date(versions.current.date);
+	let dateSet = false;
 
 	const body = JSON.parse(response.body);
 
-	// Find the current release among releases on GitHub
-	for (i = 0; i < body.length; i++) {
-		release = body[i];
+	versions.commits = [];
+	for (let i = 0; i < body.length; i++) {
+		commit = body[i];
 
-		if (release.tag_name === versions.current.version) {
-			versions.current.changelog = release.body_html;
-			prerelease = release.prerelease;
+		versions.commits.push({
+			sha: commit.sha,
+			message: commit.commit.message,
+			date: commit.commit.committer.date,
+		});
 
-			break;
+		if (versions.current.sha === commit.sha) {
+			dateSet = true;
 		}
 	}
 
-	// Find the latest release made after the current one if there is one
-	if (i > 0) {
-		for (let j = 0; j < i; j++) {
-			release = body[j];
-
-			// Find latest release or pre-release if current version is also a pre-release
-			if (!release.prerelease || release.prerelease === prerelease) {
-				module.exports.isUpdateAvailable = true;
-
-				versions.latest = {
-					prerelease: release.prerelease,
-					version: release.tag_name,
-					url: release.html_url,
-				};
-
+	if (!dateSet) {
+		for (let i = 0; i < versions.commits.length; i++) {
+			if (currentDate > new Date(versions.commits[i].date)) {
+				versions.commits.splice(i, 0, versions.current);
+				dateSet = true;
 				break;
 			}
 		}
+		if (!dateSet) {
+			versions.commits.push(versions.current);
+		}
+	}
+
+	if (versions.commits[0].sha !== versions.current.sha) {
+		module.exports.isUpdateAvailable = true;
+		versions.latest = versions.commits[0];
 	}
 }
 
@@ -106,8 +118,10 @@ function checkForUpdates(manager) {
 
 		log.info(
 			`The Lounge ${colors.green(
-				versionData.latest.version
-			)} is available. Read more on GitHub: ${versionData.latest.url}`
+				versionData.latest.sha.slice(0, 8)
+			)} is available. Read more on GitHub: https://github.com/Nachtalb/thelounge/commits/${
+				versionData.latest.sha
+			}`
 		);
 
 		// Notify all connected clients about the new version
