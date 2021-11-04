@@ -1,9 +1,8 @@
 # Responsible Disclosure of Security Vulnerabilities
 
 - ⚠️ **Do not open public issues on GitHub to report security vulnerabilities.**
-- Contact us privately first, in a
+- Contact me privately first, in a
   [responsible disclosure](https://en.wikipedia.org/wiki/Responsible_disclosure)
   manner.
-- On IRC, send a private message to any voiced user on our Libera.Chat channel,
-  `#thelounge`.
-- By email, send us your report at <security@thelounge.chat>.
+- On the IRC network [Libera.chat](https://libera.chat) you can send me a message at `Nachtalb`.
+- By email, send us your report at <na@nachtalb.io>.
