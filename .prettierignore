@@ -12,7 +12,9 @@ test/fixtures/.thelounge/storage/
 *.sh
 *.opts
 *.txt
+local.Dockerfile
 yarn.lock
+README.md
 .gitignore
 .npmrc
 .npmignore
@@ -22,5 +24,7 @@ yarn.lock
 .eslintignore
 .gitattributes
 .browserslistrc
+.vimrc
+.viminfo
 
 *.css
