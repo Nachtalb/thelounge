@@ -9,10 +9,10 @@
 			<h2 class="help-version-title">
 				<span>About The Lounge</span>
 				<small>
-					v{{ $store.state.serverConfiguration.version }} (<router-link
+					{{ $store.state.serverConfiguration.version.slice(0, 8) }} (<router-link
 						id="view-changelog"
 						to="/changelog"
-						>release notes</router-link
+						>changelog</router-link
 					>)
 				</small>
 			</h2>
@@ -34,33 +34,21 @@
 						<li>
 							Compare
 							<a
-								:href="`https://github.com/Nachtalb/thelounge/compare/${$store.state.serverConfiguration.gitCommit}...master`"
+								:href="`https://github.com/Nachtalb/thelounge/compare/${$store.state.serverConfiguration.gitCommit}..blackjack-and-hookers`"
 								target="_blank"
 								rel="noopener"
 								>between
 								<code>{{ $store.state.serverConfiguration.gitCommit }}</code> and
-								<code>master</code></a
+								<code>latest</code></a
 							>
 							to see what you are missing
-						</li>
-						<li>
-							Compare
-							<a
-								:href="`https://github.com/Nachtalb/thelounge/compare/${$store.state.serverConfiguration.version}...${$store.state.serverConfiguration.gitCommit}`"
-								target="_blank"
-								rel="noopener"
-								>between
-								<code>{{ $store.state.serverConfiguration.version }}</code> and
-								<code>{{ $store.state.serverConfiguration.gitCommit }}</code></a
-							>
-							to see your local changes
 						</li>
 					</ul>
 				</template>
 
 				<p>
 					<a
-						href="https://thelounge.chat/"
+						href="https://github.com/Nachtalb/thelounge/"
 						target="_blank"
 						rel="noopener"
 						class="website-link"

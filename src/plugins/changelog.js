@@ -8,12 +8,6 @@ const {execSync} = require("child_process");
 
 const TIME_TO_LIVE = 15 * 60 * 1000; // 15 minutes, in milliseconds
 
-module.exports = {
-	isUpdateAvailable: false,
-	fetch,
-	checkForUpdates,
-};
-
 const infoString = execSync("git show --quiet --format='%H%n%an%n%ci%n%s%n%n%b'").toString().trim();
 const info = infoString.split("\n");
 const versions = {
@@ -25,6 +19,13 @@ const versions = {
 		branch: execSync("git rev-parse --abbrev-ref HEAD").toString().trim(),
 	},
 	defaultBranch: "blackjack-and-hookers", // get it dynamically in the future as it might change
+};
+
+module.exports = {
+	isUpdateAvailable: false,
+	fetch,
+	checkForUpdates,
+	versions,
 };
 
 async function fetch() {

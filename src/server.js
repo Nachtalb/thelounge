@@ -740,7 +740,7 @@ function getClientConfiguration() {
 
 	config.isUpdateAvailable = changelog.isUpdateAvailable;
 	config.applicationServerKey = manager.webPush.vapidKeys.publicKey;
-	config.version = pkg.version;
+	config.version = changelog.versions.current.sha;
 	config.gitCommit = Helper.getGitCommit();
 	config.themes = themes.getAll();
 	config.defaultTheme = Helper.config.theme;
