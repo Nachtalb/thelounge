@@ -45,13 +45,15 @@ community-managed fork of [Shout](https://github.com/erming/shout), by [Mattias 
 
 ## Differences to the original
 
+### A full list of differences and their implementation status viewd in the projects tab:
+### - [Feature Pipeline](https://github.com/Nachtalb/thelounge/projects/1) 
+### - [Bug Pipeline](https://github.com/Nachtalb/thelounge/projects/3)
+
 Status definition:
 - 🟢 Fully implemented
 - 🟡 In development
 - ⚪ Planned
 - 🟣 Was already implemented but never merged or removed again
-
-[All enhancements are available as issues.](https://github.com/Nachtalb/thelounge/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Aenhancement)
 
 | Feature                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Priority | Status |
 |---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------|
