@@ -41,10 +41,6 @@ form.message-search input {
 	appearance: none;
 }
 
-form.message-search input::placeholder {
-	color: rgba(0, 0, 0, 0.35);
-}
-
 @media (min-width: 480px) {
 	form.message-search input {
 		min-width: 140px;
