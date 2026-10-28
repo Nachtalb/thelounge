@@ -13,6 +13,9 @@ import {MessageType} from "../../shared/types/msg";
 import {ChanType} from "../../shared/types/chan";
 import {SharedNetwork} from "../../shared/types/network";
 
+// Replies to /ping after this long are no longer reported as round trip times
+const PING_TIMEOUT = 5 * 60 * 1000;
+
 type NetworkIrcOptions = {
 	host: string;
 	port: number;
@@ -135,6 +138,9 @@ class Network {
 	monitorList!: string[];
 	toBeMonitored!: string[];
 
+	// CTCP PINGs sent with /ping, keyed by lowercased nick
+	pendingPings!: Map<string, {token: string; sentAt: number}>;
+
 	// TODO: this is only available on export
 	hasSTSPolicy!: boolean;
 
@@ -182,6 +188,7 @@ class Network {
 			keepNick: null,
 			monitorList: [],
 			toBeMonitored: [],
+			pendingPings: new Map(),
 		});
 
 		if (!this.uuid) {
@@ -490,6 +497,39 @@ class Network {
 
 	destroy() {
 		this.channels.forEach((channel) => channel.destroy());
+	}
+
+	addPendingPing(nick: string) {
+		const now = Date.now();
+		this.prunePendingPings(now);
+
+		const token = now.toString();
+		this.pendingPings.set(nick.toLowerCase(), {token, sentAt: now});
+		return token;
+	}
+
+	// Returns the round trip time in ms if this is the reply to a ping we sent
+	resolvePendingPing(nick: string, token: string) {
+		const now = Date.now();
+		this.prunePendingPings(now);
+
+		const key = nick.toLowerCase();
+		const ping = this.pendingPings.get(key);
+
+		if (!ping || ping.token !== token) {
+			return undefined;
+		}
+
+		this.pendingPings.delete(key);
+		return now - ping.sentAt;
+	}
+
+	prunePendingPings(now: number) {
+		for (const [nick, ping] of this.pendingPings) {
+			if (now - ping.sentAt > PING_TIMEOUT) {
+				this.pendingPings.delete(nick);
+			}
+		}
 	}
 
 	isIgnoredUser(data: Hostmask) {

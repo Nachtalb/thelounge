@@ -724,6 +724,20 @@
 
 			<div class="help-item">
 				<div class="subject">
+					<code>/ping nick</code>
+				</div>
+				<div class="description">
+					<p>
+						Send a <abbr title="Client-to-client protocol">CTCP</abbr> PING to
+						<code>nick</code> and show how long the reply took. The time is measured
+						from The Lounge server, through the IRC server to <code>nick</code> and
+						back.
+					</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
 					<code>/rejoin</code>
 				</div>
 				<div class="description">
