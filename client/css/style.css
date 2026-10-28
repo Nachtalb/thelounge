@@ -1356,6 +1356,7 @@ textarea.input {
 	display: flex;
 	align-items: flex-start;
 	position: relative;
+	transition: transform 0.2s; /* swipe to reply snap back */
 }
 
 #chat .msg:has(.reply-context) {
@@ -1784,6 +1785,33 @@ textarea.input {
 #chat .msg:has(.reply-context) .msg-actions {
 	top: auto;
 	bottom: 0;
+}
+
+/* Swipe right-to-left to reply on touch devices: the message follows the
+   finger and snaps back on release, revealing a reply icon behind it. */
+#chat .msg.swiping {
+	transition: none;
+}
+
+#chat .msg.swiping .msg-actions {
+	display: none;
+}
+
+#chat .msg .msg-swipe-reply {
+	position: absolute;
+	top: 50%;
+	right: calc(12px - var(--swipe-offset, 0px));
+	margin-top: -7px;
+	color: var(--body-color-muted);
+	opacity: var(--swipe-progress, 0);
+	pointer-events: none;
+}
+
+#chat .msg .msg-swipe-reply::before {
+	content: "\f3e5"; /* fa-reply */
+	font: normal normal normal 14px/1 FontAwesome;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 /* Reply bar above message input */

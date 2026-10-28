@@ -1,12 +1,14 @@
 <template>
 	<div
 		:id="'msg-' + message.id"
+		ref="msgEl"
 		:class="[
 			'msg',
 			{
 				self: message.self,
 				highlight: message.highlight || focused,
 				'previous-source': isPreviousSource,
+				swiping: swiping,
 			},
 		]"
 		:data-type="message.type"
@@ -15,7 +17,7 @@
 		:data-msgid="message.msgid"
 		@touchstart.passive="onTouchStart"
 		@touchend="onTouchEnd"
-		@touchmove="onTouchCancel"
+		@touchmove.passive="onTouchMove"
 		@touchcancel="onTouchCancel"
 	>
 		<span
@@ -112,16 +114,25 @@
 				><button class="msg-action-reply" aria-label="Reply" @click.stop="startReply"
 			/></span>
 		</div>
+		<span v-if="swiping" class="msg-swipe-reply" aria-hidden="true" />
 	</div>
 </template>
 
 <script lang="ts">
-import {computed, defineComponent, onBeforeUnmount, PropType} from "vue";
+import {computed, defineComponent, onBeforeUnmount, PropType, ref} from "vue";
 import dayjs from "dayjs";
 
 import constants from "../js/constants";
 import localetime from "../js/helpers/localetime";
 import eventbus from "../js/eventbus";
+import {
+	canStartSwipe,
+	detectSwipeAxis,
+	isSwipeReply,
+	swipeOffset,
+	SwipeAxis,
+	SWIPE_REPLY_THRESHOLD,
+} from "../js/helpers/swipeToReply";
 import Username from "./Username.vue";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
@@ -156,6 +167,11 @@ export default defineComponent({
 		const store = useStore();
 		let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 		let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+		const msgEl = ref<HTMLElement | null>(null);
+		const swiping = ref(false);
+		let swipeStart: {x: number; y: number} | null = null;
+		let swipeAxis: SwipeAxis = "pending";
+		let swipeDx = 0;
 
 		const timeFormat = computed(() => {
 			let format: keyof typeof constants.timeFormats;
@@ -246,12 +262,46 @@ export default defineComponent({
 			}
 		};
 
-		const onTouchStart = () => {
-			if (props.message.msgid && canReply.value) {
+		const resetSwipe = () => {
+			swipeStart = null;
+			swipeAxis = "pending";
+			swipeDx = 0;
+			swiping.value = false;
+
+			if (msgEl.value) {
+				msgEl.value.style.transform = "";
+				msgEl.value.style.removeProperty("--swipe-offset");
+				msgEl.value.style.removeProperty("--swipe-progress");
+			}
+		};
+
+		const onTouchStart = (e: TouchEvent) => {
+			const replyable = !!props.message.msgid && canReply.value;
+			resetSwipe();
+
+			if (replyable) {
 				longPressTimer = setTimeout(() => {
 					longPressTimer = null;
 					startReply();
 				}, 500);
+			}
+
+			const touch = e.touches.item(0);
+
+			if (
+				e.touches.length === 1 &&
+				touch &&
+				canStartSwipe({
+					startX: touch.clientX,
+					canReply: replyable,
+					// On mobile the sidebar overlays the chat, swiping left closes it
+					sidebarOverlayOpen:
+						store.state.sidebarDragging ||
+						(store.state.sidebarOpen &&
+							window.innerWidth <= constants.mobileViewportPixels),
+				})
+			) {
+				swipeStart = {x: touch.clientX, y: touch.clientY};
 			}
 		};
 
@@ -262,16 +312,57 @@ export default defineComponent({
 			}
 		};
 
+		const onTouchMove = (e: TouchEvent) => {
+			clearLongPress();
+
+			const touch = e.touches.item(0);
+
+			if (!swipeStart || !touch || e.touches.length !== 1 || swipeAxis === "vertical") {
+				return;
+			}
+
+			const dx = touch.clientX - swipeStart.x;
+
+			if (swipeAxis === "pending") {
+				swipeAxis = detectSwipeAxis(dx, touch.clientY - swipeStart.y);
+
+				if (swipeAxis !== "horizontal") {
+					return;
+				}
+
+				swiping.value = true;
+			}
+
+			swipeDx = dx;
+
+			if (msgEl.value) {
+				const offset = swipeOffset(dx);
+				msgEl.value.style.transform = `translateX(${offset}px)`;
+				msgEl.value.style.setProperty("--swipe-offset", `${-offset}px`);
+				msgEl.value.style.setProperty(
+					"--swipe-progress",
+					`${Math.min(1, -offset / SWIPE_REPLY_THRESHOLD)}`
+				);
+			}
+		};
+
 		const onTouchEnd = (e: TouchEvent) => {
 			if (longPressTimer === null && props.message.msgid && canReply.value) {
 				e.preventDefault();
 			}
 
 			clearLongPress();
+
+			if (swipeAxis === "horizontal" && isSwipeReply(swipeDx)) {
+				startReply();
+			}
+
+			resetSwipe();
 		};
 
 		const onTouchCancel = () => {
 			clearLongPress();
+			resetSwipe();
 		};
 
 		onBeforeUnmount(() => {
@@ -292,7 +383,10 @@ export default defineComponent({
 			isAction,
 			startReply,
 			scrollToParent,
+			msgEl,
+			swiping,
 			onTouchStart,
+			onTouchMove,
 			onTouchEnd,
 			onTouchCancel,
 		};
