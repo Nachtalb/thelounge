@@ -23,6 +23,15 @@
 				@click.stop="next"
 			></button>
 
+			<a
+				class="download-btn"
+				:href="link.thumb"
+				target="_blank"
+				rel="noopener"
+				aria-label="Download image"
+				title="Download image"
+				@click.stop="downloadImage"
+			></a>
 			<a class="open-btn" :href="link.link" target="_blank" rel="noopener"></a>
 
 			<img
@@ -124,6 +133,68 @@ export default defineComponent({
 			if (nextImage.value) {
 				link.value = nextImage.value;
 			}
+		};
+
+		const getFilename = (preview: ClientLinkPreview) => {
+			if (preview.filename) {
+				return preview.filename;
+			}
+
+			for (const url of [preview.link, preview.thumb]) {
+				try {
+					const path = new URL(url, window.location.href).pathname;
+					const name = decodeURIComponent(path.split("/").pop() || "");
+
+					if (name) {
+						return name;
+					}
+				} catch {
+					// Not a valid url, try the next one
+				}
+			}
+
+			return "image";
+		};
+
+		const isSameOrigin = (url: string) => {
+			try {
+				return new URL(url, window.location.href).origin === window.location.origin;
+			} catch {
+				return false;
+			}
+		};
+
+		// Viewer shortcuts (mod+s is also strikethrough) must not reach the chat input,
+		// so keep it unfocused while the viewer is open
+		const blurInput = () => {
+			if (document.activeElement?.id === "input") {
+				(document.activeElement as HTMLElement).blur();
+			}
+		};
+
+		// <a download> only works for same-origin urls (preview cache, prefetch storage). Other
+		// origins open in a new tab: fetching them into a blob is blocked by the CSP connect-src.
+		// The click must stay synchronous: an async download loses the user gesture and the
+		// browser blocks every download after the first one.
+		const downloadImage = (e: Event) => {
+			e.preventDefault();
+			const preview = link.value;
+
+			if (!preview) {
+				return;
+			}
+
+			if (!isSameOrigin(preview.thumb)) {
+				window.open(preview.thumb, "_blank", "noopener");
+				return;
+			}
+
+			const a = document.createElement("a");
+			a.href = preview.thumb;
+			a.download = getFilename(preview);
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
 		};
 
 		const prepareImage = () => {
@@ -437,20 +508,25 @@ export default defineComponent({
 		watch(link, (newLink, oldLink) => {
 			// TODO: history.pushState
 			if (newLink === null) {
+				document.removeEventListener("focusin", blurInput);
 				eventbus.off("escapekey", closeViewer);
 				eventbus.off("resize", correctPosition);
 				Mousetrap.unbind("left");
 				Mousetrap.unbind("right");
+				Mousetrap.unbind("mod+s");
 				return;
 			}
 
 			setPrevNextImages();
 
 			if (!oldLink) {
+				blurInput();
+				document.addEventListener("focusin", blurInput);
 				eventbus.on("escapekey", closeViewer);
 				eventbus.on("resize", correctPosition);
 				Mousetrap.bind("left", previous);
 				Mousetrap.bind("right", next);
+				Mousetrap.bind("mod+s", downloadImage);
 			}
 		});
 
@@ -458,6 +534,7 @@ export default defineComponent({
 			link,
 			channel,
 			image,
+			downloadImage,
 			transform,
 			closeViewer,
 			next,

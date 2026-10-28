@@ -271,6 +271,18 @@
 				</div>
 			</div>
 
+			<h2>Image Viewer Shortcuts</h2>
+
+			<div class="help-item">
+				<div class="subject">
+					<span v-if="!isApple"><kbd>Ctrl</kbd> <kbd>S</kbd></span>
+					<span v-else><kbd>⌘</kbd> <kbd>S</kbd></span>
+				</div>
+				<div class="description">
+					<p>Download the image.</p>
+				</div>
+			</div>
+
 			<h2>Formatting Shortcuts</h2>
 
 			<div class="help-item">
