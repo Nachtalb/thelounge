@@ -11,7 +11,7 @@
 			<button class="close-btn" aria-label="Close"></button>
 
 			<button
-				v-if="previousImage"
+				v-if="previousImage || channel?.moreHistoryAvailable"
 				class="previous-image-btn"
 				aria-label="Previous image"
 				@click.stop="previous"
@@ -57,6 +57,7 @@
 import Mousetrap from "mousetrap";
 import {computed, defineComponent, ref, watch} from "vue";
 import eventbus from "../js/eventbus";
+import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
 
 export default defineComponent({
@@ -85,6 +86,12 @@ export default defineComponent({
 		const nextImage = computed(() =>
 			currentIndex.value > -1 ? images.value[currentIndex.value + 1]?.preview || null : null
 		);
+
+		// Load older messages once the current image is one of the oldest loaded ones
+		const preloadThreshold = 3;
+		// How many batches of older messages to search for a previous image
+		const maxHistoryBatches = 5;
+		let historyBatchesLeft = 0;
 
 		const position = ref<{
 			x: number;
@@ -122,15 +129,53 @@ export default defineComponent({
 				return;
 			}
 
+			historyBatchesLeft = 0;
 			channel.value = null;
 			link.value = null;
+		};
+
+		const loadOlderMessages = () => {
+			const chan = channel.value;
+
+			// An already running request (e.g. from scrolling up) is waited for as well
+			if (
+				!chan?.moreHistoryAvailable ||
+				(!chan.historyLoading && !requestOlderMessages(chan))
+			) {
+				historyBatchesLeft = 0;
+			}
 		};
 
 		const previous = () => {
 			if (previousImage.value) {
 				link.value = previousImage.value;
+				historyBatchesLeft = 0;
+			} else {
+				// Show the previous image once older messages with images arrived
+				historyBatchesLeft = maxHistoryBatches;
+			}
+
+			if (currentIndex.value < preloadThreshold) {
+				loadOlderMessages();
 			}
 		};
+
+		watch(
+			() => channel.value?.historyLoading,
+			(loading) => {
+				if (loading || historyBatchesLeft === 0) {
+					return;
+				}
+
+				historyBatchesLeft--;
+
+				if (previousImage.value) {
+					previous();
+				} else if (historyBatchesLeft > 0) {
+					loadOlderMessages();
+				}
+			}
+		);
 
 		const next = () => {
 			if (nextImage.value) {

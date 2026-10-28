@@ -63,6 +63,7 @@ import {ChanType} from "../../shared/types/chan";
 import {MessageType, SharedMsg} from "../../shared/types/msg";
 import eventbus from "../js/eventbus";
 import clipboard from "../js/clipboard";
+import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import socket from "../js/socket";
 import Message from "./Message.vue";
 import MessageCondensed from "./MessageCondensed.vue";
@@ -126,28 +127,7 @@ export default defineComponent({
 		};
 
 		const onShowMoreClick = () => {
-			if (!store.state.isConnected) {
-				return;
-			}
-
-			let lastMessage = -1;
-
-			// Find the id of first message that isn't showInActive
-			// If showInActive is set, this message is actually in another channel
-			for (const message of props.channel.messages) {
-				if (!message.showInActive) {
-					lastMessage = message.id;
-					break;
-				}
-			}
-
-			props.channel.historyLoading = true;
-
-			socket.emit("more", {
-				target: props.channel.id,
-				lastId: lastMessage,
-				condensed: store.state.settings.statusMessages !== "shown",
-			});
+			requestOlderMessages(props.channel);
 		};
 
 		const onLoadButtonObserved = (entries: IntersectionObserverEntry[]) => {

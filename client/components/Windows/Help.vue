@@ -288,7 +288,7 @@
 					<span><kbd>←</kbd> or <kbd>A</kbd></span>
 				</div>
 				<div class="description">
-					<p>Show the previous image.</p>
+					<p>Show the previous image, loading older messages when needed.</p>
 				</div>
 			</div>
 
