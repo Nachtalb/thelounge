@@ -1477,6 +1477,10 @@ textarea.input {
 	text-decoration: underline;
 }
 
+#chat .inline-channel {
+	font-weight: bold;
+}
+
 /* Nicknames */
 
 .user {
