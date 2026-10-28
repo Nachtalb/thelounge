@@ -522,6 +522,11 @@ class Network {
 		}
 	}
 
+	isMediaPreviewBlocked(...names: string[]) {
+		const blocked = this.mediaPreviewBlocklist.map((name) => name.toLowerCase());
+		return names.some((name) => blocked.includes(name.toLowerCase()));
+	}
+
 	getFilteredClone(lastActiveChannel?: number, lastMessage?: number): SharedNetwork {
 		return {
 			uuid: this.uuid,

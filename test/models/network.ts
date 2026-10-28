@@ -417,6 +417,20 @@ describe("Network", function () {
 		});
 	});
 
+	describe("#isMediaPreviewBlocked(...names)", function () {
+		it("should match blocked nicks and channels case-insensitively", function () {
+			const network = new Network({mediaPreviewBlocklist: ["#NSFW", "spambot"]});
+
+			expect(network.isMediaPreviewBlocked("#nsfw", "someone")).to.be.true;
+			expect(network.isMediaPreviewBlocked("#thelounge", "SpamBot")).to.be.true;
+			expect(network.isMediaPreviewBlocked("#thelounge", "someone")).to.be.false;
+		});
+
+		it("should block nothing by default", function () {
+			expect(new Network().isMediaPreviewBlocked("#thelounge", "someone")).to.be.false;
+		});
+	});
+
 	describe("#getFilteredClone(lastActiveChannel, lastMessage)", function () {
 		it("should filter channels", function () {
 			const chan = new Chan();
