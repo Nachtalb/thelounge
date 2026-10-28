@@ -13,6 +13,10 @@ interface LoungeWindow extends Window {
 
 type ClientUser = SharedUser;
 
+type ClientLinkPreview = LinkPreview & {
+	sourceLoaded?: boolean;
+};
+
 // we will eventually need to put client specific fields here
 // which are not shared with the server
 export type ClientMessage = SharedMsg;
@@ -31,6 +35,7 @@ type ClientChan = Omit<SharedChan, "messages"> & {
 	usersOutdated: boolean;
 	typingNicks: string[];
 	replyingTo: {msgid: string; nick: string; text: string} | null;
+	inputPreviews: ClientLinkPreview[];
 
 	users: ClientUser[];
 };
@@ -53,10 +58,6 @@ type NetChan = {
 };
 
 type ClientMention = SharedMention;
-
-type ClientLinkPreview = LinkPreview & {
-	sourceLoaded?: boolean;
-};
 
 interface BeforeInstallPromptEvent extends Event {
 	/**

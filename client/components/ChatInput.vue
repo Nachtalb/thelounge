@@ -1,5 +1,23 @@
 <template>
 	<form id="form" method="post" action="" @submit.prevent="onSubmit">
+		<div v-if="inputPreviews.length > 0" id="input-previews">
+			<template v-for="preview in inputPreviews" :key="preview.link">
+				<div v-if="preview.type === 'loading'" class="preview" dir="ltr">
+					<div class="toggle-content toggle-type-loading">
+						<div class="toggle-text">
+							<div class="body">Getting preview…</div>
+							<div class="body overflowable">{{ preview.link }}</div>
+						</div>
+					</div>
+				</div>
+				<LinkPreview
+					v-else
+					:keep-scroll-position="keepScrollPosition"
+					:link="preview"
+					:channel="channel"
+				/>
+			</template>
+		</div>
 		<div v-if="channel.replyingTo" class="reply-bar">
 			<span class="reply-bar-text">
 				Replying to <strong>{{ channel.replyingTo.nick }}</strong>
@@ -75,13 +93,17 @@ import {commands} from "../js/commands/index";
 import socket from "../js/socket";
 import upload from "../js/upload";
 import eventbus from "../js/eventbus";
-import {watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
+import {clearInputPreviews, updateInputPreviews} from "../js/inputPreviews";
+import {isInputPreviewShown} from "../js/helpers/inputPreviews";
+import LinkPreview from "./LinkPreview.vue";
+import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
 import {ChanType} from "../../shared/types/chan";
 import type {TypingStatus} from "../../shared/types/typing";
 
 const TYPING_THROTTLE_MS = 3000;
+const INPUT_PREVIEW_DEBOUNCE_MS = 500;
 
 // Autocomplete bracket and quote characters like in a modern IDE
 // For example, select `text`, press `[` key, and it becomes `[text]`
@@ -100,6 +122,9 @@ const bracketWraps = {
 
 export default defineComponent({
 	name: "ChatInput",
+	components: {
+		LinkPreview,
+	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
 		channel: {type: Object as PropType<ClientChan>, required: true},
@@ -121,8 +146,27 @@ export default defineComponent({
 			}
 		};
 
+		let inputPreviewTimeout: ReturnType<typeof setTimeout> | null = null;
+
+		const clearInputPreviewTimeout = () => {
+			if (inputPreviewTimeout !== null) {
+				clearTimeout(inputPreviewTimeout);
+				inputPreviewTimeout = null;
+			}
+		};
+
+		const inputPreviews = computed(() =>
+			props.channel.inputPreviews.filter((preview) =>
+				isInputPreviewShown(preview, store.state.settings)
+			)
+		);
+
+		// Previews above the input do not affect the message list scroll position
+		const keepScrollPosition = () => undefined;
+
 		onUnmounted(() => {
 			clearTypingPauseTimeout();
+			clearInputPreviewTimeout();
 		});
 
 		const sendTypingStatus = (status: TypingStatus) => {
@@ -215,6 +259,8 @@ export default defineComponent({
 			props.channel.inputHistoryPosition = 0;
 			props.channel.pendingMessage = "";
 			richInput?.setValue("", true);
+			clearInputPreviewTimeout();
+			clearInputPreviews(props.channel);
 
 			// Store new message in history if last message isn't already equal
 			if (props.channel.inputHistory[1] !== text) {
@@ -313,6 +359,9 @@ export default defineComponent({
 				if (autocompletionRef.value) {
 					autocompletionRef.value.hide();
 				}
+
+				clearInputPreviewTimeout();
+				updateInputPreviews(props.channel);
 			}
 		);
 
@@ -329,6 +378,18 @@ export default defineComponent({
 				} else if (props.channel.pendingMessage !== richInput.getValue()) {
 					richInput.setValue(props.channel.pendingMessage);
 				}
+			}
+		);
+
+		// Links are read from the serialized IRC text of the draft, not from the editor DOM
+		watch(
+			() => props.channel.pendingMessage,
+			() => {
+				clearInputPreviewTimeout();
+				inputPreviewTimeout = setTimeout(() => {
+					inputPreviewTimeout = null;
+					updateInputPreviews(props.channel);
+				}, INPUT_PREVIEW_DEBOUNCE_MS);
 			}
 		);
 
@@ -418,6 +479,8 @@ export default defineComponent({
 		return {
 			store,
 			input,
+			inputPreviews,
+			keepScrollPosition,
 			uploadInput,
 			onUploadInputChange,
 			openFileUpload,

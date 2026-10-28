@@ -21,6 +21,7 @@ export function toClientChan(shared: SharedNetworkChan): ClientChan {
 		moreHistoryAvailable: shared.totalMessages > shared.messages.length,
 		inputHistory: history,
 		replyingTo: null,
+		inputPreviews: [],
 		messages: sharedMsgToClientMsg(messages),
 	};
 	return channel;
