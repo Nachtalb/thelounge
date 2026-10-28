@@ -148,6 +148,12 @@ export default defineComponent({
 			}
 		};
 
+		const openLink = () => {
+			if (link.value) {
+				window.open(link.value.link, "_blank", "noopener");
+			}
+		};
+
 		const getFilename = (preview: ClientLinkPreview) => {
 			if (preview.filename) {
 				return preview.filename;
@@ -524,9 +530,7 @@ export default defineComponent({
 				document.removeEventListener("focusin", blurInput);
 				eventbus.off("escapekey", closeViewer);
 				eventbus.off("resize", correctPosition);
-				Mousetrap.unbind("left");
-				Mousetrap.unbind("right");
-				Mousetrap.unbind("mod+s");
+				Mousetrap.unbind(["left", "a", "right", "d", "mod+s", "o", "g"]);
 				return;
 			}
 
@@ -535,9 +539,11 @@ export default defineComponent({
 				document.addEventListener("focusin", blurInput);
 				eventbus.on("escapekey", closeViewer);
 				eventbus.on("resize", correctPosition);
-				Mousetrap.bind("left", previous);
-				Mousetrap.bind("right", next);
+				Mousetrap.bind(["left", "a"], previous);
+				Mousetrap.bind(["right", "d"], next);
 				Mousetrap.bind("mod+s", downloadImage);
+				Mousetrap.bind("o", openLink);
+				Mousetrap.bind("g", gotoMessage);
 			}
 		});
 
