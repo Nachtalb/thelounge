@@ -23,6 +23,12 @@
 				@click.stop="next"
 			></button>
 
+			<button
+				class="gotomsg-btn"
+				aria-label="Go to message"
+				title="Go to message"
+				@click.stop="gotoMessage"
+			></button>
 			<a
 				class="download-btn"
 				:href="link.thumb"
@@ -52,7 +58,6 @@ import Mousetrap from "mousetrap";
 import {computed, defineComponent, ref, watch} from "vue";
 import eventbus from "../js/eventbus";
 import {ClientChan, ClientLinkPreview} from "../js/types";
-import {SharedMsg} from "../../shared/types/msg";
 
 export default defineComponent({
 	name: "ImageViewer",
@@ -61,9 +66,25 @@ export default defineComponent({
 		const image = ref<HTMLImageElement>();
 
 		const link = ref<ClientLinkPreview | null>(null);
-		const previousImage = ref<ClientLinkPreview | null>();
-		const nextImage = ref<ClientLinkPreview | null>();
 		const channel = ref<ClientChan | null>();
+
+		// All images of the channel in order, with the message they belong to
+		const images = computed(() =>
+			(channel.value?.messages || []).flatMap((message) =>
+				(message.previews || [])
+					.filter((preview) => preview.thumb)
+					.map((preview) => ({message, preview}))
+			)
+		);
+		const currentIndex = computed(() =>
+			images.value.findIndex((item) => item.preview === link.value)
+		);
+		const previousImage = computed(() =>
+			currentIndex.value > 0 ? images.value[currentIndex.value - 1].preview : null
+		);
+		const nextImage = computed(() =>
+			currentIndex.value > -1 ? images.value[currentIndex.value + 1]?.preview || null : null
+		);
 
 		const position = ref<{
 			x: number;
@@ -102,25 +123,7 @@ export default defineComponent({
 			}
 
 			channel.value = null;
-			previousImage.value = null;
-			nextImage.value = null;
 			link.value = null;
-		};
-
-		const setPrevNextImages = () => {
-			if (!channel.value || !link.value) {
-				return null;
-			}
-
-			const links = channel.value.messages
-				.map((msg: SharedMsg) => msg.previews)
-				.flat()
-				.filter((preview) => preview && preview.thumb);
-
-			const currentIndex = links.indexOf(link.value);
-
-			previousImage.value = links[currentIndex - 1] || null;
-			nextImage.value = links[currentIndex + 1] || null;
 		};
 
 		const previous = () => {
@@ -132,6 +135,16 @@ export default defineComponent({
 		const next = () => {
 			if (nextImage.value) {
 				link.value = nextImage.value;
+			}
+		};
+
+		const gotoMessage = () => {
+			const message = images.value[currentIndex.value]?.message;
+
+			closeViewer();
+
+			if (message) {
+				document.getElementById(`msg-${message.id}`)?.scrollIntoView({block: "center"});
 			}
 		};
 
@@ -517,8 +530,6 @@ export default defineComponent({
 				return;
 			}
 
-			setPrevNextImages();
-
 			if (!oldLink) {
 				blurInput();
 				document.addEventListener("focusin", blurInput);
@@ -539,6 +550,7 @@ export default defineComponent({
 			closeViewer,
 			next,
 			previous,
+			gotoMessage,
 			onImageLoad,
 			onImageMouseDown,
 			onMouseWheel,

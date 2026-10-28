@@ -559,6 +559,7 @@ p {
 #image-viewer .next-image-btn::before,
 #image-viewer .open-btn::before,
 #image-viewer .download-btn::before,
+#image-viewer .gotomsg-btn::before,
 .channel-list-item .not-secure-icon::before,
 .channel-list-item .not-connected-icon::before,
 .channel-list-item .parted-channel-icon::before,
@@ -810,6 +811,10 @@ p {
 
 #image-viewer .download-btn::before {
 	content: "\f019"; /* https://fontawesome.com/icons/download?style=solid */
+}
+
+#image-viewer .gotomsg-btn::before {
+	content: "\f4ad"; /* https://fontawesome.com/icons/comment-dots?style=solid */
 }
 
 /* End icons */
@@ -3336,6 +3341,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 #image-viewer,
 #image-viewer .open-btn,
 #image-viewer .download-btn,
+#image-viewer .gotomsg-btn,
 #image-viewer .close-btn {
 	/* Vertically and horizontally center stuff */
 	display: flex;
@@ -3375,6 +3381,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 #image-viewer .close-btn,
 #image-viewer .open-btn,
 #image-viewer .download-btn,
+#image-viewer .gotomsg-btn,
 #image-viewer .previous-image-btn,
 #image-viewer .next-image-btn {
 	position: fixed;
@@ -3397,7 +3404,8 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 }
 
 #image-viewer .open-btn,
-#image-viewer .download-btn {
+#image-viewer .download-btn,
+#image-viewer .gotomsg-btn {
 	right: 0;
 	bottom: 0;
 	top: auto;
@@ -3407,6 +3415,10 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 
 #image-viewer .download-btn {
 	bottom: 2em;
+}
+
+#image-viewer .gotomsg-btn {
+	bottom: 4em;
 }
 
 #image-viewer .previous-image-btn,
@@ -3426,6 +3438,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 #image-viewer .close-btn:hover,
 #image-viewer .open-btn:hover,
 #image-viewer .download-btn:hover,
+#image-viewer .gotomsg-btn:hover,
 #image-viewer .previous-image-btn:hover,
 #image-viewer .next-image-btn:hover {
 	opacity: 1;
