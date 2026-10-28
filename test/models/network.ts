@@ -431,6 +431,20 @@ describe("Network", function () {
 		});
 	});
 
+	describe("#toggleMediaPreviewBlock(name)", function () {
+		it("should block and unblock a name case-insensitively", function () {
+			const network = new Network();
+
+			network.toggleMediaPreviewBlock("#NSFW");
+			expect(network.mediaPreviewBlocklist).to.deep.equal(["#NSFW"]);
+			expect(network.isMediaPreviewBlocked("#nsfw")).to.be.true;
+
+			network.toggleMediaPreviewBlock("#nsfw");
+			expect(network.mediaPreviewBlocklist).to.be.empty;
+			expect(network.isMediaPreviewBlocked("#NSFW")).to.be.false;
+		});
+	});
+
 	describe("#getFilteredClone(lastActiveChannel, lastMessage)", function () {
 		it("should filter channels", function () {
 			const chan = new Chan();

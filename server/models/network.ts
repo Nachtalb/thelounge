@@ -527,6 +527,17 @@ class Network {
 		return names.some((name) => blocked.includes(name.toLowerCase()));
 	}
 
+	toggleMediaPreviewBlock(name: string) {
+		if (this.isMediaPreviewBlocked(name)) {
+			const lowerName = name.toLowerCase();
+			this.mediaPreviewBlocklist = this.mediaPreviewBlocklist.filter(
+				(blocked) => blocked.toLowerCase() !== lowerName
+			);
+		} else {
+			this.mediaPreviewBlocklist.push(name);
+		}
+	}
+
 	getFilteredClone(lastActiveChannel?: number, lastMessage?: number): SharedNetwork {
 		return {
 			uuid: this.uuid,

@@ -58,7 +58,7 @@ interface ServerToClientEvents {
 	network: EventHandler<{network: SharedNetwork}>;
 	"network:options": EventHandler<{network: string; serverOptions: SharedServerOptions}>;
 	"network:status": EventHandler<{network: string; connected: boolean; secure: boolean}>;
-	"network:info": EventHandler<{uuid: string}>;
+	"network:info": EventHandler<{uuid: string; mediaPreviewBlocklist?: string[]}>;
 	"network:name": EventHandler<{uuid: string; name: string}>;
 
 	nick: EventHandler<{network: string; nick: string}>;
@@ -176,6 +176,7 @@ interface ClientToServerEvents {
 	}>;
 
 	"network:get": (uuid: string) => void;
+	"network:media-preview-toggle": EventHandler<{uuid: string; name: string}>;
 	// TODO typing
 	"network:edit": (data: Record<string, any>) => void;
 	"network:new": (data: Record<string, any>) => void;
