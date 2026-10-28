@@ -66,7 +66,11 @@ function getByName(name: string) {
 function makeLocalThemeObject(css: string) {
 	const themeName = css.slice(0, -4);
 	return {
-		displayName: themeName.charAt(0).toUpperCase() + themeName.slice(1),
+		// "gruvbox-dark" -> "Gruvbox Dark"
+		displayName: themeName
+			.split("-")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" "),
 		name: themeName,
 		themeColor: null,
 	};
