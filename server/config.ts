@@ -27,6 +27,10 @@ type FileUpload = {
 	enable: boolean;
 	maxFileSize: number;
 	baseUrl?: string;
+	rustypaste?: {
+		url: string;
+		token?: string;
+	} | null;
 };
 
 export type Defaults = Pick<

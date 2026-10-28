@@ -136,6 +136,7 @@ class Uploader {
 		let destDir: fs.PathLike;
 		let destPath: fs.PathLike | null;
 		let streamWriter: fs.WriteStream | null;
+		let originalName: string;
 
 		const doneCallback = () => {
 			// detach the stream and drain any remaining data
@@ -245,6 +246,7 @@ class Uploader {
 				},
 				filename: string | number | boolean
 			) => {
+				originalName = String(filename);
 				uploadUrl = `${randomName}/${encodeURIComponent(filename)}`;
 
 				if (Config.values.fileUpload.baseUrl) {
@@ -270,20 +272,61 @@ class Uploader {
 		);
 
 		busboyInstance.on("finish", () => {
+			const writer = streamWriter;
 			doneCallback();
 
 			if (!uploadUrl) {
 				return res.status(400).json({error: "Missing file"});
 			}
 
-			// upload was done, send the generated file url to the client
-			res.status(200).json({
-				url: uploadUrl,
-			});
+			if (!Config.values.fileUpload.rustypaste?.url) {
+				// upload was done, send the generated file url to the client
+				return res.status(200).json({
+					url: uploadUrl,
+				});
+			}
+
+			// hand the file over to rustypaste and send its url instead of the local one
+			const localPath = destPath as string;
+
+			const forward = () => {
+				Uploader.forwardToRustypaste(localPath, originalName)
+					.then((url) => res.status(200).json({url}))
+					.catch((err: Error) => {
+						log.error(`Rustypaste upload failed: ${err.message}`);
+						res.status(400).json({error: err.message});
+					})
+					.finally(() => fs.unlink(localPath, () => {}));
+			};
+
+			if (writer && !writer.closed) {
+				writer.once("close", forward);
+			} else {
+				forward();
+			}
 		});
 
 		// pipe request body to busboy for processing
 		return req.pipe(busboyInstance);
+	}
+
+	static async forwardToRustypaste(this: void, filePath: string, filename: string) {
+		const {url, token} = Config.values.fileUpload.rustypaste!;
+		const form = new FormData();
+		form.append("file", new Blob([await fs.promises.readFile(filePath)]), filename || "file");
+
+		const response = await fetch(url, {
+			method: "POST",
+			headers: token ? {Authorization: token} : {},
+			body: form,
+		});
+		const body = (await response.text()).trim();
+
+		if (!response.ok) {
+			throw new Error(`Rustypaste responded with ${response.status}: ${body}`);
+		}
+
+		return body;
 	}
 
 	static getMaxFileSize() {

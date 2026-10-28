@@ -196,10 +196,17 @@ module.exports = {
 	//   If you use this option, you must have a reverse proxy configured,
 	//   to correctly proxy the uploads URLs back to The Lounge.
 	//   This value is set to `null` by default.
+	// - `rustypaste`: Forward every upload to a [rustypaste](https://github.com/orhun/rustypaste)
+	//   server and link the URL it returns instead of serving the file from The Lounge.
+	//   Set it to `{url: "https://paste.example.com", token: "auth token"}`; `token`
+	//   is sent as the `Authorization` header and can be left out if the server has no
+	//   auth. The local copy is deleted once the forward finishes.
+	//   This value is set to `null` by default.
 	fileUpload: {
 		enable: false,
 		maxFileSize: 10240,
 		baseUrl: null,
+		rustypaste: null,
 	},
 
 	// ### `transports`
