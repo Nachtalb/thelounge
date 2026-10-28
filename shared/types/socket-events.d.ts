@@ -86,6 +86,7 @@ interface ServerToClientEvents {
 	more: EventHandler<{chan: number; messages: SharedMsg[]; totalMessages: number}>;
 
 	"msg:preview": EventHandler<{id: number; chan: number; preview: LinkPreview}>;
+	"input:preview": EventHandler<{target: number; preview: LinkPreview; removed: boolean}>;
 	"msg:special": EventHandler<{chan: number; data?: Record<string, any>}>;
 	msg: EventHandler<{msg: SharedMsg; chan: number; highlight?: number; unread?: number}>;
 
@@ -141,6 +142,7 @@ interface ClientToServerEvents {
 	names: EventHandler<{target: number}>;
 
 	input: EventHandler<{target: number; text: string; replyTo?: string}>;
+	"input:preview": EventHandler<{target: number; links: string[]}>;
 
 	"upload:auth": NoPayloadEventHandler;
 	"upload:ping": (token: string) => void;

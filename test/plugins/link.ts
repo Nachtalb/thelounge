@@ -2,7 +2,11 @@ import path from "path";
 import {expect} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
-import link, {getFilename, normalizeMediaType} from "../../server/plugins/irc-events/link";
+import link, {
+	getFilename,
+	normalizeMediaType,
+	prefetchInputLinks,
+} from "../../server/plugins/irc-events/link";
 import {LinkPreview} from "../../shared/types/msg";
 
 describe("Link plugin", function () {
@@ -890,6 +894,103 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			};
 
 			irc.on("msg:preview", cb);
+		});
+	});
+
+	describe("input previews", function () {
+		it("should send previews to the callback instead of the client", function () {
+			return new Promise<void>((resolve) => {
+				const url = _makeUrl("input-preview");
+
+				app.get("/input-preview", function (req, res) {
+					res.send("<title>input title</title>");
+				});
+
+				const onMsgPreview = () => {
+					throw new Error("msg:preview must not be emitted for input previews");
+				};
+
+				irc.on("msg:preview", onMsgPreview);
+
+				prefetchInputLinks(irc, [url], (preview, removed) => {
+					irc.removeListener("msg:preview", onMsgPreview);
+					expect(removed).to.not.equal(true);
+					expect(preview.type).to.equal("link");
+					expect(preview.head).to.equal("input title");
+					expect(preview.link).to.equal(url);
+					resolve();
+				});
+			});
+		});
+
+		it("should only fetch valid links and report the others as removed", function () {
+			const requests: string[] = [];
+			app.get("/input-preview-invalid", function (req, res) {
+				requests.push(req.url);
+				res.send("<title>should not be fetched</title>");
+			});
+
+			const removed: string[] = [];
+
+			const emit = (preview: LinkPreview, isRemoved?: boolean) => {
+				expect(isRemoved).to.equal(true);
+				removed.push(preview.link);
+			};
+
+			prefetchInputLinks(irc, "not an array", emit);
+			prefetchInputLinks(irc, [{link: _makeUrl("input-preview-invalid")}, 42], emit);
+			prefetchInputLinks(irc, ["ftp://example.com/input-preview-invalid"], emit);
+
+			return new Promise<void>((resolve) => {
+				setTimeout(() => {
+					expect(requests).to.deep.equal([]);
+					expect(removed).to.deep.equal(["ftp://example.com/input-preview-invalid"]);
+					resolve();
+				}, 200);
+			});
+		});
+
+		it("should not fetch anything when prefetch is disabled", function () {
+			const requests: string[] = [];
+			app.get("/input-preview-disabled", function (req, res) {
+				requests.push(req.url);
+				res.send("<title>should not be fetched</title>");
+			});
+
+			const emitted: LinkPreview[] = [];
+			Config.values.prefetch = false;
+
+			try {
+				prefetchInputLinks(irc, [_makeUrl("input-preview-disabled")], (preview) =>
+					emitted.push(preview)
+				);
+			} finally {
+				Config.values.prefetch = true;
+			}
+
+			return new Promise<void>((resolve) => {
+				setTimeout(() => {
+					expect(requests).to.deep.equal([]);
+					expect(emitted).to.deep.equal([]);
+					resolve();
+				}, 200);
+			});
+		});
+
+		it("should report previews that have nothing to show as removed", function () {
+			return new Promise<void>((resolve) => {
+				const url = _makeUrl("input-preview-empty");
+
+				app.get("/input-preview-empty", function (req, res) {
+					res.send("<p>no title here</p>");
+				});
+
+				prefetchInputLinks(irc, [url], (preview, removed) => {
+					expect(removed).to.equal(true);
+					expect(preview.link).to.equal(url);
+					resolve();
+				});
+			});
 		});
 	});
 });

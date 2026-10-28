@@ -13,7 +13,7 @@ import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
 import previewCache from "./plugins/previewCache";
-import {backfillPreviews, routeCachedImage} from "./plugins/irc-events/link";
+import {backfillPreviews, prefetchInputLinks, routeCachedImage} from "./plugins/irc-events/link";
 import type Msg from "./models/msg";
 import Helper from "./helper";
 import Config from "./config";
@@ -468,6 +468,17 @@ function initializeClient(
 		if (_.isPlainObject(data)) {
 			client.input(data);
 		}
+	});
+
+	socket.on("input:preview", (data) => {
+		if (!_.isPlainObject(data) || !client.find(data.target)) {
+			return;
+		}
+
+		// Only the requesting socket gets the previews, the message has not been sent yet
+		prefetchInputLinks(client, data.links, (preview, removed) => {
+			socket.emit("input:preview", {target: data.target, preview, removed: !!removed});
+		});
 	});
 
 	socket.on("typing", (data) => {

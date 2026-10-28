@@ -117,6 +117,35 @@ describe("Server", function () {
 				});
 			}));
 
+		it("should send input previews back to the requesting socket", () =>
+			new Promise<void>((resolve) => {
+				client.on("init", () => {
+					client.emit("network:new", {
+						username: "test-user",
+						realname: "The Lounge Test",
+						nick: "test-user",
+						join: "#preview",
+						name: "Preview Network",
+						host: Config.values.host,
+						port: 6667,
+					});
+				});
+
+				client.on("network", (data) => {
+					const target = data.network.channels[1].id;
+
+					client.on("input:preview", (preview) => {
+						expect(preview.target).to.equal(target);
+						expect(preview.removed).to.equal(false);
+						expect(preview.preview.link).to.equal(webURL);
+						expect(preview.preview.head).to.equal("The Lounge");
+						resolve();
+					});
+
+					client.emit("input:preview", {target, links: [webURL]});
+				});
+			}));
+
 		it("should emit configuration message", () =>
 			new Promise<void>((resolve) => {
 				client.on("configuration", (data) => {
