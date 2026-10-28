@@ -332,6 +332,9 @@ class Client {
 			commands: (args.commands as string[]) || [],
 			channels: channels,
 			ignoreList: args.ignoreList ? (args.ignoreList as IgnoreListItem[]) : [],
+			mediaPreviewBlocklist: Array.isArray(args.mediaPreviewBlocklist)
+				? args.mediaPreviewBlocklist.filter((name: unknown) => typeof name === "string")
+				: [],
 
 			proxyEnabled: !!args.proxyEnabled,
 			proxyHost: String(args.proxyHost || ""),

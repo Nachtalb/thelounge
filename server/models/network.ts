@@ -86,6 +86,7 @@ export type NetworkConfig = {
 	proxyEnabled: boolean;
 	highlightRegex?: string;
 	ignoreList: any[];
+	mediaPreviewBlocklist?: string[];
 };
 
 class Network {
@@ -120,6 +121,7 @@ class Network {
 
 	chanCache!: Chan[];
 	ignoreList!: IgnoreList;
+	mediaPreviewBlocklist!: string[];
 	keepNick!: string | null;
 
 	status!: NetworkStatus;
@@ -179,6 +181,7 @@ class Network {
 
 			chanCache: [],
 			ignoreList: [],
+			mediaPreviewBlocklist: [],
 			keepNick: null,
 			monitorList: [],
 			toBeMonitored: [],
@@ -525,6 +528,7 @@ class Network {
 			name: this.name,
 			nick: this.nick,
 			serverOptions: this.serverOptions,
+			mediaPreviewBlocklist: this.mediaPreviewBlocklist,
 			status: this.getNetworkStatus(),
 			channels: this.channels.map((channel) =>
 				channel.getFilteredClone(lastActiveChannel, lastMessage)
@@ -650,6 +654,7 @@ class Network {
 			"saslPassword",
 			"commands",
 			"ignoreList",
+			"mediaPreviewBlocklist",
 
 			"proxyHost",
 			"proxyPort",
