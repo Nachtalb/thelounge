@@ -2879,6 +2879,17 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 		max-height: 58px;
 		max-width: 104px;
 	}
+
+	/* The toolbar hangs over the line above on desktop, which on touch
+	   screens makes it look like it belongs to the previous message */
+	#chat .msg .msg-actions {
+		top: 50%;
+		transform: translateY(-50%);
+	}
+
+	#chat .msg:has(.reply-context) .msg-actions {
+		transform: none;
+	}
 }
 
 @media (max-width: 479px) {
