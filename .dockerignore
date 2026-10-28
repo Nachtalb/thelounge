@@ -1,0 +1,17 @@
+*
+!client
+!server
+!shared
+!defaults
+!scripts
+!index.js
+!package.json
+!yarn.lock
+!.npmrc
+!.yarnrc
+!.browserslistrc
+!.thelounge_home
+!tsconfig.json
+!tsconfig.base.json
+!vite.config.mts
+!postcss.config.js
