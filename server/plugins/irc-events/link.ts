@@ -210,7 +210,7 @@ function parseHtmlMedia($: any, preview, client: Client): Promise<FetchRequest> 
 
 							preview.type = type;
 							preview.media = mediaUrl;
-							preview.mediaType = resMedia.type;
+							preview.mediaType = normalizeMediaType(resMedia.type);
 
 							resolve(resMedia);
 						})
@@ -289,7 +289,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 
 			preview.type = "audio";
 			preview.media = preview.link;
-			preview.mediaType = res.type;
+			preview.mediaType = normalizeMediaType(res.type);
 
 			break;
 
@@ -323,6 +323,11 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 	}
 
 	void promise.then((newRes) => handlePreview(client, chan, msg, preview, newRes));
+}
+
+// Browsers only recognise the registered mime type of some formats in <source type>
+export function normalizeMediaType(type: string): string {
+	return type === "audio/x-flac" ? "audio/flac" : type;
 }
 
 // Use the filename from the Content-Disposition header if there is one,

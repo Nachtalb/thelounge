@@ -2,7 +2,7 @@ import path from "path";
 import {expect} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
-import link, {getFilename} from "../../server/plugins/irc-events/link";
+import link, {getFilename, normalizeMediaType} from "../../server/plugins/irc-events/link";
 import {LinkPreview} from "../../shared/types/msg";
 
 describe("Link plugin", function () {
@@ -535,6 +535,12 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				resolve();
 			});
 		});
+	});
+
+	it("should send flac audio with a mime type browsers can play", function () {
+		expect(normalizeMediaType("audio/x-flac")).to.equal("audio/flac");
+		expect(normalizeMediaType("audio/flac")).to.equal("audio/flac");
+		expect(normalizeMediaType("audio/ogg")).to.equal("audio/ogg");
 	});
 
 	describe("getFilename", function () {
