@@ -3,7 +3,7 @@ import socket from "../socket";
 import {ClientChan} from "../types";
 import {ChanType} from "../../../shared/types/chan";
 
-export default function useCloseChannel(channel: ClientChan) {
+export default function useCloseChannel(channel: ClientChan, quitMessage?: string) {
 	return () => {
 		if (channel.type === ChanType.LOBBY) {
 			eventbus.emit(
@@ -21,7 +21,7 @@ export default function useCloseChannel(channel: ClientChan) {
 					channel.closed = true;
 					socket.emit("input", {
 						target: Number(channel.id),
-						text: "/quit",
+						text: quitMessage ? `/quit ${quitMessage}` : "/quit",
 					});
 				}
 			);
