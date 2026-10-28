@@ -164,7 +164,7 @@
 		background-color: var(--window-bg-color);
 		border: 1px solid color-mix(in srgb, var(--body-color) 12%, var(--window-bg-color));
 		border-radius: 8px;
-		box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+		box-shadow: 0 4px 12px var(--shadow-color-subtle);
 		z-index: 10;
 	}
 

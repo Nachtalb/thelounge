@@ -37,12 +37,12 @@ form.message-search input {
 	margin: 7px 0;
 	border: 0;
 	color: inherit;
-	background-color: #fafafa;
+	background-color: var(--search-input-bg-color);
 	appearance: none;
 }
 
 form.message-search input::placeholder {
-	color: rgba(0, 0, 0, 0.35);
+	color: var(--chat-placeholder-color);
 }
 
 @media (min-width: 480px) {
@@ -76,7 +76,7 @@ form.message-search.opened .input-wrapper {
 
 #chat form.message-search button {
 	display: flex;
-	color: #607992;
+	color: var(--icon-button-color);
 }
 </style>
 

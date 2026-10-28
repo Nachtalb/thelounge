@@ -423,8 +423,8 @@ the server tab on new connection"
 #connect .connect-sasl-external {
 	padding: 10px;
 	border-radius: 2px;
-	background-color: #d9edf7;
-	color: #31708f;
+	background-color: var(--alert-info-bg-color);
+	color: var(--alert-info-color);
 }
 
 #connect .connect-sasl-external pre {

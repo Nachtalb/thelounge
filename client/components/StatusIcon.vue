@@ -30,15 +30,15 @@
 }
 
 .status-icon > .status-online::after {
-	background-color: #2ecc40;
+	background-color: var(--positive-color);
 }
 
 .status-icon > .status-offline::after {
-	background-color: #ff4136;
+	background-color: var(--negative-color);
 }
 
 .status-icon > .status-away::after {
-	background-color: gray;
+	background-color: var(--status-away-color);
 }
 </style>
 
