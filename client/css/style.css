@@ -547,7 +547,7 @@ p {
 #chat .msg-statusmsg span::before,
 #chat .msg-shown-in-active span::before,
 #chat .toggle-button::after,
-#chat .toggle-content .more-caret::before,
+:is(#chat, #input-previews) .toggle-content .more-caret::before,
 #chat .scroll-down-arrow::after,
 #chat .topic-container .save-topic span::before,
 #version-checker::before,
@@ -2074,22 +2074,22 @@ textarea.input {
 	color: var(--body-color);
 }
 
-#chat .preview-size {
+:is(#chat, #input-previews) .preview-size {
 	margin-left: 5px;
 	user-select: none;
 }
 
-#chat .toggle-content.opened .more-caret, /* Expand/Collapse link previews */
+:is(#chat, #input-previews) .toggle-content.opened .more-caret, /* Expand/Collapse link previews */
 #chat .toggle-button.opened, /* Thumbnail toggle */
 #chat .msg:not(.closed)[data-type="condensed"] .toggle-button { /* Expanded status message toggle */
 	transform: rotate(90deg);
 }
 
-#chat .preview {
+:is(#chat, #input-previews) .preview {
 	display: flex; /* Fix odd margin added by inline-flex in .toggle-content */
 }
 
-#chat .toggle-content {
+:is(#chat, #input-previews) .toggle-content {
 	background: var(--embed-bg-color);
 	color: var(--embed-color, inherit);
 	border-radius: 5px;
@@ -2104,110 +2104,110 @@ textarea.input {
 }
 
 /* This applies to images of preview-type-image and thumbnails of preview-type-link */
-#chat .toggle-content img {
+:is(#chat, #input-previews) .toggle-content img {
 	max-width: 100%;
 	max-height: 128px;
 	display: block;
 	cursor: zoom-in;
 }
 
-#chat .toggle-content pre.prefetch-error {
+:is(#chat, #input-previews) .toggle-content pre.prefetch-error {
 	padding: 0;
 	margin: 0;
 	color: inherit;
 	background-color: transparent;
 }
 
-#chat .toggle-content .prefetch-error {
+:is(#chat, #input-previews) .toggle-content .prefetch-error {
 	display: none;
 }
 
-#chat .toggle-content.opened .prefetch-error {
+:is(#chat, #input-previews) .toggle-content.opened .prefetch-error {
 	display: inline;
 }
 
 /* This applies to thumbnails of preview-type-link only */
-#chat .toggle-content .thumb {
+:is(#chat, #input-previews) .toggle-content .thumb {
 	max-height: 54px;
 	max-width: 96px;
 }
 
-#chat .toggle-type-error,
-#chat .toggle-content .toggle-text {
+:is(#chat, #input-previews) .toggle-type-error,
+:is(#chat, #input-previews) .toggle-content .toggle-text {
 	padding: 8px 10px;
 }
 
-#chat .toggle-content .toggle-text {
+:is(#chat, #input-previews) .toggle-content .toggle-text {
 	white-space: nowrap;
 	overflow: hidden;
 	text-align: initial;
 }
 
-#chat .toggle-content.opened .toggle-text {
+:is(#chat, #input-previews) .toggle-content.opened .toggle-text {
 	white-space: normal;
 }
 
-#chat .toggle-content .head {
+:is(#chat, #input-previews) .toggle-content .head {
 	display: flex;
 	align-items: flex-start;
 	font-weight: bold;
 }
 
-#chat .toggle-type-error {
+:is(#chat, #input-previews) .toggle-type-error {
 	color: var(--embed-color, var(--embed-muted-color));
 }
 
-#chat .toggle-text .body {
+:is(#chat, #input-previews) .toggle-text .body {
 	color: var(--embed-muted-color);
 }
 
-#chat .toggle-text a {
+:is(#chat, #input-previews) .toggle-text a {
 	color: inherit;
 }
 
-#chat .toggle-text .overflowable {
+:is(#chat, #input-previews) .toggle-text .overflowable {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex-grow: 1;
 }
 
-#chat .toggle-content .more {
+:is(#chat, #input-previews) .toggle-content .more {
 	color: var(--link-color);
 	font-weight: normal;
 	margin-left: 10px;
 	flex-shrink: 0;
 }
 
-#chat .toggle-content .more:hover {
+:is(#chat, #input-previews) .toggle-content .more:hover {
 	text-decoration: underline;
 }
 
-#chat .toggle-content .more::after {
+:is(#chat, #input-previews) .toggle-content .more::after {
 	content: " " attr(aria-label);
 }
 
-#chat .toggle-content .more-caret {
+:is(#chat, #input-previews) .toggle-content .more-caret {
 	display: inline-block;
 	transition: transform 0.2s;
 }
 
-#chat .toggle-content .more-caret::before {
+:is(#chat, #input-previews) .toggle-content .more-caret::before {
 	content: "\f0da"; /* https://fontawesome.com/icons/caret-right?style=solid */
 }
 
-#chat .toggle-content .media-filename {
+:is(#chat, #input-previews) .toggle-content .media-filename {
 	font-weight: bold;
 	color: inherit;
 	overflow-wrap: anywhere;
 }
 
-#chat .toggle-type-image .toggle-thumbnail {
+:is(#chat, #input-previews) .toggle-type-image .toggle-thumbnail {
 	display: flex;
 	flex-direction: column-reverse;
 	color: inherit;
 }
 
-#chat .toggle-type-image .media-filename {
+:is(#chat, #input-previews) .toggle-type-image .media-filename {
 	padding: 8px 10px;
 
 	/* Do not let the filename make the preview wider than the image */
@@ -2215,36 +2215,36 @@ textarea.input {
 	min-width: 100%;
 }
 
-#chat .toggle-type-image .filename-beside {
+:is(#chat, #input-previews) .toggle-type-image .filename-beside {
 	flex-direction: row;
 }
 
-#chat .toggle-type-image .filename-beside .media-filename {
+:is(#chat, #input-previews) .toggle-type-image .filename-beside .media-filename {
 	width: auto;
 	min-width: 0;
 	max-width: 300px;
 }
 
-#chat .toggle-type-audio.with-filename {
+:is(#chat, #input-previews) .toggle-type-audio.with-filename {
 	padding: 8px 10px 10px;
 }
 
-#chat .toggle-type-audio .media-filename {
+:is(#chat, #input-previews) .toggle-type-audio .media-filename {
 	display: block;
 	padding-bottom: 8px;
 }
 
-#chat audio {
+:is(#chat, #input-previews) audio {
 	width: 600px;
 	max-width: 100%;
 }
 
-#chat .toggle-type-video {
+:is(#chat, #input-previews) .toggle-type-video {
 	max-width: 640px;
 	position: relative;
 }
 
-#chat .toggle-type-video .media-filename {
+:is(#chat, #input-previews) .toggle-type-video .media-filename {
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -2256,14 +2256,14 @@ textarea.input {
 	pointer-events: none;
 }
 
-#chat video {
+:is(#chat, #input-previews) video {
 	max-width: 100%;
 	max-height: 240px;
 }
 
 /* Do not display an empty div when there are no previews. Useful for example in
 part/quit messages where we don't load previews (adds a blank line otherwise) */
-#chat .preview:empty {
+:is(#chat, #input-previews) .preview:empty {
 	display: none;
 }
 
@@ -2680,6 +2680,29 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 #upload-progressbar.upload-progressbar-visible {
 	visibility: visible;
 	transition: 0.3s width ease-in-out;
+}
+
+/* One preview per row: LinkPreview.vue needs the full width to tell if the text is cut off */
+#input-previews {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 100%;
+	max-height: 200px;
+	overflow-y: auto;
+	padding-bottom: 6px;
+	margin-bottom: 6px;
+	border-bottom: 1px solid var(--border-color);
+}
+
+#input-previews .toggle-content {
+	margin: 0;
+}
+
+/* Scale media down so a single preview, filename included, fits the panel without scrolling */
+#input-previews :is(img, video) {
+	max-height: 128px;
+	object-fit: contain;
 }
 
 #form {
@@ -3231,7 +3254,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 		padding-left: 6px;
 	}
 
-	#chat .toggle-content .thumb {
+	:is(#chat, #input-previews) .toggle-content .thumb {
 		max-height: 58px;
 		max-width: 104px;
 	}

@@ -11,7 +11,7 @@
 			<button class="close-btn" aria-label="Close"></button>
 
 			<button
-				v-if="previousImage || channel?.moreHistoryAvailable"
+				v-if="previousImage || (inHistory && channel?.moreHistoryAvailable)"
 				class="previous-image-btn"
 				aria-label="Previous image"
 				@click.stop="previous"
@@ -24,6 +24,7 @@
 			></button>
 
 			<button
+				v-if="inHistory"
 				class="gotomsg-btn"
 				aria-label="Go to message"
 				title="Go to message"
@@ -80,6 +81,8 @@ export default defineComponent({
 		const currentIndex = computed(() =>
 			images.value.findIndex((item) => item.preview === link.value)
 		);
+		// Previews of the message being typed are not part of the channel history
+		const inHistory = computed(() => currentIndex.value > -1);
 		const previousImage = computed(() =>
 			currentIndex.value > 0 ? images.value[currentIndex.value - 1].preview : null
 		);
@@ -147,6 +150,10 @@ export default defineComponent({
 		};
 
 		const previous = () => {
+			if (!inHistory.value) {
+				return;
+			}
+
 			if (previousImage.value) {
 				link.value = previousImage.value;
 				historyBatchesLeft = 0;
@@ -186,11 +193,13 @@ export default defineComponent({
 		const gotoMessage = () => {
 			const message = images.value[currentIndex.value]?.message;
 
+			if (!message) {
+				return;
+			}
+
 			closeViewer();
 
-			if (message) {
-				document.getElementById(`msg-${message.id}`)?.scrollIntoView({block: "center"});
-			}
+			document.getElementById(`msg-${message.id}`)?.scrollIntoView({block: "center"});
 		};
 
 		const openLink = () => {
@@ -607,6 +616,7 @@ export default defineComponent({
 			onMouseWheel,
 			onClick,
 			onTouchStart,
+			inHistory,
 			previousImage,
 			nextImage,
 			onImageTouchStart,

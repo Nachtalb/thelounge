@@ -32,6 +32,9 @@ const backfilled = new WeakSet<Msg>();
 const backfillQueue: (() => Promise<void>)[] = [];
 let backfillRunning = 0;
 
+// `removed` is set when there is nothing to preview for the link
+type PreviewEmitter = (preview: LinkPreview, removed?: boolean) => void;
+
 export default function prefetch(
 	client: Client,
 	chan: Chan,
@@ -43,7 +46,44 @@ export default function prefetch(
 		return;
 	}
 
-	msg.previews = findLinksWithSchema(cleanText).reduce((cleanLinks: LinkPreview[], link) => {
+	msg.previews = fetchPreviews(
+		client,
+		cleanText,
+		(preview, removed) => {
+			if (removed) {
+				return;
+			}
+
+			client.emit("msg:preview", {
+				id: msg.id,
+				chan: chan.id,
+				preview: preview,
+			});
+		},
+		queued
+	);
+}
+
+// Prefetch links of a message that is still being typed and has not been sent yet.
+// Finished previews are handed to `emit` instead of being stored on a message.
+export function prefetchInputLinks(client: Client, links: unknown, emit: PreviewEmitter) {
+	if (!Config.values.prefetch || !Array.isArray(links)) {
+		return;
+	}
+
+	const requested = links.filter((link): link is string => typeof link === "string");
+	const previews = fetchPreviews(client, requested.join(" "), emit);
+
+	// Links that are not fetched at all (invalid or too many) have nothing to preview either
+	for (const link of requested) {
+		if (!previews.some((preview) => preview.link === link)) {
+			emit({type: "error", head: "", body: "", thumb: "", size: -1, link, shown: null}, true);
+		}
+	}
+}
+
+function fetchPreviews(client: Client, text: string, emit: PreviewEmitter, queued = false) {
+	return findLinksWithSchema(text).reduce((cleanLinks: LinkPreview[], link) => {
 		const url = normalizeURL(link.link);
 
 		// If the URL is invalid and cannot be normalized, don't fetch it
@@ -72,7 +112,7 @@ export default function prefetch(
 		};
 
 		cleanLinks.push(preview);
-		loadPreview(client, chan, msg, preview, url, queued);
+		loadPreview(client, cleanLinks, preview, url, queued, emit);
 
 		return cleanLinks;
 	}, []);
@@ -115,11 +155,11 @@ function runQueued(job?: () => Promise<void>) {
 
 function loadPreview(
 	client: Client,
-	chan: Chan,
-	msg: Msg,
+	previews: LinkPreview[],
 	preview: LinkPreview,
 	url: string,
-	queued: boolean
+	queued: boolean,
+	emit: PreviewEmitter
 ) {
 	const fetchPreview = () =>
 		fetch(url, {
@@ -127,13 +167,13 @@ function loadPreview(
 			language: client.config.browser?.language || "",
 		})
 			.then((res) => {
-				parse(msg, chan, preview, res, client);
+				parse(previews, preview, res, client, emit);
 			})
 			.catch((err) => {
 				preview.type = "error";
 				preview.error = "message";
 				preview.message = err.message;
-				emitPreview(client, chan, msg, preview);
+				emitPreview(previews, preview, emit);
 			});
 
 	if (!previewCache.isEnabled()) {
@@ -147,7 +187,7 @@ function loadPreview(
 		}
 
 		Object.assign(preview, cached);
-		emitPreview(client, chan, msg, preview, false);
+		emitPreview(previews, preview, emit, false);
 	});
 }
 
@@ -305,7 +345,13 @@ function parseHtmlMedia($: any, preview, client: Client): Promise<FetchRequest> 
 	});
 }
 
-function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, client: Client) {
+function parse(
+	previews: LinkPreview[],
+	preview: LinkPreview,
+	res: FetchRequest,
+	client: Client,
+	emit: PreviewEmitter
+) {
 	let promise: Promise<FetchRequest | null> | null = null;
 
 	preview.size = res.size;
@@ -329,7 +375,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 		case "image/webp":
 		case "image/avif":
 			if (!isProxied() && Config.values.disableMediaPreview) {
-				return removePreview(msg, preview);
+				return removePreview(previews, preview, emit);
 			}
 
 			if (res.size > Config.values.prefetchMaxImageSize * 1024) {
@@ -362,7 +408,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 			}
 
 			if (Config.values.disableMediaPreview) {
-				return removePreview(msg, preview);
+				return removePreview(previews, preview, emit);
 			}
 
 			preview.type = "audio";
@@ -379,7 +425,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 			}
 
 			if (Config.values.disableMediaPreview) {
-				return removePreview(msg, preview);
+				return removePreview(previews, preview, emit);
 			}
 
 			preview.type = "video";
@@ -389,7 +435,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 			break;
 
 		default:
-			return removePreview(msg, preview);
+			return removePreview(previews, preview, emit);
 	}
 
 	if (res.filename && ["image", "audio", "video"].includes(preview.type)) {
@@ -397,10 +443,10 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 	}
 
 	if (!promise) {
-		return handlePreview(client, chan, msg, preview, res);
+		return handlePreview(previews, preview, res, emit);
 	}
 
-	void promise.then((newRes) => handlePreview(client, chan, msg, preview, newRes));
+	void promise.then((newRes) => handlePreview(previews, preview, newRes, emit));
 }
 
 // Browsers only recognise the registered mime type of some formats in <source type>
@@ -431,7 +477,7 @@ export function getFilename(uri: string, disposition?: string): string | null {
 	}
 }
 
-function handlePreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview, res) {
+function handlePreview(previews: LinkPreview[], preview: LinkPreview, res, emit: PreviewEmitter) {
 	const thumb = preview.thumbActualUrl || "";
 	delete preview.thumbActualUrl;
 
@@ -440,14 +486,14 @@ function handlePreview(client: Client, chan: Chan, msg: Msg, preview: LinkPrevie
 			.setImage(normalizeURL(thumb) || thumb, res.type, res.data)
 			.then((hash) => {
 				preview.thumb = `preview-cache/${hash}`;
-				emitPreview(client, chan, msg, preview);
+				emitPreview(previews, preview, emit);
 			});
 		return;
 	}
 
 	if (!thumb.length || !Config.values.prefetchStorage) {
 		preview.thumb = thumb;
-		return emitPreview(client, chan, msg, preview);
+		return emitPreview(previews, preview, emit);
 	}
 
 	// Get the correct file extension for the provided content-type
@@ -458,27 +504,32 @@ function handlePreview(client: Client, chan: Chan, msg: Msg, preview: LinkPrevie
 		// For link previews, drop the thumbnail
 		// For other types, do not display preview at all
 		if (preview.type !== "link") {
-			return removePreview(msg, preview);
+			return removePreview(previews, preview, emit);
 		}
 
-		return emitPreview(client, chan, msg, preview);
+		return emitPreview(previews, preview, emit);
 	}
 
 	storage.store(res.data, extension, (uri) => {
 		preview.thumb = uri;
 
-		emitPreview(client, chan, msg, preview);
+		emitPreview(previews, preview, emit);
 	});
 }
 
-function emitPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview, cache = true) {
+function emitPreview(
+	previews: LinkPreview[],
+	preview: LinkPreview,
+	emit: PreviewEmitter,
+	cache = true
+) {
 	// If there is no title but there is preview or description, set title
 	// otherwise bail out and show no preview
 	if (!preview.head.length && preview.type === "link") {
 		if (preview.thumb.length || preview.body.length) {
 			preview.head = "Untitled page";
 		} else {
-			return removePreview(msg, preview);
+			return removePreview(previews, preview, emit);
 		}
 	}
 
@@ -489,21 +540,19 @@ function emitPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview,
 		void previewCache.setPreview(url, preview);
 	}
 
-	client.emit("msg:preview", {
-		id: msg.id,
-		chan: chan.id,
-		preview: preview,
-	});
+	emit(preview);
 }
 
-function removePreview(msg: Msg, preview: LinkPreview) {
+function removePreview(previews: LinkPreview[], preview: LinkPreview, emit: PreviewEmitter) {
 	// If a preview fails to load, remove the link from msg object
 	// So that client doesn't attempt to display an preview on page reload
-	const index = msg.previews.indexOf(preview);
+	const index = previews.indexOf(preview);
 
 	if (index > -1) {
-		msg.previews.splice(index, 1);
+		previews.splice(index, 1);
 	}
+
+	emit(preview, true);
 }
 
 function getRequestHeaders(headers: Record<string, string>) {
