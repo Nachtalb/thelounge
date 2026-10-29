@@ -1,7 +1,6 @@
-import {update as updateCursor} from "undate";
-
 import socket from "./socket";
 import {store} from "./store";
+import {richInputFor} from "./richinput/RichInput";
 
 class Uploader {
 	xhr: XMLHttpRequest | null = null;
@@ -285,27 +284,23 @@ class Uploader {
 
 	insertUploadUrl(url: string) {
 		const fullURL = new URL(url, location.toString()).toString();
-		const textbox = document.getElementById("input");
+		const textbox = richInputFor(document.getElementById("input"));
 
-		if (!(textbox instanceof HTMLTextAreaElement)) {
+		if (!textbox) {
 			throw new Error("Could not find textbox in upload");
 		}
 
-		const initStart = textbox.selectionStart;
+		const initStart = Math.min(textbox.getSelection().start, textbox.getSelection().end);
 
-		// Get the text before the cursor, and add a space if it's not in the beginning
-		const headToCursor = initStart > 0 ? textbox.value.substring(0, initStart) + " " : "";
-
-		// Get the remaining text after the cursor
-		const cursorToTail = textbox.value.substring(initStart);
-
-		// Construct the value until the point where we want the cursor to be
-		const textBeforeTail = headToCursor + fullURL + " ";
-
-		updateCursor(textbox, textBeforeTail + cursorToTail);
-
-		// Set the cursor after the link and a space
-		textbox.selectionStart = textbox.selectionEnd = textBeforeTail.length;
+		// Insert the link at the cursor, after a space if it's not in the beginning,
+		// and leave the cursor after the link and a space
+		textbox.replaceRange(
+			initStart,
+			initStart,
+			(initStart > 0 ? " " : "") + fullURL + " ",
+			"paste",
+			{}
+		);
 	}
 
 	// TODO: This is a temporary hack while Vue porting is finalized
