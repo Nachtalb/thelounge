@@ -271,6 +271,54 @@
 				</div>
 			</div>
 
+			<h2>Image Viewer Shortcuts</h2>
+
+			<div class="help-item">
+				<div class="subject">
+					<span v-if="!isApple"><kbd>Ctrl</kbd> <kbd>S</kbd></span>
+					<span v-else><kbd>⌘</kbd> <kbd>S</kbd></span>
+				</div>
+				<div class="description">
+					<p>Download the image.</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
+					<span><kbd>←</kbd> or <kbd>A</kbd></span>
+				</div>
+				<div class="description">
+					<p>Show the previous image, loading older messages when needed.</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
+					<span><kbd>→</kbd> or <kbd>D</kbd></span>
+				</div>
+				<div class="description">
+					<p>Show the next image.</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
+					<span><kbd>O</kbd></span>
+				</div>
+				<div class="description">
+					<p>Open the image in a new tab.</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
+					<span><kbd>G</kbd></span>
+				</div>
+				<div class="description">
+					<p>Close the viewer and go to the message of the image.</p>
+				</div>
+			</div>
+
 			<h2>Formatting Shortcuts</h2>
 
 			<div class="help-item">

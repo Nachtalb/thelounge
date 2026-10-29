@@ -246,6 +246,11 @@ document.addEventListener("keydown", (e) => {
 		return;
 	}
 
+	// Keep single key shortcuts working while the image viewer is open
+	if (document.querySelector("#image-viewer.opened")) {
+		return;
+	}
+
 	const input = document.getElementById("input");
 
 	if (!input) {

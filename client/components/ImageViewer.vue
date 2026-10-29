@@ -11,7 +11,7 @@
 			<button class="close-btn" aria-label="Close"></button>
 
 			<button
-				v-if="previousImage"
+				v-if="previousImage || channel?.moreHistoryAvailable"
 				class="previous-image-btn"
 				aria-label="Previous image"
 				@click.stop="previous"
@@ -23,6 +23,21 @@
 				@click.stop="next"
 			></button>
 
+			<button
+				class="gotomsg-btn"
+				aria-label="Go to message"
+				title="Go to message"
+				@click.stop="gotoMessage"
+			></button>
+			<a
+				class="download-btn"
+				:href="link.thumb"
+				target="_blank"
+				rel="noopener"
+				aria-label="Download image"
+				title="Download image"
+				@click.stop="downloadImage"
+			></a>
 			<a class="open-btn" :href="link.link" target="_blank" rel="noopener"></a>
 
 			<img
@@ -42,8 +57,8 @@
 import Mousetrap from "mousetrap";
 import {computed, defineComponent, ref, watch} from "vue";
 import eventbus from "../js/eventbus";
+import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
-import {SharedMsg} from "../../shared/types/msg";
 
 export default defineComponent({
 	name: "ImageViewer",
@@ -52,9 +67,31 @@ export default defineComponent({
 		const image = ref<HTMLImageElement>();
 
 		const link = ref<ClientLinkPreview | null>(null);
-		const previousImage = ref<ClientLinkPreview | null>();
-		const nextImage = ref<ClientLinkPreview | null>();
 		const channel = ref<ClientChan | null>();
+
+		// All images of the channel in order, with the message they belong to
+		const images = computed(() =>
+			(channel.value?.messages || []).flatMap((message) =>
+				(message.previews || [])
+					.filter((preview) => preview.thumb)
+					.map((preview) => ({message, preview}))
+			)
+		);
+		const currentIndex = computed(() =>
+			images.value.findIndex((item) => item.preview === link.value)
+		);
+		const previousImage = computed(() =>
+			currentIndex.value > 0 ? images.value[currentIndex.value - 1].preview : null
+		);
+		const nextImage = computed(() =>
+			currentIndex.value > -1 ? images.value[currentIndex.value + 1]?.preview || null : null
+		);
+
+		// Load older messages once the current image is one of the oldest loaded ones
+		const preloadThreshold = 3;
+		// How many batches of older messages to search for a previous image
+		const maxHistoryBatches = 5;
+		let historyBatchesLeft = 0;
 
 		const position = ref<{
 			x: number;
@@ -92,38 +129,136 @@ export default defineComponent({
 				return;
 			}
 
+			historyBatchesLeft = 0;
 			channel.value = null;
-			previousImage.value = null;
-			nextImage.value = null;
 			link.value = null;
 		};
 
-		const setPrevNextImages = () => {
-			if (!channel.value || !link.value) {
-				return null;
+		const loadOlderMessages = () => {
+			const chan = channel.value;
+
+			// An already running request (e.g. from scrolling up) is waited for as well
+			if (
+				!chan?.moreHistoryAvailable ||
+				(!chan.historyLoading && !requestOlderMessages(chan))
+			) {
+				historyBatchesLeft = 0;
 			}
-
-			const links = channel.value.messages
-				.map((msg: SharedMsg) => msg.previews)
-				.flat()
-				.filter((preview) => preview && preview.thumb);
-
-			const currentIndex = links.indexOf(link.value);
-
-			previousImage.value = links[currentIndex - 1] || null;
-			nextImage.value = links[currentIndex + 1] || null;
 		};
 
 		const previous = () => {
 			if (previousImage.value) {
 				link.value = previousImage.value;
+				historyBatchesLeft = 0;
+			} else {
+				// Show the previous image once older messages with images arrived
+				historyBatchesLeft = maxHistoryBatches;
+			}
+
+			if (currentIndex.value < preloadThreshold) {
+				loadOlderMessages();
 			}
 		};
+
+		watch(
+			() => channel.value?.historyLoading,
+			(loading) => {
+				if (loading || historyBatchesLeft === 0) {
+					return;
+				}
+
+				historyBatchesLeft--;
+
+				if (previousImage.value) {
+					previous();
+				} else if (historyBatchesLeft > 0) {
+					loadOlderMessages();
+				}
+			}
+		);
 
 		const next = () => {
 			if (nextImage.value) {
 				link.value = nextImage.value;
 			}
+		};
+
+		const gotoMessage = () => {
+			const message = images.value[currentIndex.value]?.message;
+
+			closeViewer();
+
+			if (message) {
+				document.getElementById(`msg-${message.id}`)?.scrollIntoView({block: "center"});
+			}
+		};
+
+		const openLink = () => {
+			if (link.value) {
+				window.open(link.value.link, "_blank", "noopener");
+			}
+		};
+
+		const getFilename = (preview: ClientLinkPreview) => {
+			if (preview.filename) {
+				return preview.filename;
+			}
+
+			for (const url of [preview.link, preview.thumb]) {
+				try {
+					const path = new URL(url, window.location.href).pathname;
+					const name = decodeURIComponent(path.split("/").pop() || "");
+
+					if (name) {
+						return name;
+					}
+				} catch {
+					// Not a valid url, try the next one
+				}
+			}
+
+			return "image";
+		};
+
+		const isSameOrigin = (url: string) => {
+			try {
+				return new URL(url, window.location.href).origin === window.location.origin;
+			} catch {
+				return false;
+			}
+		};
+
+		// Viewer shortcuts (mod+s is also strikethrough) must not reach the chat input,
+		// so keep it unfocused while the viewer is open
+		const blurInput = () => {
+			if (document.activeElement?.id === "input") {
+				(document.activeElement as HTMLElement).blur();
+			}
+		};
+
+		// <a download> only works for same-origin urls (preview cache, prefetch storage). Other
+		// origins open in a new tab: fetching them into a blob is blocked by the CSP connect-src.
+		// The click must stay synchronous: an async download loses the user gesture and the
+		// browser blocks every download after the first one.
+		const downloadImage = (e: Event) => {
+			e.preventDefault();
+			const preview = link.value;
+
+			if (!preview) {
+				return;
+			}
+
+			if (!isSameOrigin(preview.thumb)) {
+				window.open(preview.thumb, "_blank", "noopener");
+				return;
+			}
+
+			const a = document.createElement("a");
+			a.href = preview.thumb;
+			a.download = getFilename(preview);
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
 		};
 
 		const prepareImage = () => {
@@ -437,20 +572,23 @@ export default defineComponent({
 		watch(link, (newLink, oldLink) => {
 			// TODO: history.pushState
 			if (newLink === null) {
+				document.removeEventListener("focusin", blurInput);
 				eventbus.off("escapekey", closeViewer);
 				eventbus.off("resize", correctPosition);
-				Mousetrap.unbind("left");
-				Mousetrap.unbind("right");
+				Mousetrap.unbind(["left", "a", "right", "d", "mod+s", "o", "g"]);
 				return;
 			}
 
-			setPrevNextImages();
-
 			if (!oldLink) {
+				blurInput();
+				document.addEventListener("focusin", blurInput);
 				eventbus.on("escapekey", closeViewer);
 				eventbus.on("resize", correctPosition);
-				Mousetrap.bind("left", previous);
-				Mousetrap.bind("right", next);
+				Mousetrap.bind(["left", "a"], previous);
+				Mousetrap.bind(["right", "d"], next);
+				Mousetrap.bind("mod+s", downloadImage);
+				Mousetrap.bind("o", openLink);
+				Mousetrap.bind("g", gotoMessage);
 			}
 		});
 
@@ -458,10 +596,12 @@ export default defineComponent({
 			link,
 			channel,
 			image,
+			downloadImage,
 			transform,
 			closeViewer,
 			next,
 			previous,
+			gotoMessage,
 			onImageLoad,
 			onImageMouseDown,
 			onMouseWheel,
