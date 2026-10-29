@@ -9,7 +9,8 @@ import mime from "mime-types";
 import log from "../../log";
 import Config from "../../config";
 import {findLinksWithSchema} from "../../../shared/linkify";
-import {LinkPreview} from "../../../shared/types/msg";
+import {cleanIrcMessage} from "../../../shared/irc";
+import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
 import previewCache from "../previewCache";
 import Client from "../../client";
@@ -24,8 +25,17 @@ type FetchRequest = {
 const currentFetchPromises = new Map<string, Promise<FetchRequest>>();
 const imageTypeRegex = /^image\/.+/;
 const mediaTypeRegex = /^(audio|video)\/.+/;
+const backfilled = new WeakSet<Msg>();
+const backfillQueue: (() => Promise<void>)[] = [];
+let backfillRunning = 0;
 
-export default function (client: Client, chan: Chan, msg: Msg, cleanText: string) {
+export default function prefetch(
+	client: Client,
+	chan: Chan,
+	msg: Msg,
+	cleanText: string,
+	queued = false
+) {
 	if (!Config.values.prefetch) {
 		return;
 	}
@@ -59,13 +69,55 @@ export default function (client: Client, chan: Chan, msg: Msg, cleanText: string
 		};
 
 		cleanLinks.push(preview);
-		loadPreview(client, chan, msg, preview, url);
+		loadPreview(client, chan, msg, preview, url, queued);
 
 		return cleanLinks;
 	}, []);
 }
 
-function loadPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview, url: string) {
+// Fills in previews of messages from history that have none, like messages loaded from the
+// message storage after a restart. Uncached links are fetched in the background, a few at a time.
+export function backfillPreviews(client: Client, chan: Chan, messages: Msg[]) {
+	if (!previewCache.isEnabled()) {
+		return;
+	}
+
+	for (const msg of messages) {
+		if (
+			backfilled.has(msg) ||
+			msg.previews.length ||
+			![MessageType.MESSAGE, MessageType.ACTION].includes(msg.type)
+		) {
+			continue;
+		}
+
+		backfilled.add(msg);
+		prefetch(client, chan, msg, cleanIrcMessage(msg.text), true);
+	}
+}
+
+function runQueued(job?: () => Promise<void>) {
+	if (job) {
+		backfillQueue.push(job);
+	}
+
+	while (backfillRunning < 4 && backfillQueue.length) {
+		backfillRunning++;
+		void backfillQueue.shift()!().finally(() => {
+			backfillRunning--;
+			runQueued();
+		});
+	}
+}
+
+function loadPreview(
+	client: Client,
+	chan: Chan,
+	msg: Msg,
+	preview: LinkPreview,
+	url: string,
+	queued: boolean
+) {
 	const fetchPreview = () =>
 		fetch(url, {
 			accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -88,7 +140,7 @@ function loadPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview,
 
 	void previewCache.getPreview(url).then((cached) => {
 		if (!cached) {
-			return fetchPreview();
+			return queued ? runQueued(fetchPreview) : fetchPreview();
 		}
 
 		Object.assign(preview, cached);

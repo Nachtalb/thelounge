@@ -4,7 +4,7 @@ import {expect} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
 import previewCache from "../../server/plugins/previewCache";
-import link, {routeCachedImage} from "../../server/plugins/irc-events/link";
+import link, {backfillPreviews, routeCachedImage} from "../../server/plugins/irc-events/link";
 
 describe("Link plugin with preview cache", function () {
 	const testImagePath = path.resolve("client/public/img/logo-grey-bg-120x120px.png");
@@ -135,5 +135,67 @@ describe("Link plugin with preview cache", function () {
 
 		expect(result.thumb).to.equal(_makeUrl("image.png"));
 		expect(fs.existsSync(Config.getPreviewCachePath())).to.be.false;
+	});
+
+	describe("history backfill", function () {
+		it("should fill previews of history messages and emit msg:preview", async function () {
+			const message = irc.createMessage({type: "message", text: `look ${_makeUrl("page")}`});
+			const emitted = new Promise<any>((resolve) => {
+				irc.once("msg:preview", (data) => {
+					resolve(data);
+				});
+			});
+
+			backfillPreviews(irc, network.channels[0], [message]);
+
+			expect(message.previews[0].type).to.equal("loading");
+
+			const data = await emitted;
+
+			expect(data.id).to.equal(message.id);
+			expect(data.chan).to.equal(network.channels[0].id);
+			expect(data.preview.head).to.equal("cached title");
+			expect(message.previews).to.deep.equal([data.preview]);
+		});
+
+		it("should use the cache for urls fetched before", async function () {
+			await preview(_makeUrl("page"));
+			const message = irc.createMessage({type: "message", text: _makeUrl("page")});
+			const emitted = new Promise<void>((resolve) => {
+				irc.once("msg:preview", () => {
+					resolve();
+				});
+			});
+
+			backfillPreviews(irc, network.channels[0], [message]);
+			await emitted;
+
+			expect(message.previews[0].head).to.equal("cached title");
+			expect(requests["/page"]).to.equal(1);
+		});
+
+		it("should skip messages with previews, other types and repeats", function () {
+			const withPreview = irc.createMessage({type: "message", text: _makeUrl("page")});
+			withPreview.previews = [{link: "x"}];
+			const notice = irc.createMessage({type: "notice", text: _makeUrl("page")});
+			const message = irc.createMessage({type: "message", text: "no links here"});
+
+			backfillPreviews(irc, network.channels[0], [withPreview, notice, message]);
+			message.text = _makeUrl("page");
+			backfillPreviews(irc, network.channels[0], [message]);
+
+			expect(withPreview.previews).to.deep.equal([{link: "x"}]);
+			expect(notice.previews).to.deep.equal([]);
+			expect(message.previews).to.deep.equal([]);
+		});
+
+		it("should do nothing when the cache is disabled", function () {
+			Config.values.prefetchCache = false;
+			const message = irc.createMessage({type: "message", text: _makeUrl("page")});
+
+			backfillPreviews(irc, network.channels[0], [message]);
+
+			expect(message.previews).to.deep.equal([]);
+		});
 	});
 });

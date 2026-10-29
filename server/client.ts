@@ -9,6 +9,7 @@ import Chan, {ChanConfig} from "./models/chan";
 import Msg from "./models/msg";
 import Config from "./config";
 import {condensedTypes} from "../shared/irc";
+import {backfillPreviews} from "./plugins/irc-events/link";
 import {MessageType} from "../shared/types/msg";
 import {SharedMention} from "../shared/types/mention";
 
@@ -642,6 +643,7 @@ class Client {
 			}
 
 			messages = chan.messages.slice(startIndex, index);
+			backfillPreviews(client, chan, messages);
 		}
 
 		return {

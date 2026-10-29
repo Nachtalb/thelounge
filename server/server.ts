@@ -13,7 +13,8 @@ import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
 import previewCache from "./plugins/previewCache";
-import {routeCachedImage} from "./plugins/irc-events/link";
+import {backfillPreviews, routeCachedImage} from "./plugins/irc-events/link";
+import type Msg from "./models/msg";
 import Helper from "./helper";
 import Config from "./config";
 import Identification from "./identification";
@@ -874,11 +875,17 @@ function initializeClient(
 	void socket.join(client.id);
 
 	const sendInitEvent = (tokenToSend?: string) => {
+		const networks = client.networks.map((network) => {
+			const clone = network.getFilteredClone(openChannel, lastMessage);
+			clone.channels.forEach((chan, j) =>
+				backfillPreviews(client, network.channels[j], chan.messages as Msg[])
+			);
+			return clone;
+		});
+
 		socket.emit("init", {
 			active: openChannel,
-			networks: client.networks.map((network) =>
-				network.getFilteredClone(openChannel, lastMessage)
-			),
+			networks,
 			token: tokenToSend,
 		});
 		socket.emit("commands", inputs.getCommands());
