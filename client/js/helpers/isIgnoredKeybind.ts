@@ -1,8 +1,12 @@
 export default (event: MouseEvent | Mousetrap.ExtendedKeyboardEvent) => {
-	if (
-		(event.target as HTMLElement).tagName !== "TEXTAREA" &&
-		(event.target as HTMLElement).tagName !== "INPUT"
-	) {
+	const target = event.target as HTMLElement;
+
+	// The chat input is a contenteditable element
+	if (target.isContentEditable) {
+		return !!target.textContent;
+	}
+
+	if (target.tagName !== "TEXTAREA" && target.tagName !== "INPUT") {
 		return false;
 	}
 

@@ -232,8 +232,12 @@ document.addEventListener("keydown", (e) => {
 
 	const tagName = (e.target as HTMLElement).tagName;
 
-	// Ignore if we're already typing into <input> or <textarea>
-	if (tagName === "INPUT" || tagName === "TEXTAREA") {
+	// Ignore if we're already typing into <input>, <textarea> or the rich chat input
+	if (
+		tagName === "INPUT" ||
+		tagName === "TEXTAREA" ||
+		(e.target as HTMLElement).isContentEditable
+	) {
 		return;
 	}
 

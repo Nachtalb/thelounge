@@ -15,17 +15,18 @@
 		</div>
 		<span id="upload-progressbar" />
 		<span id="nick">{{ network.nick }}</span>
-		<label for="input" class="sr-only">Message input</label>
-		<textarea
+		<span id="input-label" class="sr-only">Message input</span>
+		<div
 			id="input"
 			ref="input"
 			dir="auto"
 			class="mousetrap"
+			contenteditable="true"
+			role="textbox"
+			aria-multiline="true"
+			aria-labelledby="input-label"
 			enterkeyhint="send"
-			autocomplete="off"
-			:value="channel.pendingMessage"
-			:placeholder="getInputPlaceholder(channel)"
-			@input="setPendingMessage"
+			:data-placeholder="getInputPlaceholder(channel)"
 			@keypress.enter.exact.prevent="onSubmit"
 			@blur="onBlur"
 		/>
@@ -68,29 +69,19 @@
 
 <script lang="ts">
 import Mousetrap from "mousetrap";
-import {wrapCursor} from "undate";
 import autocompletion from "../js/autocompletion";
+import {RichInput, ChangeSource} from "../js/richinput/RichInput";
 import {commands} from "../js/commands/index";
 import socket from "../js/socket";
 import upload from "../js/upload";
 import eventbus from "../js/eventbus";
-import {watch, defineComponent, nextTick, onMounted, PropType, ref, onUnmounted} from "vue";
+import {watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
 import {ChanType} from "../../shared/types/chan";
 import type {TypingStatus} from "../../shared/types/typing";
 
 const TYPING_THROTTLE_MS = 3000;
-
-const formattingHotkeys = {
-	"mod+k": "\x03",
-	"mod+b": "\x02",
-	"mod+u": "\x1F",
-	"mod+i": "\x1D",
-	"mod+o": "\x0F",
-	"mod+s": "\x1e",
-	"mod+m": "\x11",
-};
 
 // Autocomplete bracket and quote characters like in a modern IDE
 // For example, select `text`, press `[` key, and it becomes `[text]`
@@ -115,9 +106,11 @@ export default defineComponent({
 	},
 	setup(props) {
 		const store = useStore();
-		const input = ref<HTMLTextAreaElement>();
+		const input = ref<HTMLDivElement>();
 		const uploadInput = ref<HTMLInputElement>();
 		const autocompletionRef = ref<ReturnType<typeof autocompletion>>();
+		// Formatting shortcuts (mod+b/i/u/s/m/o/k) live in the rich input
+		let richInput: RichInput | null = null;
 		let lastTypingSent = 0;
 		let typingPauseTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -131,28 +124,6 @@ export default defineComponent({
 		onUnmounted(() => {
 			clearTypingPauseTimeout();
 		});
-
-		const setInputSize = () => {
-			void nextTick(() => {
-				if (!input.value) {
-					return;
-				}
-
-				const style = window.getComputedStyle(input.value);
-				const lineHeight = parseFloat(style.lineHeight) || 1;
-
-				// Start by resetting height before computing as scrollHeight does not
-				// decrease when deleting characters
-				input.value.style.height = "";
-
-				// Use scrollHeight to calculate how many lines there are in input, and ceil the value
-				// because some browsers tend to incorrently round the values when using high density
-				// displays or using page zoom feature
-				input.value.style.height = `${
-					Math.ceil(input.value.scrollHeight / lineHeight) * lineHeight
-				}px`;
-			});
-		};
 
 		const sendTypingStatus = (status: TypingStatus) => {
 			if (store.state.settings.typing !== "on" || !store.state.isConnected) {
@@ -176,11 +147,15 @@ export default defineComponent({
 			socket.emit("typing", {target: props.channel.id, status});
 		};
 
-		const setPendingMessage = (e: Event) => {
-			const text = (e.target as HTMLInputElement).value;
+		const setPendingMessage = (source: ChangeSource) => {
+			// Values we put in ourselves (drafts, history) are not edits
+			if (!richInput || source === "set" || source === "colour" || source === "colour-end") {
+				return;
+			}
+
+			const text = richInput.getValue();
 			props.channel.pendingMessage = text;
 			props.channel.inputHistoryPosition = 0;
-			setInputSize();
 
 			// No need to send typing indicators for / commands
 			if (text.length > 0 && text[0] !== "/") {
@@ -239,8 +214,7 @@ export default defineComponent({
 
 			props.channel.inputHistoryPosition = 0;
 			props.channel.pendingMessage = "";
-			input.value.value = "";
-			setInputSize();
+			richInput?.setValue("", true);
 
 			// Store new message in history if last message isn't already equal
 			if (props.channel.inputHistory[1] !== text) {
@@ -310,13 +284,12 @@ export default defineComponent({
 
 			// Pre-fill with "nick: " so clients without +reply support
 			// can still see who the reply is directed at
-			if (!props.channel.pendingMessage && data.nick && input.value) {
+			if (!props.channel.pendingMessage && data.nick && richInput) {
 				props.channel.pendingMessage = data.nick + ": ";
-				input.value.value = props.channel.pendingMessage;
-				setInputSize();
+				richInput.setValue(props.channel.pendingMessage);
 			}
 
-			input.value?.focus();
+			richInput?.focus();
 		};
 
 		const blurInput = () => {
@@ -343,10 +316,19 @@ export default defineComponent({
 			}
 		);
 
+		// Show the draft of the channel we switched to, or a message set elsewhere
 		watch(
-			() => props.channel.pendingMessage,
-			() => {
-				setInputSize();
+			() => [props.channel.id, props.channel.pendingMessage] as const,
+			([id], [oldId]) => {
+				if (!richInput) {
+					return;
+				}
+
+				if (id !== oldId) {
+					richInput.setValue(props.channel.pendingMessage, true);
+				} else if (props.channel.pendingMessage !== richInput.getValue()) {
+					richInput.setValue(props.channel.pendingMessage);
+				}
 			}
 		);
 
@@ -354,66 +336,35 @@ export default defineComponent({
 			eventbus.on("escapekey", onEscape);
 			eventbus.on("reply:start", onReplyStart);
 
-			if (store.state.settings.autocomplete) {
-				if (!input.value) {
-					throw new Error("ChatInput autocomplete: input element is not available");
-				}
+			if (!input.value) {
+				throw new Error("ChatInput: input element is not available");
+			}
 
-				autocompletionRef.value = autocompletion(input.value);
+			const editor = new RichInput(input.value, {
+				wraps: bracketWraps,
+				isMenuOpen: () => store.state.isAutoCompleting,
+				onEnter: () => void onSubmit(),
+			});
+			richInput = editor;
+			editor.setValue(props.channel.pendingMessage, true);
+			editor.onChange(setPendingMessage);
+
+			if (store.state.settings.autocomplete) {
+				autocompletionRef.value = autocompletion(editor);
 			}
 
 			const inputTrap = Mousetrap(input.value);
 
-			inputTrap.bind(Object.keys(formattingHotkeys), function (e, key) {
-				const modifier = formattingHotkeys[key];
-
-				if (!e.target) {
-					return;
-				}
-
-				const target = e.target as HTMLTextAreaElement;
-				const hasSelection = target.selectionStart !== target.selectionEnd;
-
-				wrapCursor(target, modifier, hasSelection ? modifier : "");
-
-				if (hasSelection) {
-					// Let autocomplete see the cursor at the start of the wrapped
-					// selection, so the colour menu opens there and not at its end
-					const {selectionStart, selectionEnd} = target;
-					target.setSelectionRange(selectionStart, selectionStart);
-					target.dispatchEvent(new Event("input"));
-					target.setSelectionRange(selectionStart, selectionEnd);
-				}
-
-				return false;
-			});
-
-			inputTrap.bind(Object.keys(bracketWraps), function (e, key) {
-				if (
-					(e.target as HTMLTextAreaElement)?.selectionStart !==
-					(e.target as HTMLTextAreaElement).selectionEnd
-				) {
-					wrapCursor(e.target as HTMLTextAreaElement, key, bracketWraps[key]);
-
-					return false;
-				}
-			});
-
 			inputTrap.bind(["up", "down"], (e, key) => {
-				if (
-					store.state.isAutoCompleting ||
-					(e.target as HTMLTextAreaElement).selectionStart !==
-						(e.target as HTMLTextAreaElement).selectionEnd ||
-					!input.value
-				) {
+				const {start, end} = editor.getSelection();
+
+				if (store.state.isAutoCompleting || start !== end) {
 					return;
 				}
 
-				const onRow = (
-					input.value.value.slice(undefined, input.value.selectionStart).match(/\n/g) ||
-					[]
-				).length;
-				const totalRows = (input.value.value.match(/\n/g) || []).length;
+				const text = editor.getText();
+				const onRow = (text.slice(undefined, start).match(/\n/g) || []).length;
+				const totalRows = (text.match(/\n/g) || []).length;
 
 				const {channel} = props;
 
@@ -438,8 +389,7 @@ export default defineComponent({
 				}
 
 				channel.pendingMessage = channel.inputHistory[channel.inputHistoryPosition];
-				input.value.value = channel.pendingMessage;
-				setInputSize();
+				editor.setValue(channel.pendingMessage);
 
 				return false;
 			});
@@ -458,6 +408,9 @@ export default defineComponent({
 				autocompletionRef.value = undefined;
 			}
 
+			richInput?.destroy();
+			richInput = null;
+
 			upload.unmounted();
 			upload.abort();
 		});
@@ -470,11 +423,9 @@ export default defineComponent({
 			openFileUpload,
 			blurInput,
 			onBlur,
-			setInputSize,
 			upload,
 			getInputPlaceholder,
 			onSubmit,
-			setPendingMessage,
 			cancelReply,
 		};
 	},

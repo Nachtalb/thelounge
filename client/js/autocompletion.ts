@@ -1,8 +1,9 @@
 import constants from "./constants";
 
 import Mousetrap from "mousetrap";
-import {Textcomplete, StrategyProps, SearchResult} from "@textcomplete/core";
-import {TextareaEditor} from "@textcomplete/textarea";
+import {Textcomplete, StrategyProps} from "@textcomplete/core";
+import {RichInput} from "./richinput/RichInput";
+import {RichInputEditor} from "./richinput/textcompleteEditor";
 
 import fuzzy from "fuzzy";
 
@@ -83,13 +84,16 @@ const commandStrategy: StrategyProps = {
 	index: 1,
 };
 
+// "None" (the IRC default colour 99) removes the colour again
+const colorChoices = [["99", "None"], ...constants.colorCodeMap];
+
 const foregroundColorStrategy: StrategyProps = {
 	id: "foreground-colors",
 	match: /\x03(\d{0,2}|[A-Za-z ]{0,10})$/,
 	search(term: string, callback: (matches: string[][]) => void) {
 		term = term.toLowerCase();
 
-		const matchingColorCodes = constants.colorCodeMap
+		const matchingColorCodes = colorChoices
 			.filter((i) => fuzzy.test(term, i[0]) || fuzzy.test(term, i[1]))
 			.map((i) => {
 				if (fuzzy.test(term, i[1])) {
@@ -121,7 +125,7 @@ const backgroundColorStrategy: StrategyProps = {
 	match: /\x03(\d{2}),(\d{0,2}|[A-Za-z ]{0,10})$/,
 	search(term: string, callback: (matchingColorCodes: string[][]) => void, match: string[]) {
 		term = term.toLowerCase();
-		const matchingColorCodes = constants.colorCodeMap
+		const matchingColorCodes = colorChoices
 			.filter((i) => fuzzy.test(term, i[0]) || fuzzy.test(term, i[1]))
 			.map((pair) => {
 				if (fuzzy.test(term, pair[1])) {
@@ -152,7 +156,9 @@ const backgroundColorStrategy: StrategyProps = {
 	index: 2,
 };
 
-function enableAutocomplete(input: HTMLTextAreaElement) {
+function enableAutocomplete(richInput: RichInput) {
+	const input = richInput.el;
+
 	let tabCount = 0;
 	let lastMatch = "";
 	let currentMatches: string[] | string[][] = [];
@@ -176,10 +182,11 @@ function enableAutocomplete(input: HTMLTextAreaElement) {
 
 			e.preventDefault();
 
-			const text = input.value;
+			const text = richInput.getText();
+			const caret = richInput.getSelection().end;
 
 			if (tabCount === 0) {
-				lastMatch = text.substring(0, input.selectionStart).split(/\s/).pop() || "";
+				lastMatch = text.substring(0, caret).split(/\s/).pop() || "";
 
 				if (lastMatch.length === 0) {
 					return;
@@ -192,25 +199,15 @@ function enableAutocomplete(input: HTMLTextAreaElement) {
 				}
 			}
 
-			const position = input.selectionStart - lastMatch.length;
+			const position = caret - lastMatch.length;
 			const newMatch = replaceNick(
 				// TODO: type this properly
 				String(currentMatches[tabCount % currentMatches.length]),
 				position
 			);
-			const remainder = text.substring(input.selectionStart);
 
-			input.value = text.substr(0, position) + newMatch + remainder;
-
-			input.selectionStart -= remainder.length;
-			input.selectionEnd = input.selectionStart;
-
-			// Propagate change to Vue model
-			input.dispatchEvent(
-				new CustomEvent("input", {
-					detail: "autocomplete",
-				})
-			);
+			// Fires an "input" event with detail "autocomplete"
+			richInput.replaceRange(position, caret, newMatch, "autocomplete");
 
 			lastMatch = newMatch;
 			tabCount++;
@@ -227,21 +224,7 @@ function enableAutocomplete(input: HTMLTextAreaElement) {
 		backgroundColorStrategy,
 	];
 
-	// TextareaEditor ignores the chosen item while text is selected (e.g. after
-	// a formatting shortcut wrapped the selection), so apply it at the start of
-	// the selection and keep the selection
-	class ChatInputEditor extends TextareaEditor {
-		applySearchResult(searchResult: SearchResult) {
-			const {selectionStart, selectionEnd} = input;
-			input.setSelectionRange(selectionStart, selectionStart);
-			super.applySearchResult(searchResult);
-
-			const start = input.selectionStart;
-			input.setSelectionRange(start, start + selectionEnd - selectionStart);
-		}
-	}
-
-	const editor = new ChatInputEditor(input);
+	const editor = new RichInputEditor(richInput);
 	const textcomplete = new Textcomplete(editor, strategies, {
 		dropdown: {
 			className: "textcomplete-menu",

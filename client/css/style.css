@@ -2718,17 +2718,32 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	background: transparent;
 	border: none;
 	font: inherit;
-	min-height: 19px; /* Required when computing input height at char deletion */
-	height: 19px;
-	max-height: 95px; /* min-height/height x number of lines maximum */
-	line-height: 19px; /* should match height */
+	min-height: 19px;
+	max-height: 95px; /* min-height x number of lines maximum */
+	line-height: 19px;
 	outline: none;
 	margin: 5px;
 	padding: 0;
-	resize: none;
-	flex: 1 0 auto;
+	flex: 1 1 0;
+	min-width: 0;
 	align-self: center;
 	touch-action: pan-y;
+	overflow-y: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	cursor: text;
+}
+
+#form #input:empty::before {
+	content: attr(data-placeholder);
+	color: var(--chat-placeholder-color);
+	pointer-events: none;
+}
+
+/* Keep formatted text at the input's line height */
+#form #input .irc-monospace {
+	padding-top: 0;
+	padding-bottom: 0;
 }
 
 #form #upload-input {
