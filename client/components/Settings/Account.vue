@@ -113,6 +113,7 @@ import Session from "../Session.vue";
 import SettingCard from "./SettingCard.vue";
 import {computed, defineComponent, onMounted, ref} from "vue";
 import {useStore} from "../../js/store";
+import useUnsavedChanges from "../../js/hooks/use-unsaved-changes";
 
 export default defineComponent({
 	name: "UserSettings",
@@ -139,6 +140,11 @@ export default defineComponent({
 		const old_password = ref("");
 		const new_password = ref("");
 		const verify_password = ref("");
+
+		// The password form is the one part of Settings that isn't saved as you type
+		useUnsavedChanges(
+			() => !!(old_password.value || new_password.value || verify_password.value)
+		);
 
 		const currentSession = computed(() => {
 			return store.state.sessions.find((item) => item.current);

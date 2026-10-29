@@ -8,6 +8,8 @@ import {defineComponent, ref} from "vue";
 import socket from "../../js/socket";
 import {useStore} from "../../js/store";
 import NetworkForm, {NetworkFormDefaults} from "../NetworkForm.vue";
+import useUnsavedChanges from "../../js/hooks/use-unsaved-changes";
+import isFormDirty from "../../js/helpers/isFormDirty";
 
 export default defineComponent({
 	name: "Connect",
@@ -106,6 +108,10 @@ export default defineComponent({
 				parseOverrideParams(props.queryParams)
 			)
 		);
+
+		// Escape asks before discarding the form once it differs from what it opened with
+		const initialDefaults = {...defaults.value};
+		useUnsavedChanges(() => !disabled.value && isFormDirty(initialDefaults, defaults.value));
 
 		return {
 			defaults,

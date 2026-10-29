@@ -608,6 +608,19 @@
 
 			<div class="help-item">
 				<div class="subject">
+					<code>/help [topic]</code>
+				</div>
+				<div class="description">
+					<p>
+						Open this help window. With a <code>topic</code>, ask the IRC server for
+						help on it instead and switch to the network lobby, where the answer
+						appears.
+					</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
 					<code>/invite nick [channel]</code>
 				</div>
 				<div class="description">
@@ -732,6 +745,15 @@
 
 			<div class="help-item">
 				<div class="subject">
+					<code>/network</code>
+				</div>
+				<div class="description">
+					<p>Open the form to connect to a new network.</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
 					<code>/nick newnick</code>
 				</div>
 				<div class="description">
@@ -840,6 +862,15 @@
 				</div>
 				<div class="description">
 					<p>Search for messages in the current channel / user</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
+					<code>/settings</code>
+				</div>
+				<div class="description">
+					<p>Open the settings window.</p>
 				</div>
 			</div>
 
