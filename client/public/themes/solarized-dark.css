@@ -192,7 +192,7 @@
 	/* Overlays, context menus, image viewer */
 	--overlay-bg-color: rgb(0 0 0 / 50%);
 	--menu-color: #839496;
-	--menu-bg-color: #073642;
+	--menu-bg-color: #002b36;
 	--menu-border-color: #073642;
 	--menu-shadow-color: var(--shadow-color);
 	--menu-divider-color: #073642;
