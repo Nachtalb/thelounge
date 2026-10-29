@@ -21,7 +21,7 @@
 		<SettingCard title="Emoji style" title-id="emoji-style-title">
 			<EmojiStylePicker
 				:options="emojiStyleOptions"
-				:model-value="store.state.settings.emojiStyle"
+				:model-value="emojiStyle"
 				labelledby="emoji-style-title"
 				@update:model-value="setEmojiStyle"
 			/>
@@ -207,7 +207,7 @@ import {useStore} from "../../js/store";
 import SettingCard from "./SettingCard.vue";
 import SettingToggle from "./SettingToggle.vue";
 import EmojiStylePicker from "./EmojiStylePicker.vue";
-import {emojiImageSets} from "../../js/helpers/emoji";
+import {availableEmojiSets, emojiStyle} from "../../js/helpers/emoji";
 
 export default defineComponent({
 	name: "AppearanceSettings",
@@ -230,10 +230,11 @@ export default defineComponent({
 			store,
 			previewFiltersText,
 			previewFiltersLint,
-			emojiStyleOptions: [
-				...emojiImageSets.map((set) => ({id: set.name, name: set.label})),
+			emojiStyleOptions: computed(() => [
+				...availableEmojiSets.value.map(({id, name}) => ({id, name})),
 				{id: "native", name: "Native (system font)"},
-			],
+			]),
+			emojiStyle,
 			setEmojiStyle: (value: string) =>
 				store.dispatch("settings/update", {name: "emojiStyle", value, sync: true}),
 		};

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import log from "../server/log";
 import Config from "../server/config";
 import {expect, vi} from "vitest";
@@ -52,6 +54,68 @@ describe("Server", function () {
 			expect(response.statusCode).to.equal(200);
 			expect(response.body).to.include("<title>The Lounge</title>");
 			expect(response.body).to.include('type="module"');
+		});
+
+		it("should serve installed emoji sets, falling back per emoji", async () => {
+			const emojiHome = path.join(Config.getHomePath(), "emoji");
+			const url = (set: string, file: string) => `${webURL}img/emoji/${set}/${file}`;
+			const get = (set: string, file: string) =>
+				got(url(set, file), {throwHttpErrors: false, responseType: "buffer"});
+
+			const writeSet = (id: string, format: string, images: Record<string, string>) => {
+				fs.mkdirSync(path.join(emojiHome, id), {recursive: true});
+				fs.writeFileSync(
+					path.join(emojiHome, id, "set.json"),
+					JSON.stringify({name: id, license: "MIT", scheme: "codepoints", format})
+				);
+
+				for (const [name, data] of Object.entries(images)) {
+					fs.writeFileSync(path.join(emojiHome, id, name), data);
+				}
+			};
+
+			expect((await get("mine", "1f600.png")).statusCode).to.equal(404);
+
+			writeSet("mine", "png", {
+				"1f600.png": "png",
+				"2764.png": "heart",
+				"0023-20e3.png": "#",
+			});
+			writeSet("vector", "svg", {"1f600.svg": "<svg/>"});
+
+			try {
+				const response = await get("mine", "1f600.png");
+				expect(response.body.toString()).to.equal("png");
+				expect(response.headers["content-type"]).to.equal("image/png");
+				expect(response.headers["cache-control"]).to.equal("public, max-age=86400");
+
+				// emoji-datasource names with U+FE0F hit the normalised files
+				expect((await get("mine", "2764-fe0f.png")).body.toString()).to.equal("heart");
+				expect((await get("mine", "0023-fe0f-20e3.png")).body.toString()).to.equal("#");
+
+				// Not in the set: the bundled Google image
+				const bundled = await got(url("google", "1f1e8-1f1ed.png"), {
+					responseType: "buffer",
+				});
+				const fallback = await get("mine", "1f1e8-1f1ed.png");
+				expect(fallback.statusCode).to.equal(200);
+				expect(fallback.headers["content-type"]).to.equal("image/png");
+				expect(fallback.body.equals(bundled.body)).to.equal(true);
+				expect(bundled.headers["cache-control"]).to.equal("public, max-age=86400");
+
+				const svg = await get("vector", "1f600.png");
+				expect(svg.body.toString()).to.equal("<svg/>");
+				expect(svg.headers["content-type"]).to.match(/^image\/svg\+xml/);
+				expect(svg.headers["content-security-policy"]).to.equal(
+					"default-src 'none'; style-src 'unsafe-inline'"
+				);
+
+				expect((await get("mine", "set.json")).statusCode).to.equal(404);
+				expect((await get("mine", "zzzz.png")).statusCode).to.equal(404);
+				expect((await get("nope", "1f600.png")).statusCode).to.equal(404);
+			} finally {
+				fs.rmSync(emojiHome, {recursive: true, force: true});
+			}
 		});
 
 		it("should serve static content correctly", async () => {
@@ -168,6 +232,11 @@ describe("Server", function () {
 					expect(data.themes).to.be.an("array");
 					expect(data.lockNetwork).to.equal(false);
 					expect(data.useHexIp).to.equal(false);
+					expect(data.emojiSets.map((set: {id: string}) => set.id)).to.deep.equal([
+						"google",
+						"twitter",
+					]);
+					expect(data.emojiDefaultStyle).to.equal("google");
 
 					resolve();
 				});

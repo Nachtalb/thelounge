@@ -1,30 +1,66 @@
 // Emoji detection based on emoji-js (iamcal/js-emoji) and its emoji-datasource
 // data, and the self-hosted emoji images copied to public/img/emoji/ at build time.
 import EmojiConvertor from "emoji-js";
-import {ref} from "vue";
+import {computed, ref} from "vue";
+import type {EmojiSetInfo} from "../../../shared/types/config";
 
-// Image sets shipped with The Lounge. Only sets whose images may be
-// redistributed: Apple's and Facebook's are not freely licensed.
-// `credit` is the attribution their licences require, shown in Help.
-export const emojiImageSets = [
+// Image sets of the server (serverConfiguration.emojiSets): Google and Twitter
+// are bundled, others were installed by its operator (`thelounge emoji install`)
+// and are served from the same img/emoji/<id>/ path. The server falls back to a
+// bundled image for emoji an installed set has no image for.
+export const bundledEmojiSets: EmojiSetInfo[] = [
 	{
-		name: "google",
-		label: "Google (Noto Emoji)",
+		id: "google",
+		name: "Google (Noto Emoji)",
+		license: "Apache-2.0",
+		bundled: true,
 		credit: "Noto Emoji by Google, Apache License 2.0",
 		creditUrl: "https://github.com/googlefonts/noto-emoji",
 	},
 	{
-		name: "twitter",
-		label: "Twitter (Twemoji)",
+		id: "twitter",
+		name: "Twitter (Twemoji)",
+		license: "CC-BY-4.0",
+		bundled: true,
 		credit: "Twemoji graphics by Twitter, Inc and other contributors, CC-BY 4.0",
 		creditUrl: "https://github.com/jdecked/twemoji",
 	},
-] as const;
+];
 
-export type EmojiStyle = "native" | typeof emojiImageSets[number]["name"];
+// "native" or the id of an image set
+export type EmojiStyle = string;
 
-// Current Settings > Appearance > Emoji style; a ref so renders depending on it update
-export const emojiStyle = ref<EmojiStyle>("google");
+// Image sets and default style of the server
+export const emojiServer = ref<{sets: EmojiSetInfo[]; defaultStyle: string}>({
+	sets: bundledEmojiSets,
+	defaultStyle: "google",
+});
+
+export const availableEmojiSets = computed(() => emojiServer.value.sets);
+
+function isAvailable(style: string) {
+	return style === "native" || emojiServer.value.sets.some((set) => set.id === style);
+}
+
+// Settings > Appearance > Emoji style, "" for the server default
+export const emojiSetting = ref<string>("");
+
+// Style in use: the setting if this server has it, else the server default.
+// Computed, so renders depending on it update.
+export const emojiStyle = computed<EmojiStyle>({
+	get() {
+		for (const style of [emojiSetting.value, emojiServer.value.defaultStyle]) {
+			if (isAvailable(style)) {
+				return style;
+			}
+		}
+
+		return "google";
+	},
+	set(style) {
+		emojiSetting.value = style;
+	},
+});
 
 const convertor = new EmojiConvertor();
 convertor.init_unified();
@@ -93,7 +129,7 @@ export function findEmojiMatches(text: string): EmojiMatch[] {
 
 // Same-origin image URL for an emoji in the given style, or null to render it natively
 export function emojiImageUrl(image: string | null, style: EmojiStyle = emojiStyle.value) {
-	if (!image || !emojiImageSets.some((set) => set.name === style)) {
+	if (!image || style === "native" || !isAvailable(style)) {
 		return null;
 	}
 

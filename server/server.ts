@@ -31,6 +31,12 @@ themes.loadLocalThemes();
 import packages from "./plugins/packages/index";
 import {NetworkWithIrcFramework} from "./models/network";
 import Utils from "./command-line/utils";
+import {
+	availableEmojiSets,
+	defaultEmojiStyle,
+	emojiSetRequest,
+	watchEmojiSets,
+} from "./plugins/emoji";
 import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
@@ -100,6 +106,10 @@ export default async function (
 		.use(express.static(Utils.getFileFromRelativeToRoot("public"), staticOptions))
 		.use("/storage/", express.static(Config.getStoragePath(), staticOptions))
 		.get("/preview-cache/:hash", (req, res) => void routeCachedImage(req, res));
+
+	// Operator-installed emoji sets (`thelounge emoji install`), next to the
+	// bundled ones in public/img/emoji/
+	app.get("/img/emoji/:set/:file", emojiSetRequest);
 
 	if (Config.values.fileUpload.enable) {
 		Uploader.router(app);
@@ -242,6 +252,9 @@ export default async function (
 				socket.emit("auth:start", serverHash);
 			}
 		});
+
+		// `thelounge emoji install`/`remove` while running: update open pages too
+		watchEmojiSets((sets, defaultStyle) => sockets.emit("emoji:sets", {sets, defaultStyle}));
 
 		manager = new ClientManager();
 		packages.loadPackages();
@@ -975,6 +988,8 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 		gitCommit: Helper.getGitCommit(),
 		themes: themes.getAll(),
 		defaultTheme: Config.values.theme,
+		emojiSets: availableEmojiSets(),
+		emojiDefaultStyle: defaultEmojiStyle(),
 		public: Config.values.public,
 		useHexIp: Config.values.useHexIp,
 		prefetch: Config.values.prefetch,

@@ -3,6 +3,19 @@ export type ConfigTheme = {
 	name: string;
 	themeColor: string | null;
 };
+// An emoji image set clients can pick (bundled, or installed by the operator)
+export type EmojiSetInfo = {
+	id: string;
+	name: string;
+	license: string;
+	bundled: boolean;
+	// Attribution its licence requires, shown in Help > About (with a link to creditUrl)
+	credit?: string;
+	creditUrl?: string;
+	source?: string;
+	version?: string;
+};
+
 type SharedConfigurationBase = {
 	public: boolean;
 	useHexIp: boolean;
@@ -15,6 +28,8 @@ type SharedConfigurationBase = {
 	gitCommit: string | null;
 	themes: ConfigTheme[];
 	defaultTheme: string;
+	emojiSets: EmojiSetInfo[];
+	emojiDefaultStyle: string;
 	fileUploadMaxFileSize?: number;
 };
 

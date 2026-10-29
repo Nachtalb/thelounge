@@ -1,6 +1,6 @@
 import socket from "./socket";
 import type {TypedStore} from "./store";
-import {emojiStyle, EmojiStyle} from "./helpers/emoji";
+import {emojiSetting} from "./helpers/emoji";
 
 const defaultSettingConfig = {
 	apply() {},
@@ -94,9 +94,10 @@ const defaultConfig = {
 		default: "condensed",
 	},
 	emojiStyle: {
-		default: "google",
-		apply(store: TypedStore, value: EmojiStyle) {
-			emojiStyle.value = value;
+		// "" = the server's emojiDefaultStyle
+		default: "",
+		apply(store: TypedStore, value: string) {
+			emojiSetting.value = value;
 		},
 	},
 	theme: {

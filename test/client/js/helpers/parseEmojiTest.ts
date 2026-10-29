@@ -3,7 +3,14 @@ import {expect, vi} from "vitest";
 import {h} from "vue";
 import {mount} from "@vue/test-utils";
 import ParsedMessage from "../../../../client/components/ParsedMessage.vue";
-import {emojiStyle} from "../../../../client/js/helpers/emoji";
+import {
+	bundledEmojiSets,
+	emojiServer,
+	emojiSetting,
+	emojiStyle,
+} from "../../../../client/js/helpers/emoji";
+
+const installed = (id: string) => ({id, name: id, license: "x", bundled: false});
 
 // The nick and channel components pull in the store and its socket
 vi.mock("../../../../client/js/socket", () => ({default: {on() {}, emit() {}}}));
@@ -16,6 +23,7 @@ function render(text: string, message?: any) {
 describe("emoji images in messages", () => {
 	afterEach(() => {
 		emojiStyle.value = "google";
+		emojiServer.value = {sets: bundledEmojiSets, defaultStyle: "google"};
 	});
 
 	it("renders emoji as same-origin images and keeps the emoji as text", () => {
@@ -36,6 +44,42 @@ describe("emoji images in messages", () => {
 		const span = render("🇨🇭").querySelector(".emoji-img") as HTMLElement;
 
 		expect(span.style.backgroundImage).to.equal('url("img/emoji/twitter/1f1e8-1f1ed.png")');
+	});
+
+	it("uses an installed set only when the server has it", () => {
+		const image = () =>
+			(render("🇨🇭").querySelector(".emoji-img") as HTMLElement).style.backgroundImage;
+
+		emojiStyle.value = "apple";
+		expect(image()).to.equal('url("img/emoji/google/1f1e8-1f1ed.png")');
+
+		emojiServer.value = {sets: bundledEmojiSets, defaultStyle: "twitter"};
+		expect(image()).to.equal('url("img/emoji/twitter/1f1e8-1f1ed.png")');
+
+		emojiServer.value = {
+			sets: [...bundledEmojiSets, installed("apple")],
+			defaultStyle: "google",
+		};
+		expect(image()).to.equal('url("img/emoji/apple/1f1e8-1f1ed.png")');
+
+		emojiStyle.value = "fluent-3d";
+		emojiServer.value = {
+			sets: [...bundledEmojiSets, installed("fluent-3d")],
+			defaultStyle: "google",
+		};
+		expect(image()).to.equal('url("img/emoji/fluent-3d/1f1e8-1f1ed.png")');
+	});
+
+	it("uses the server default style until one is picked", () => {
+		emojiSetting.value = "";
+		emojiServer.value = {
+			sets: [...bundledEmojiSets, installed("openmoji")],
+			defaultStyle: "openmoji",
+		};
+		expect(emojiStyle.value).to.equal("openmoji");
+
+		emojiServer.value = {sets: bundledEmojiSets, defaultStyle: "native"};
+		expect(emojiStyle.value).to.equal("native");
 	});
 
 	it("renders native emoji with the native style", () => {

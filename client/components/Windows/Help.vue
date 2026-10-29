@@ -971,9 +971,9 @@
 </template>
 
 <script lang="ts">
-import {defineComponent, ref} from "vue";
+import {computed, defineComponent, ref} from "vue";
 import {useStore} from "../../js/store";
-import {emojiImageSets} from "../../js/helpers/emoji";
+import {availableEmojiSets} from "../../js/helpers/emoji";
 import SidebarToggle from "../SidebarToggle.vue";
 import VersionChecker from "../VersionChecker.vue";
 
@@ -988,8 +988,14 @@ export default defineComponent({
 		const isApple = navigator.platform.match(/(Mac|iPhone|iPod|iPad)/i) || false;
 		const isTouch = navigator.maxTouchPoints > 0;
 
-		// Attribution the licences of the emoji image sets require
-		const emojiCredits = emojiImageSets;
+		// Attribution the licences of the bundled and installed emoji sets require,
+		// once per credit (the Fluent variants share one)
+		const emojiCredits = computed(() =>
+			availableEmojiSets.value.filter(
+				(set, i, sets) =>
+					set.credit && sets.findIndex((other) => other.credit === set.credit) === i
+			)
+		);
 
 		return {
 			isApple,
