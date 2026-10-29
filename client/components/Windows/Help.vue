@@ -85,6 +85,22 @@
 						>Report an issue…</a
 					>
 				</p>
+
+				<div v-if="emojiCredits.length" class="emoji-credits">
+					<h3>Emoji credits</h3>
+					<ul>
+						<li v-for="set in emojiCredits" :key="set.credit">
+							<a
+								v-if="set.creditUrl"
+								:href="set.creditUrl"
+								target="_blank"
+								rel="noopener"
+								>{{ set.credit }}</a
+							>
+							<template v-else>{{ set.credit }}</template>
+						</li>
+					</ul>
+				</div>
 			</div>
 
 			<h2 v-if="isTouch">Gestures</h2>
@@ -957,6 +973,7 @@
 <script lang="ts">
 import {defineComponent, ref} from "vue";
 import {useStore} from "../../js/store";
+import {emojiImageSets} from "../../js/helpers/emoji";
 import SidebarToggle from "../SidebarToggle.vue";
 import VersionChecker from "../VersionChecker.vue";
 
@@ -971,10 +988,14 @@ export default defineComponent({
 		const isApple = navigator.platform.match(/(Mac|iPhone|iPod|iPad)/i) || false;
 		const isTouch = navigator.maxTouchPoints > 0;
 
+		// Attribution the licences of the emoji image sets require
+		const emojiCredits = emojiImageSets;
+
 		return {
 			isApple,
 			isTouch,
 			store,
+			emojiCredits,
 		};
 	},
 });

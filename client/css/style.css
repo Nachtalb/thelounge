@@ -2539,6 +2539,18 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	justify-content: space-between;
 }
 
+#help .emoji-credits h3 {
+	margin: 15px 0 5px;
+	font-size: 14px;
+}
+
+#help .emoji-credits ul {
+	margin: 0;
+	padding-left: 20px;
+	color: var(--body-color-muted);
+	font-size: 13px;
+}
+
 #help .help-item {
 	display: table-row;
 	font-size: 14px;
@@ -2886,9 +2898,103 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	line-height: 1;
 }
 
+/* Emoji image (Settings > Appearance > Emoji style). The emoji stays as transparent text
+   on top of the image, so it can be selected and copied; the fixed box avoids layout jumps. */
+.emoji-img {
+	display: inline-block;
+	width: 1.3em;
+	height: 1.3em;
+	margin: 0 0.05em;
+	overflow: hidden;
+	font-size: inherit;
+	line-height: 1.3em;
+	vertical-align: -0.3em;
+	white-space: nowrap;
+	-webkit-text-fill-color: transparent;
+	background: no-repeat center / contain;
+}
+
 .textcomplete-item .emoji {
 	width: 32px;
 	text-align: center;
+}
+
+.textcomplete-item .emoji-img {
+	width: 1.3em;
+	margin: 0 calc((32px - 1.3em) / 2);
+}
+
+/* Settings > Appearance > Emoji style: a select whose options show their own smiley */
+.emoji-style-picker {
+	position: relative;
+}
+
+.emoji-style-combobox {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	user-select: none;
+}
+
+.emoji-style-combobox::after {
+	content: "";
+	flex: none;
+	width: 10px;
+	height: 6px;
+	margin: 0 -7px 2px auto;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.emoji-style-list {
+	position: absolute;
+	z-index: 10;
+	top: 100%;
+	left: 0;
+	right: 0;
+	max-height: 300px;
+	margin: 0;
+	padding: 4px 0;
+	overflow-y: auto;
+	list-style: none;
+	font-size: 14px;
+	color: var(--menu-color);
+	background-color: var(--menu-bg-color);
+	border: 1px solid var(--input-border-color);
+	border-radius: 2px;
+	box-shadow: 0 3px 12px var(--menu-shadow-color);
+}
+
+.emoji-style-list li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	cursor: pointer;
+}
+
+.emoji-style-list li.active {
+	background-color: var(--menu-hover-bg-color);
+}
+
+.emoji-style-list li[aria-selected="true"] {
+	font-weight: bold;
+}
+
+.emoji-style-preview {
+	flex: none;
+	width: 20px;
+	height: 20px;
+	font-size: 17px;
+	line-height: 20px;
+	text-align: center;
+}
+
+.emoji-style-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* Colour completions fill the whole row with the colour; the text colour is picked in JS */

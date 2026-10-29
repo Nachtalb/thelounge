@@ -1,5 +1,30 @@
-// Emoji detection based on emoji-js (iamcal/js-emoji) and its emoji-datasource data
+// Emoji detection based on emoji-js (iamcal/js-emoji) and its emoji-datasource
+// data, and the self-hosted emoji images copied to public/img/emoji/ at build time.
 import EmojiConvertor from "emoji-js";
+import {ref} from "vue";
+
+// Image sets shipped with The Lounge. Only sets whose images may be
+// redistributed: Apple's and Facebook's are not freely licensed.
+// `credit` is the attribution their licences require, shown in Help.
+export const emojiImageSets = [
+	{
+		name: "google",
+		label: "Google (Noto Emoji)",
+		credit: "Noto Emoji by Google, Apache License 2.0",
+		creditUrl: "https://github.com/googlefonts/noto-emoji",
+	},
+	{
+		name: "twitter",
+		label: "Twitter (Twemoji)",
+		credit: "Twemoji graphics by Twitter, Inc and other contributors, CC-BY 4.0",
+		creditUrl: "https://github.com/jdecked/twemoji",
+	},
+] as const;
+
+export type EmojiStyle = "native" | typeof emojiImageSets[number]["name"];
+
+// Current Settings > Appearance > Emoji style; a ref so renders depending on it update
+export const emojiStyle = ref<EmojiStyle>("google");
 
 const convertor = new EmojiConvertor();
 convertor.init_unified();
@@ -64,4 +89,24 @@ export function findEmojiMatches(text: string): EmojiMatch[] {
 	}
 
 	return result;
+}
+
+// Same-origin image URL for an emoji in the given style, or null to render it natively
+export function emojiImageUrl(image: string | null, style: EmojiStyle = emojiStyle.value) {
+	if (!image || !emojiImageSets.some((set) => set.name === style)) {
+		return null;
+	}
+
+	return `img/emoji/${style}/${image}.png`;
+}
+
+// Image for a single emoji string (e.g. an autocomplete result)
+export function emojiImageFor(emoji: string, style: EmojiStyle = emojiStyle.value) {
+	const [match] = findEmojiMatches(emoji);
+
+	if (!match || match.start !== 0 || match.end !== emoji.length) {
+		return null;
+	}
+
+	return emojiImageUrl(match.image, style);
 }

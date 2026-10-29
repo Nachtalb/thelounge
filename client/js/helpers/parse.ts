@@ -6,6 +6,7 @@ import parseStyle from "./ircmessageparser/parseStyle";
 import findChannels from "./ircmessageparser/findChannels";
 import {findLinks} from "../../../shared/linkify";
 import findEmoji from "./ircmessageparser/findEmoji";
+import {emojiImageUrl} from "./emoji";
 import findNames from "./ircmessageparser/findNames";
 import merge, {MergedParts} from "./ircmessageparser/merge";
 import emojiMap from "./fullnamemap.json";
@@ -205,10 +206,15 @@ function parseLine(text: string, message?: ClientMessage, network?: ClientNetwor
 				? `Emoji: ${emojiMap[emojiWithoutModifiers]}`
 				: null;
 
+			const image = emojiImageUrl(textPart.image);
+
+			// The emoji stays in the DOM as (invisible) text over the image, so
+			// selecting and copying the message copies the emoji itself
 			return createElement(
 				"span",
 				{
-					class: ["emoji"],
+					class: image ? ["emoji", "emoji-img"] : ["emoji"],
+					style: image ? {backgroundImage: `url("${image}")`} : undefined,
 					role: "img",
 					"aria-label": title,
 					title: title,

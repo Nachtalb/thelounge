@@ -8,6 +8,7 @@ import {RichInputEditor} from "./richinput/textcompleteEditor";
 import fuzzy from "fuzzy";
 
 import emojiMap from "./helpers/simplemap.json";
+import {emojiImageFor} from "./helpers/emoji";
 import readableTextColor from "./helpers/readableTextColor";
 import {store} from "./store";
 import {ChanType} from "../../shared/types/chan";
@@ -25,7 +26,7 @@ const emojiStrategy: StrategyProps = {
 		callback(fuzzyGrep(term, emojiSearchTerms));
 	},
 	template([string, original]: [string, string]) {
-		return `<span class="emoji">${String(emojiMap[original])}</span> ${string}`;
+		return `${emojiHtml(String(emojiMap[original]))} ${string}`;
 	},
 	replace([, original]: [string, string]) {
 		return "$1" + String(emojiMap[original]);
@@ -87,6 +88,17 @@ const commandStrategy: StrategyProps = {
 
 // "None" (the IRC default colour 99) removes the colour again
 const colorChoices = [["99", "None"], ...constants.colorCodeMap];
+
+// Emoji completions show the emoji in the chosen emoji style
+function emojiHtml(emoji: string) {
+	const image = emojiImageFor(emoji);
+
+	if (!image) {
+		return `<span class="emoji">${emoji}</span>`;
+	}
+
+	return `<span class="emoji emoji-img" style="background-image: url('${image}')">${emoji}</span>`;
+}
 
 // Colour completions are swatches: the colour as background, with black or white
 // text, whichever is more readable on it. Themes recolour 0-15 (and foreground and
