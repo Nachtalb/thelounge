@@ -1,6 +1,8 @@
 import * as cheerio from "cheerio";
 import type {Element} from "domhandler";
 import got from "got";
+import type {Request, Response} from "express";
+import fs from "fs";
 import {URL} from "url";
 import mime from "mime-types";
 import contentDisposition from "content-disposition";
@@ -9,8 +11,10 @@ import path from "path";
 import log from "../../log";
 import Config from "../../config";
 import {findLinksWithSchema} from "../../../shared/linkify";
-import {LinkPreview} from "../../../shared/types/msg";
+import {cleanIrcMessage} from "../../../shared/irc";
+import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
+import previewCache from "../previewCache";
 import Client from "../../client";
 import Chan from "../../models/chan";
 import Msg from "../../models/msg";
@@ -24,8 +28,17 @@ type FetchRequest = {
 const currentFetchPromises = new Map<string, Promise<FetchRequest>>();
 const imageTypeRegex = /^image\/.+/;
 const mediaTypeRegex = /^(audio|video)\/.+/;
+const backfilled = new WeakSet<Msg>();
+const backfillQueue: (() => Promise<void>)[] = [];
+let backfillRunning = 0;
 
-export default function (client: Client, chan: Chan, msg: Msg, cleanText: string) {
+export default function prefetch(
+	client: Client,
+	chan: Chan,
+	msg: Msg,
+	cleanText: string,
+	queued = false
+) {
 	if (!Config.values.prefetch) {
 		return;
 	}
@@ -59,7 +72,56 @@ export default function (client: Client, chan: Chan, msg: Msg, cleanText: string
 		};
 
 		cleanLinks.push(preview);
+		loadPreview(client, chan, msg, preview, url, queued);
 
+		return cleanLinks;
+	}, []);
+}
+
+// Fills in previews of messages from history that have none, like messages loaded from the
+// message storage after a restart. Uncached links are fetched in the background, a few at a time.
+export function backfillPreviews(client: Client, chan: Chan, messages: Msg[]) {
+	if (!previewCache.isEnabled()) {
+		return;
+	}
+
+	for (const msg of messages) {
+		if (
+			backfilled.has(msg) ||
+			msg.previews.length ||
+			![MessageType.MESSAGE, MessageType.ACTION].includes(msg.type)
+		) {
+			continue;
+		}
+
+		backfilled.add(msg);
+		prefetch(client, chan, msg, cleanIrcMessage(msg.text), true);
+	}
+}
+
+function runQueued(job?: () => Promise<void>) {
+	if (job) {
+		backfillQueue.push(job);
+	}
+
+	while (backfillRunning < 4 && backfillQueue.length) {
+		backfillRunning++;
+		void backfillQueue.shift()!().finally(() => {
+			backfillRunning--;
+			runQueued();
+		});
+	}
+}
+
+function loadPreview(
+	client: Client,
+	chan: Chan,
+	msg: Msg,
+	preview: LinkPreview,
+	url: string,
+	queued: boolean
+) {
+	const fetchPreview = () =>
 		fetch(url, {
 			accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 			language: client.config.browser?.language || "",
@@ -74,8 +136,24 @@ export default function (client: Client, chan: Chan, msg: Msg, cleanText: string
 				emitPreview(client, chan, msg, preview);
 			});
 
-		return cleanLinks;
-	}, []);
+	if (!previewCache.isEnabled()) {
+		void fetchPreview();
+		return;
+	}
+
+	void previewCache.getPreview(url).then((cached) => {
+		if (!cached) {
+			return queued ? runQueued(fetchPreview) : fetchPreview();
+		}
+
+		Object.assign(preview, cached);
+		emitPreview(client, chan, msg, preview, false);
+	});
+}
+
+// Images are proxied through The Lounge instead of being loaded from the source
+function isProxied() {
+	return Config.values.prefetchStorage || previewCache.isEnabled();
 }
 
 function parseHtml(preview, res, client: Client) {
@@ -105,7 +183,7 @@ function parseHtml(preview, res, client: Client) {
 					preview.body = preview.body.substr(0, 300);
 				}
 
-				if (!Config.values.prefetchStorage && Config.values.disableMediaPreview) {
+				if (!isProxied() && Config.values.disableMediaPreview) {
 					resolve(res);
 					return;
 				}
@@ -250,7 +328,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 		case "image/jxl":
 		case "image/webp":
 		case "image/avif":
-			if (!Config.values.prefetchStorage && Config.values.disableMediaPreview) {
+			if (!isProxied() && Config.values.disableMediaPreview) {
 				return removePreview(msg, preview);
 			}
 
@@ -357,6 +435,16 @@ function handlePreview(client: Client, chan: Chan, msg: Msg, preview: LinkPrevie
 	const thumb = preview.thumbActualUrl || "";
 	delete preview.thumbActualUrl;
 
+	if (thumb.length && previewCache.isEnabled() && res?.data) {
+		void previewCache
+			.setImage(normalizeURL(thumb) || thumb, res.type, res.data)
+			.then((hash) => {
+				preview.thumb = `preview-cache/${hash}`;
+				emitPreview(client, chan, msg, preview);
+			});
+		return;
+	}
+
 	if (!thumb.length || !Config.values.prefetchStorage) {
 		preview.thumb = thumb;
 		return emitPreview(client, chan, msg, preview);
@@ -383,7 +471,7 @@ function handlePreview(client: Client, chan: Chan, msg: Msg, preview: LinkPrevie
 	});
 }
 
-function emitPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview) {
+function emitPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview, cache = true) {
 	// If there is no title but there is preview or description, set title
 	// otherwise bail out and show no preview
 	if (!preview.head.length && preview.type === "link") {
@@ -392,6 +480,13 @@ function emitPreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview)
 		} else {
 			return removePreview(msg, preview);
 		}
+	}
+
+	// Errors may be temporary, so they are not cached
+	const url = normalizeURL(preview.link);
+
+	if (cache && url && preview.type !== "error" && previewCache.isEnabled()) {
+		void previewCache.setPreview(url, preview);
 	}
 
 	client.emit("msg:preview", {
@@ -474,7 +569,7 @@ function fetch(uri: string, headers: Record<string, string>) {
 						// response is an image
 						// if Content-Length header reports a size exceeding the prefetch limit, abort fetch
 						// and if file is not to be stored we don't need to download further either
-						if (contentLength > limit || !Config.values.prefetchStorage) {
+						if (contentLength > limit || !isProxied()) {
 							gotStream.destroy();
 						}
 					} else if (contentType && mediaTypeRegex.test(contentType)) {
@@ -556,4 +651,41 @@ function normalizeURL(link: string, baseLink?: string, disallowHttp = false) {
 	}
 
 	return undefined;
+}
+
+// Serves a cached preview image by its url hash, fetching it from the source if it is not cached.
+// Only urls the link plugin recorded as preview images can be requested, so this is not an open proxy.
+export async function routeCachedImage(req: Request, res: Response) {
+	const hash = req.params.hash;
+	const entry = previewCache.isValidHash(hash) ? await previewCache.read(hash) : null;
+
+	if (!previewCache.isEnabled() || !entry?.image) {
+		return res.status(404).send("Not found");
+	}
+
+	res.setHeader("Cache-Control", "max-age=86400");
+	res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+
+	const filePath = previewCache.getPath(hash, "img");
+
+	if (fs.existsSync(filePath)) {
+		return res.contentType(entry.image).sendFile(filePath);
+	}
+
+	try {
+		const image = await fetch(entry.url, {accept: "image/*"});
+
+		if (
+			!imageTypeRegex.test(image.type) ||
+			image.size > Config.values.prefetchMaxImageSize * 1024 ||
+			image.data.length < image.size
+		) {
+			return res.status(404).send("Not found");
+		}
+
+		await previewCache.setImage(entry.url, image.type, image.data);
+		return res.contentType(image.type).send(image.data);
+	} catch {
+		return res.status(404).send("Not found");
+	}
 }

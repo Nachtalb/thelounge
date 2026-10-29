@@ -142,6 +142,38 @@ module.exports = {
 	// This value is set to `false` by default.
 	prefetchStorage: false,
 
+	// ### `prefetchCache`
+	//
+	// When set to `true`, The Lounge caches link previews and their images by
+	// URL in the `${THELOUNGE_HOME}/cache/previews` folder, so a link posted in
+	// many messages is only fetched once, and the cache survives restarts.
+	// Images and thumbnails are served by The Lounge from the cache (or fetched
+	// from the source and cached on first request), like `prefetchStorage`,
+	// which this option supersedes.
+	//
+	// Messages loaded from history (on page load, when scrolling up and from
+	// the message storage after a restart) that have no previews get them from
+	// the cache, or fetched in the background if they are not cached yet.
+	//
+	// Failed fetches are not cached and are retried the next time the message
+	// is loaded after a restart. Cache file names are salted hashes of the URL,
+	// the salt is kept in the cache folder. The folder can be deleted at any
+	// time to clear the cache.
+	//
+	// This has no effect if `prefetch` is set to `false`.
+	//
+	// This value is set to `false` by default.
+	prefetchCache: false,
+
+	// ### `prefetchCacheMaxAge`
+	//
+	// When `prefetchCache` is enabled, cached previews and images older than
+	// this many days are deleted on startup and once a day. Set to `0` to keep
+	// them forever.
+	//
+	// This value is set to `30` days by default.
+	prefetchCacheMaxAge: 30,
+
 	// ### `prefetchMaxImageSize`
 	//
 	// When `prefetch` is enabled, images will only be displayed if their file

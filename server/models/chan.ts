@@ -122,7 +122,11 @@ class Chan {
 	}
 
 	dereferencePreviews(messages: Msg[]) {
-		if (!Config.values.prefetch || !Config.values.prefetchStorage) {
+		if (
+			!Config.values.prefetch ||
+			!Config.values.prefetchStorage ||
+			Config.values.prefetchCache
+		) {
 			return;
 		}
 

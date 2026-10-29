@@ -12,6 +12,9 @@ import log from "./log";
 import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
+import previewCache from "./plugins/previewCache";
+import {backfillPreviews, routeCachedImage} from "./plugins/irc-events/link";
+import type Msg from "./models/msg";
 import Helper from "./helper";
 import Config from "./config";
 import Identification from "./identification";
@@ -94,7 +97,8 @@ export default async function (
 		.get("/", indexRequest)
 		.get("/service-worker.js", forceNoCacheRequest)
 		.use(express.static(Utils.getFileFromRelativeToRoot("public"), staticOptions))
-		.use("/storage/", express.static(Config.getStoragePath(), staticOptions));
+		.use("/storage/", express.static(Config.getStoragePath(), staticOptions))
+		.get("/preview-cache/:hash", (req, res) => void routeCachedImage(req, res));
 
 	if (Config.values.fileUpload.enable) {
 		Uploader.router(app);
@@ -316,6 +320,11 @@ export default async function (
 				});
 		}
 
+		if (previewCache.isEnabled()) {
+			void previewCache.cleanup();
+			setInterval(() => void previewCache.cleanup(), 24 * 60 * 60 * 1000).unref();
+		}
+
 		changelog.checkForUpdates(manager);
 	});
 
@@ -381,7 +390,7 @@ function addSecurityHeaders(_req: Request, res: Response, next: NextFunction) {
 	// If prefetch is enabled, but storage is not, we have to allow mixed content
 	// - https://user-images.githubusercontent.com is where we currently push our changelog screenshots
 	// - data: is required for the HTML5 video player
-	if (Config.values.prefetchStorage || !Config.values.prefetch) {
+	if (Config.values.prefetchStorage || Config.values.prefetchCache || !Config.values.prefetch) {
 		policies.push("img-src 'self' data: https://user-images.githubusercontent.com");
 		policies.unshift("block-all-mixed-content");
 	} else {
@@ -888,11 +897,17 @@ function initializeClient(
 	void socket.join(client.id);
 
 	const sendInitEvent = (tokenToSend?: string) => {
+		const networks = client.networks.map((network) => {
+			const clone = network.getFilteredClone(openChannel, lastMessage);
+			clone.channels.forEach((chan, j) =>
+				backfillPreviews(client, network.channels[j], chan.messages as Msg[])
+			);
+			return clone;
+		});
+
 		socket.emit("init", {
 			active: openChannel,
-			networks: client.networks.map((network) =>
-				network.getFilteredClone(openChannel, lastMessage)
-			),
+			networks,
 			token: tokenToSend,
 		});
 		socket.emit("commands", inputs.getCommands());
