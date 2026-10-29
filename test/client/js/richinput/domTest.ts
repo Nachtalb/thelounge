@@ -42,6 +42,35 @@ describe("rich input DOM", () => {
 		expect(readDoc(el)).toEqual(doc);
 	});
 
+	it("shows emoji as images but keeps them as text", () => {
+		const el = editable();
+		const doc = parse("hi 🇨🇭 \x02👍🏽 x\x02 ©");
+		render(el, doc);
+
+		const spans = [...el.querySelectorAll("[data-emoji]")] as HTMLElement[];
+		expect(spans.map((s) => [s.textContent, s.style.backgroundImage])).toEqual([
+			["🇨🇭", 'url("img/emoji/google/1f1e8-1f1ed.png")'],
+			["👍🏽", 'url("img/emoji/google/1f44d-1f3fd.png")'],
+		]);
+		expect(spans[1].parentElement!.className).toBe("irc-bold");
+		expect(el.textContent).toBe("hi 🇨🇭 👍🏽 x ©");
+		expect(readDoc(el)).toEqual(doc);
+	});
+
+	it("keeps the caret out of emoji images", () => {
+		const el = editable();
+		render(el, parse("🇨🇭b"));
+
+		expect(domPoint(el, 0)).toEqual([el, 0]);
+		expect(domPoint(el, 4)).toEqual([el, 1]);
+		expect(
+			getOffsets(el, {startContainer: el, startOffset: 1, endContainer: el, endOffset: 1})
+		).toEqual({
+			start: 4,
+			end: 4,
+		});
+	});
+
 	it("never shows control characters", () => {
 		const el = editable();
 		render(el, parse("\x02\x03\x0304,05x\x1d\x1f\x1e\x11\x0f"));

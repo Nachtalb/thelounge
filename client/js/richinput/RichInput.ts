@@ -24,6 +24,8 @@ import {
 	render,
 	setSelectionOffsets,
 } from "./dom";
+import {watch} from "vue";
+import {emojiStyle} from "../helpers/emoji";
 
 export type ChangeSource =
 	| "type"
@@ -85,6 +87,7 @@ export class RichInput {
 	private pointerDown = false;
 	private listeners: Listener[] = [];
 	private options: RichInputOptions;
+	private stopEmojiWatch: () => void;
 
 	constructor(el: HTMLElement, options: RichInputOptions = {}) {
 		this.el = el;
@@ -104,6 +107,13 @@ export class RichInput {
 		el.addEventListener("mousedown", this.onPointerDown);
 		el.addEventListener("touchstart", this.onPointerDown, {passive: true});
 		el.ownerDocument.addEventListener("selectionchange", this.onSelectionChange);
+
+		// Emoji are shown in the chosen emoji style
+		this.stopEmojiWatch = watch(emojiStyle, () => {
+			if (!this.composing) {
+				this.apply(this.state());
+			}
+		});
 	}
 
 	destroy() {
@@ -122,6 +132,7 @@ export class RichInput {
 		el.removeEventListener("touchstart", this.onPointerDown);
 		el.ownerDocument.removeEventListener("selectionchange", this.onSelectionChange);
 		instances.delete(el);
+		this.stopEmojiWatch();
 		this.listeners = [];
 	}
 
