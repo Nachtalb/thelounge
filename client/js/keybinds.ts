@@ -2,6 +2,7 @@ import Mousetrap from "mousetrap";
 
 import {store} from "./store";
 import {switchToChannel, router, navigate} from "./router";
+import {closeWindowOnEscape, focusInput} from "./closeWindow";
 import isChannelCollapsed from "./helpers/isChannelCollapsed";
 import isIgnoredKeybind from "./helpers/isIgnoredKeybind";
 import listenForTwoFingerSwipes from "./helpers/listenForTwoFingerSwipes";
@@ -201,10 +202,15 @@ const ignoredKeys = {
 	224: true, // Meta
 };
 
+// Close Settings and the Connect form, asking first if that throws away edits. Capture phase,
+// so an open dialog is still seen as open before its own Escape handler closes it.
+window.addEventListener("keydown", closeWindowOnEscape, true);
+
 document.addEventListener("keydown", (e) => {
 	// Allow navigating back to the previous page when on the help screen.
 	if (e.key === "Escape" && router.currentRoute.value.name === "Help") {
 		router.go(-1);
+		focusInput();
 		return;
 	}
 
