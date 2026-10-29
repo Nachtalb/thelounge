@@ -237,6 +237,11 @@ document.addEventListener("keydown", (e) => {
 		return;
 	}
 
+	// Let the confirm dialog's focused buttons handle Space/Enter themselves
+	if ((e.target as HTMLElement).closest("#confirm-dialog")) {
+		return;
+	}
+
 	const input = document.getElementById("input");
 
 	if (!input) {
