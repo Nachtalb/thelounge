@@ -5,7 +5,7 @@ import {SharedNetwork, SharedServerOptions} from "./network";
 import {SharedMsg, LinkPreview} from "./msg";
 import {SharedUser} from "./user";
 import {SharedChangelogData} from "./changelog";
-import {SharedConfiguration, LockedSharedConfiguration} from "./config";
+import {SharedConfiguration, LockedSharedConfiguration, EmojiSetInfo} from "./config";
 import {SearchResponse, SearchQuery} from "./storage";
 
 type Session = {
@@ -38,6 +38,8 @@ interface ServerToClientEvents {
 	commands: EventHandler<string[]>;
 
 	configuration: EventHandler<SharedConfiguration | LockedSharedConfiguration>;
+
+	"emoji:sets": EventHandler<{sets: EmojiSetInfo[]; defaultStyle: string}>;
 
 	"push:issubscribed": EventHandler<boolean>;
 	"push:unregister": NoPayloadEventHandler;

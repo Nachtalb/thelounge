@@ -97,6 +97,7 @@ export type ConfigType = {
 	maxHistory: number;
 	https: Https;
 	theme: string;
+	emojiDefaultStyle: string;
 	prefetch: boolean;
 	disableMediaPreview: boolean;
 	prefetchStorage: boolean;

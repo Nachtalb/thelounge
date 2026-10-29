@@ -1,9 +1,16 @@
 import socket from "../socket";
 import upload from "../upload";
 import {store} from "../store";
+import {emojiServer} from "../helpers/emoji";
+
+// Sets installed or removed while this page is open
+socket.on("emoji:sets", function (data) {
+	emojiServer.value = data;
+});
 
 socket.once("configuration", function (data) {
 	store.commit("serverConfiguration", data);
+	emojiServer.value = {sets: data.emojiSets, defaultStyle: data.emojiDefaultStyle};
 
 	// 'theme' setting depends on serverConfiguration.themes so
 	// settings cannot be applied before this point

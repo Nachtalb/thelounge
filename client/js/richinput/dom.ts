@@ -1,6 +1,7 @@
 // Rendering of the rich input document into its contenteditable element,
 // reading it back, and mapping DOM selections to plain text offsets.
 import {Doc, Run, Style, TOGGLE_ATTRS, normalize} from "./model";
+import {emojiImageUrl, findEmojiMatches} from "../helpers/emoji";
 
 const classNames = {
 	bold: "irc-bold",
@@ -70,12 +71,47 @@ function readStyle(el: HTMLElement): Style | null {
 	return style;
 }
 
-function runNode(run: Run, doc: Document): Node {
-	const text = doc.createTextNode(run.text);
+// Text with emoji shown in the chosen emoji style. The emoji stays the text of
+// its span, so reading the DOM back, selections and copying see the character.
+function textNodes(text: string, owner: Document): Node[] {
+	const nodes: Node[] = [];
+	let last = 0;
+
+	for (const match of findEmojiMatches(text)) {
+		const image = emojiImageUrl(match.image);
+
+		if (!image) {
+			continue;
+		}
+
+		if (match.start > last) {
+			nodes.push(owner.createTextNode(text.slice(last, match.start)));
+		}
+
+		const span = owner.createElement("span");
+		span.setAttribute("data-emoji", "");
+		// Not editable, so the caret (and IME compositions) can't end up inside
+		span.contentEditable = "false";
+		span.className = "emoji-img";
+		span.style.backgroundImage = `url("${image}")`;
+		span.textContent = match.emoji;
+		nodes.push(span);
+		last = match.end;
+	}
+
+	if (last < text.length || !nodes.length) {
+		nodes.push(owner.createTextNode(text.slice(last)));
+	}
+
+	return nodes;
+}
+
+function runNodes(run: Run, doc: Document): Node[] {
+	const nodes = textNodes(run.text, doc);
 	const classes = styleClasses(run.style);
 
 	if (!classes.length && !run.style.hexFg) {
-		return text;
+		return nodes;
 	}
 
 	const span = doc.createElement("span");
@@ -97,12 +133,12 @@ function runNode(run: Run, doc: Document): Node {
 		}
 	}
 
-	span.appendChild(text);
-	return span;
+	span.append(...nodes);
+	return [span];
 }
 
 export function buildNodes(doc: Doc, owner: Document): Node[] {
-	const nodes = doc.map((run) => runNode(run, owner));
+	const nodes = doc.flatMap((run) => runNodes(run, owner));
 	const last = doc[doc.length - 1];
 
 	// A trailing newline is only rendered as an empty line when something follows it
@@ -302,6 +338,15 @@ export function domPoint(root: HTMLElement, offset: number): [Node, number] {
 	for (const leaf of leaves) {
 		if (leaf.node.nodeType === Node.TEXT_NODE) {
 			if (offset <= leaf.start + leaf.length) {
+				const span = leaf.node.parentNode as HTMLElement;
+
+				// Keep the caret out of emoji images: text typed there would be invisible
+				if (span !== root && span.hasAttribute("data-emoji")) {
+					const parent = span.parentNode!;
+					const index = Array.prototype.indexOf.call(parent.childNodes, span);
+					return [parent, offset <= leaf.start ? index : index + 1];
+				}
+
 				return [leaf.node, Math.max(0, offset - leaf.start)];
 			}
 		} else if (leaf.length > 0 && offset <= leaf.start) {

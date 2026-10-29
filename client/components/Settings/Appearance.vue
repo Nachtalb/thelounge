@@ -18,6 +18,15 @@
 			</select>
 		</SettingCard>
 
+		<SettingCard title="Emoji style" title-id="emoji-style-title">
+			<EmojiStylePicker
+				:options="emojiStyleOptions"
+				:model-value="emojiStyle"
+				labelledby="emoji-style-title"
+				@update:model-value="setEmojiStyle"
+			/>
+		</SettingCard>
+
 		<SettingCard title="Messages">
 			<SettingToggle
 				name="motd"
@@ -197,12 +206,15 @@ import {lintFilters} from "../../../shared/previewFilters";
 import {useStore} from "../../js/store";
 import SettingCard from "./SettingCard.vue";
 import SettingToggle from "./SettingToggle.vue";
+import EmojiStylePicker from "./EmojiStylePicker.vue";
+import {availableEmojiSets, emojiStyle} from "../../js/helpers/emoji";
 
 export default defineComponent({
 	name: "AppearanceSettings",
 	components: {
 		SettingCard,
 		SettingToggle,
+		EmojiStylePicker,
 	},
 	setup() {
 		const store = useStore();
@@ -218,6 +230,13 @@ export default defineComponent({
 			store,
 			previewFiltersText,
 			previewFiltersLint,
+			emojiStyleOptions: computed(() => [
+				...availableEmojiSets.value.map(({id, name}) => ({id, name})),
+				{id: "native", name: "Native (system font)"},
+			]),
+			emojiStyle,
+			setEmojiStyle: (value: string) =>
+				store.dispatch("settings/update", {name: "emojiStyle", value, sync: true}),
 		};
 	},
 });

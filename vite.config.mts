@@ -75,6 +75,32 @@ function serviceWorkerPlugin(mode: string): Plugin {
 	};
 }
 
+// Self-host the emoji images (Settings > Appearance > Emoji style): copy the
+// individual 64px PNGs of every shipped set from emoji-datasource-<set> into
+// public/img/emoji/<set>/, with the licence of the images next to them
+const emojiImageSets = {
+	google: "Noto Emoji images by Google, Apache License 2.0: https://github.com/googlefonts/noto-emoji",
+	twitter:
+		"Twemoji graphics by Twitter, Inc and other contributors, CC-BY 4.0: https://github.com/jdecked/twemoji",
+};
+
+function emojiImagesPlugin(): Plugin {
+	return {
+		name: "emoji-images",
+		writeBundle() {
+			for (const [set, licence] of Object.entries(emojiImageSets)) {
+				const src = path.resolve(
+					rootDir,
+					`node_modules/emoji-datasource-${set}/img/${set}/64`
+				);
+				const dest = path.resolve(rootDir, "public/img/emoji", set);
+				fs.cpSync(src, dest, {recursive: true});
+				fs.writeFileSync(path.join(dest, "LICENSE.txt"), licence + "\n");
+			}
+		},
+	};
+}
+
 export default defineConfig(({mode}) => ({
 	root: path.resolve(rootDir, "client"),
 	publicDir: path.resolve(rootDir, "client/public"),
@@ -88,13 +114,17 @@ export default defineConfig(({mode}) => ({
 		rollupOptions: {
 			output: {
 				manualChunks: (id) => {
-					if (id.includes("node_modules")) {
-						return "vendor";
+					// Split emojis (~100kb)  into their own chunk for separate caching
+					if (
+						id.includes("fullnamemap.json") ||
+						id.includes("simplemap.json") ||
+						id.includes("node_modules/emoji-js/")
+					) {
+						return "emoji";
 					}
 
-					// Split emojis (~100kb)  into their own chunk for separate caching
-					if (id.includes("fullnamemap.json") || id.includes("simplemap.json")) {
-						return "emoji";
+					if (id.includes("node_modules")) {
+						return "vendor";
 					}
 				},
 			},
@@ -131,5 +161,6 @@ export default defineConfig(({mode}) => ({
 		}),
 		serviceWorkerPlugin(mode),
 		hashLoadingHandlersPlugin(),
+		emojiImagesPlugin(),
 	],
 }));

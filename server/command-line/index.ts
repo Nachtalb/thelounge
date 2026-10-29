@@ -43,6 +43,7 @@ program.addCommand(require("./uninstall").default);
 program.addCommand(require("./upgrade").default);
 program.addCommand(require("./outdated").default);
 program.addCommand(require("./storage").default);
+program.addCommand(require("./emoji").default);
 
 if (!Config.values.public) {
 	require("./users").default.forEach((command: Command) => {

@@ -102,6 +102,36 @@ module.exports = {
 	// This value is set to `"default"` by default.
 	theme: "default",
 
+	// ### `emojiDefaultStyle`
+	//
+	// Emoji style for users who did not pick one in Settings > Appearance:
+	// `"google"` (Noto Emoji), `"twitter"` (Twemoji), `"native"` (the system
+	// emoji font) or the id of an emoji set you installed.
+	//
+	// The Google and Twitter images are shipped with The Lounge. Other sets are
+	// installed by you, at your own discretion, into the
+	// `${THELOUNGE_HOME}/emoji/<id>` folder, from where The Lounge serves them
+	// and lists them in the Emoji style setting:
+	//
+	// - `thelounge emoji install <set>` downloads `apple`, `facebook`,
+	//   `openmoji`, `fluent-3d`, `fluent-color`, `fluent-flat` or
+	//   `fluent-high-contrast` (Apple's and Facebook's images are not freely
+	//   licensed, which is why they are not distributed with The Lounge).
+	// - `thelounge emoji install <url or path> --id <id> --name <name>`
+	//   installs a zip, tarball or folder of PNGs named by their code points
+	//   (`1f600.png`, `1F44D-1F3FB.png`, `emoji_u1f600.png`, ...).
+	// - `thelounge emoji list` shows them, `thelounge emoji remove <id>`
+	//   removes one.
+	//
+	// Emoji an installed set has no image for are shown from the bundled set
+	// named here, or Google if this is not a bundled set. Users who had a
+	// style selected that is not available get this default.
+	//
+	// If this style is not available, `"google"` is used.
+	//
+	// This value is set to `"google"` by default.
+	emojiDefaultStyle: "google",
+
 	// ### `prefetch`
 	//
 	// When set to `true`, The Lounge will load thumbnails and site descriptions
