@@ -88,13 +88,17 @@ export default defineConfig(({mode}) => ({
 		rollupOptions: {
 			output: {
 				manualChunks: (id) => {
-					if (id.includes("node_modules")) {
-						return "vendor";
+					// Split emojis (~100kb)  into their own chunk for separate caching
+					if (
+						id.includes("fullnamemap.json") ||
+						id.includes("simplemap.json") ||
+						id.includes("node_modules/emoji-js/")
+					) {
+						return "emoji";
 					}
 
-					// Split emojis (~100kb)  into their own chunk for separate caching
-					if (id.includes("fullnamemap.json") || id.includes("simplemap.json")) {
-						return "emoji";
+					if (id.includes("node_modules")) {
+						return "vendor";
 					}
 				},
 			},
