@@ -42,6 +42,7 @@ export type LinkPreview = {
 	head: string;
 	body: string;
 	thumb: string;
+	full?: string; // Full image when thumb is a smaller copy of it
 	size: number;
 	link: string; // Send original matched link to the client
 	shown?: boolean | null;

@@ -32,7 +32,7 @@
 			></button>
 			<a
 				class="download-btn"
-				:href="link.thumb"
+				:href="original(link)"
 				target="_blank"
 				rel="noopener"
 				aria-label="Download image"
@@ -49,7 +49,7 @@
 
 			<img
 				ref="image"
-				:src="link.thumb"
+				:src="original(link)"
 				alt=""
 				:style="computeImageStyles"
 				@load="onImageLoad"
@@ -228,12 +228,15 @@ export default defineComponent({
 			}
 		};
 
+		// The inline preview may show a smaller thumbnail; the viewer uses the full image
+		const original = (preview: ClientLinkPreview) => preview.full || preview.thumb;
+
 		const getFilename = (preview: ClientLinkPreview) => {
 			if (preview.filename) {
 				return preview.filename;
 			}
 
-			for (const url of [preview.link, preview.thumb]) {
+			for (const url of [preview.link, original(preview)]) {
 				try {
 					const path = new URL(url, window.location.href).pathname;
 					const name = decodeURIComponent(path.split("/").pop() || "");
@@ -277,13 +280,13 @@ export default defineComponent({
 				return;
 			}
 
-			if (!isSameOrigin(preview.thumb)) {
-				window.open(preview.thumb, "_blank", "noopener");
+			if (!isSameOrigin(original(preview))) {
+				window.open(original(preview), "_blank", "noopener");
 				return;
 			}
 
 			const a = document.createElement("a");
-			a.href = preview.thumb;
+			a.href = original(preview);
 			a.download = getFilename(preview);
 			document.body.appendChild(a);
 			a.click();
@@ -304,7 +307,10 @@ export default defineComponent({
 			}
 
 			// Runs synchronously up to the clipboard call, so the user gesture is kept
-			void copyImage(preview, browserEnv(image.value)).then((result) => {
+			void copyImage(
+				{link: preview.link, thumb: original(preview)},
+				browserEnv(image.value)
+			).then((result) => {
 				if (link.value === preview) {
 					showToast(copyResultMessages[result]);
 				}
@@ -664,6 +670,7 @@ export default defineComponent({
 			link,
 			channel,
 			image,
+			original,
 			downloadImage,
 			copyCurrentImage,
 			toast,

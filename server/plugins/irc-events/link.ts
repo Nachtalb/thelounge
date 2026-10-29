@@ -15,7 +15,7 @@ import {blocksLink} from "../../../shared/previewFilters";
 import {cleanIrcMessage} from "../../../shared/irc";
 import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
-import previewCache from "../previewCache";
+import previewCache, {thumbFormat} from "../previewCache";
 import {getPrefetchAgents} from "../prefetchProxy";
 import {
 	assertUrlAllowed,
@@ -512,7 +512,10 @@ function handlePreview(previews: LinkPreview[], preview: LinkPreview, res, emit:
 		void previewCache
 			.setImage(normalizeURL(thumb) || thumb, res.type, res.data)
 			.then((hash) => {
-				preview.thumb = `preview-cache/${hash}`;
+				const format = thumbFormat(res.type);
+				// The viewer, download and copy use the full image
+				preview.full = `preview-cache/${hash}`;
+				preview.thumb = format ? `${preview.full}.${format}` : preview.full;
 				emitPreview(previews, preview, emit);
 			});
 		return;
@@ -747,10 +750,16 @@ function normalizeURL(link: string, baseLink?: string, disallowHttp = false) {
 // Serves a cached preview image by its url hash, fetching it from the source if it is not cached.
 // Only urls the link plugin recorded as preview images can be requested, so this is not an open proxy.
 export async function routeCachedImage(req: Request, res: Response) {
-	const hash = req.params.hash;
+	// <hash> is the full image, <hash>.avif / <hash>.webp its thumbnail
+	const [hash, format] = req.params.hash.split(".");
 	const entry = previewCache.isValidHash(hash) ? await previewCache.read(hash) : null;
 
-	if (!previewCache.isEnabled() || !entry?.image || blockedUrlReason(entry.url)) {
+	if (
+		!previewCache.isEnabled() ||
+		!entry?.image ||
+		blockedUrlReason(entry.url) ||
+		(format !== undefined && format !== thumbFormat(entry.image))
+	) {
 		return res.status(404).send("Not found");
 	}
 
@@ -759,6 +768,27 @@ export async function routeCachedImage(req: Request, res: Response) {
 
 	const filePath = previewCache.getPath(hash, "img");
 
+	const sendThumb = async () => {
+		if (!format) {
+			return false;
+		}
+
+		await previewCache.waitForThumb(hash);
+		const thumbPath = previewCache.getPath(hash, format as "avif" | "webp");
+
+		if (fs.existsSync(thumbPath)) {
+			res.contentType(`image/${format}`).sendFile(thumbPath);
+			return true;
+		}
+
+		return false;
+	};
+
+	if (await sendThumb()) {
+		return;
+	}
+
+	// No thumbnail (old entry, or making it failed): serve the original
 	if (fs.existsSync(filePath)) {
 		return res.contentType(entry.image).sendFile(filePath);
 	}
@@ -775,6 +805,11 @@ export async function routeCachedImage(req: Request, res: Response) {
 		}
 
 		await previewCache.setImage(entry.url, image.type, image.data);
+
+		if (await sendThumb()) {
+			return;
+		}
+
 		return res.contentType(image.type).send(image.data);
 	} catch {
 		return res.status(404).send("Not found");

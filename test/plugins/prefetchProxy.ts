@@ -288,7 +288,7 @@ describe("prefetchProxy", function () {
 		Config.values.prefetchCache = true;
 
 		try {
-			const thumb = (await preview(`${base}/page`)).thumb;
+			const thumb = (await preview(`${base}/page`)).full;
 			expect(thumb).to.equal(`preview-cache/${previewCache.hash(`${base}/image.png`)}`);
 
 			fs.unlinkSync(previewCache.getPath(thumb.split("/")[1], "img"));

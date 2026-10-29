@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 import {expect} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
@@ -15,8 +16,21 @@ describe("Link plugin with preview cache", function () {
 	let requests: Record<string, number>;
 	let irc: any;
 	let network: any;
+	let photo: Buffer;
+	let animation: Buffer;
 
-	beforeAll(function () {
+	const noise = (width: number, height: number) =>
+		sharp({
+			create: {width, height, channels: 3, noise: {type: "gaussian", mean: 128, sigma: 20}},
+		});
+
+	beforeAll(async function () {
+		photo = await noise(1000, 750).jpeg().toBuffer();
+		const frames = await Promise.all([1, 2].map(() => noise(700, 525).png().toBuffer()));
+		animation = await sharp(frames, {join: {animated: true}})
+			.gif()
+			.toBuffer();
+
 		app = util.createWebserver();
 		app.use((req: any, _res: any, next: () => void) => {
 			requests[req.path] = (requests[req.path] || 0) + 1;
@@ -28,16 +42,22 @@ describe("Link plugin with preview cache", function () {
 		app.get("/image.png", function (_req: any, res: any) {
 			res.sendFile(testImagePath);
 		});
+		app.get("/photo.jpg", (_req: any, res: any) => void res.type("image/jpeg").send(photo));
+		app.get("/anim.gif", (_req: any, res: any) => void res.type("image/gif").send(animation));
+		app.get(
+			"/broken.jpg",
+			(_req: any, res: any) => void res.type("image/jpeg").send("not a jpeg")
+		);
 		app.get("/preview-cache/:hash", (req: any, res: any) => void routeCachedImage(req, res));
 
-		return new Promise<void>((resolve) => {
+		await new Promise<void>((resolve) => {
 			connection = app.listen(0, "127.0.0.1", () => {
 				const {address, port} = connection.address();
 				_makeUrl = (_path: string) => `http://${address}:${port}/${_path}`;
 				resolve();
 			});
 		});
-	});
+	}, 60000);
 
 	afterAll(function () {
 		fs.rmSync(Config.getPreviewCachePath(), {recursive: true, force: true});
@@ -105,7 +125,8 @@ describe("Link plugin with preview cache", function () {
 		const hash = previewCache.hash(_makeUrl("image.png"));
 
 		expect(first.head).to.equal("cached title");
-		expect(first.thumb).to.equal(`preview-cache/${hash}`);
+		expect(first.thumb).to.equal(`preview-cache/${hash}.avif`);
+		expect(first.full).to.equal(`preview-cache/${hash}`);
 		expect(fs.existsSync(previewCache.getPath(hash, "img"))).to.be.true;
 
 		const second = await preview(_makeUrl("page"));
@@ -119,7 +140,7 @@ describe("Link plugin with preview cache", function () {
 		const hash = previewCache.hash(_makeUrl("image.png"));
 
 		expect(result.type).to.equal("image");
-		expect(result.thumb).to.equal(`preview-cache/${hash}`);
+		expect(result.full).to.equal(`preview-cache/${hash}`);
 
 		const entry = await previewCache.read(hash);
 		expect(entry?.image).to.equal("image/png");
@@ -127,7 +148,7 @@ describe("Link plugin with preview cache", function () {
 	});
 
 	it("should serve cached images and fetch missing ones on the fly", async function () {
-		const thumb = (await preview(_makeUrl("page"))).thumb;
+		const thumb = (await preview(_makeUrl("page"))).full;
 		const hash = thumb.split("/")[1];
 
 		let res = await fetch(_makeUrl(thumb));
@@ -142,6 +163,44 @@ describe("Link plugin with preview cache", function () {
 		expect(Buffer.from(await res.arrayBuffer())).to.deep.equal(fs.readFileSync(testImagePath));
 		expect(requests["/image.png"]).to.equal(2);
 		expect(fs.existsSync(previewCache.getPath(hash, "img"))).to.be.true;
+	});
+
+	it("should serve a small avif thumbnail and keep the full image", async function () {
+		const result = await preview(_makeUrl("photo.jpg"));
+		const hash = previewCache.hash(_makeUrl("photo.jpg"));
+		expect(result.thumb).to.equal(`preview-cache/${hash}.avif`);
+
+		let res = await fetch(_makeUrl(result.thumb));
+		expect(res.headers.get("content-type")).to.equal("image/avif");
+		const thumb = Buffer.from(await res.arrayBuffer());
+		const meta = await sharp(thumb).metadata();
+		expect([meta.width, meta.height]).to.deep.equal([640, 480]);
+		expect(thumb.length).to.be.below(photo.length / 4);
+
+		res = await fetch(_makeUrl(result.full));
+		expect(res.headers.get("content-type")).to.equal("image/jpeg");
+		expect(Buffer.from(await res.arrayBuffer())).to.deep.equal(photo);
+		expect(requests["/photo.jpg"]).to.equal(1);
+	});
+
+	it("should keep gifs animated in a webp thumbnail", async function () {
+		const result = await preview(_makeUrl("anim.gif"));
+		expect(result.thumb).to.equal(`${result.full}.webp`);
+
+		const res = await fetch(_makeUrl(result.thumb));
+		expect(res.headers.get("content-type")).to.equal("image/webp");
+		const meta = await sharp(Buffer.from(await res.arrayBuffer()), {animated: true}).metadata();
+		expect(meta.pages).to.equal(2);
+		expect([meta.width, meta.pageHeight]).to.deep.equal([640, 480]);
+	});
+
+	it("should serve the original when no thumbnail can be made", async function () {
+		const result = await preview(_makeUrl("broken.jpg"));
+		const res = await fetch(_makeUrl(result.thumb));
+
+		expect(res.status).to.equal(200);
+		expect(res.headers.get("content-type")).to.equal("image/jpeg");
+		expect(await res.text()).to.equal("not a jpeg");
 	});
 
 	it("should refuse hashes that are not recorded preview images", async function () {

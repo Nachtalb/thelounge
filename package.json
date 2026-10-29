@@ -72,6 +72,7 @@
     "package-json": "7.0.0",
     "read": "1.0.7",
     "semver": "7.5.2",
+    "sharp": "0.35.5",
     "socket.io": "4.6.2",
     "socks": "2.8.9",
     "tlds": "1.228.0",
