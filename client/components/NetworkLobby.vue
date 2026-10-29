@@ -20,13 +20,14 @@
 			>
 				<span class="not-secure-icon" />
 			</span>
-			<span
+			<button
 				v-if="!network.status.connected"
 				class="not-connected-tooltip tooltipped tooltipped-w"
-				aria-label="Disconnected"
+				aria-label="Disconnected, click to reconnect"
+				@click.stop="onDisconnectedClick"
 			>
 				<span class="not-connected-icon" />
-			</span>
+			</button>
 			<span v-if="channel.unread" :class="{highlight: channel.highlight}" class="badge">{{
 				unreadCount
 			}}</span>
@@ -50,6 +51,7 @@ import {computed, defineComponent, PropType} from "vue";
 import collapseNetwork from "../js/helpers/collapseNetwork";
 import roundBadgeNumber from "../js/helpers/roundBadgeNumber";
 import ChannelWrapper from "./ChannelWrapper.vue";
+import socket from "../js/socket";
 
 import type {ClientChan, ClientNetwork} from "../js/types";
 
@@ -85,6 +87,13 @@ export default defineComponent({
 			collapseNetwork(props.network, !props.network.isCollapsed);
 		};
 
+		const onDisconnectedClick = () => {
+			socket.emit("input", {
+				target: channel.value.id,
+				text: "/connect",
+			});
+		};
+
 		const getExpandLabel = (network: ClientNetwork) => {
 			return network.isCollapsed ? "Expand" : "Collapse";
 		};
@@ -94,6 +103,7 @@ export default defineComponent({
 			joinChannelLabel,
 			unreadCount,
 			onCollapseClick,
+			onDisconnectedClick,
 			getExpandLabel,
 		};
 	},
