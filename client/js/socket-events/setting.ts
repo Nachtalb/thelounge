@@ -16,6 +16,16 @@ socket.on("setting:all", async function (settings) {
 		for (const name in settings) {
 			await store.dispatch("settings/update", {name, value: settings[name], sync: false});
 		}
+
+		// The server applies the user's preview filters, so don't keep rules another
+		// user left in this browser's local settings
+		if (!("previewFilters" in settings)) {
+			await store.dispatch("settings/update", {
+				name: "previewFilters",
+				value: "",
+				sync: false,
+			});
+		}
 	} else {
 		await store.dispatch("settings/syncAll");
 	}

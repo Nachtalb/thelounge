@@ -3,6 +3,7 @@ import net from "net";
 
 import Config from "../config";
 import {getMatcher} from "./prefetchBlocklist";
+import {compileFilters, Matcher} from "../../shared/previewFilters";
 
 // Decides which links may be fetched for previews: `prefetchBlocklist` rules and
 // `prefetchBlockPrivate`, which keeps previews from making the server send
@@ -241,4 +242,22 @@ export function createLookup(exempt: () => boolean = () => false) {
 	}
 
 	return checkedLookup as unknown as typeof dns.lookup;
+}
+
+const userMatchers = new WeakMap<object, {text: string; matcher: Matcher}>();
+
+// A user's own rules (the synced `previewFilters` setting), recompiled when they change.
+// They only add blocks for that user: their `@@` exceptions lift their own rules, never
+// prefetchBlocklist or prefetchBlockPrivate, which checkUrl applies separately.
+export function userMatcher(client: {config?: {clientSettings?: Record<string, unknown>}}) {
+	const value = client.config?.clientSettings?.previewFilters;
+	const text = typeof value === "string" ? value : "";
+	let entry = userMatchers.get(client);
+
+	if (entry?.text !== text) {
+		entry = {text, matcher: compileFilters(text)};
+		userMatchers.set(client, entry);
+	}
+
+	return entry.matcher;
 }

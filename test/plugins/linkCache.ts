@@ -71,6 +71,35 @@ describe("Link plugin with preview cache", function () {
 		});
 	}
 
+	it("should keep a user's own filter rules out of the shared cache", async function () {
+		const blocking = util.createClient() as any;
+		blocking.config.clientSettings = {previewFilters: "||127.0.0.1^"};
+		const message = blocking.createMessage({text: _makeUrl("page")});
+		const shown: unknown[] = [];
+		blocking.on("msg:preview", (data) => shown.push(data));
+
+		// Blocked for that user: no fetch, nothing cached
+		link(blocking, network.channels[0], message, message.text);
+		expect(message.previews).to.deep.equal([]);
+		await previewCache.flush();
+		expect(await previewCache.getPreview(_makeUrl("page"))).to.equal(null);
+		expect(requests["/page"]).to.equal(undefined);
+
+		// Others still get (and cache) the preview
+		const other = await preview(_makeUrl("page"));
+		expect(other.head).to.equal("cached title");
+		await previewCache.flush();
+		expect(await previewCache.getPreview(_makeUrl("page"))).to.not.equal(null);
+
+		// The cached preview is still not shown to the blocking user
+		const again = blocking.createMessage({text: _makeUrl("page")});
+		link(blocking, network.channels[0], again, again.text);
+		expect(again.previews).to.deep.equal([]);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(shown).to.deep.equal([]);
+		expect(requests["/page"]).to.equal(1);
+	});
+
 	it("should fetch a url once and serve repeats from the cache", async function () {
 		const first = await preview(_makeUrl("page"));
 		const hash = previewCache.hash(_makeUrl("image.png"));

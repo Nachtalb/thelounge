@@ -95,6 +95,7 @@ import upload from "../js/upload";
 import eventbus from "../js/eventbus";
 import {clearInputPreviews, updateInputPreviews} from "../js/inputPreviews";
 import {isInputPreviewShown} from "../js/helpers/inputPreviews";
+import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
@@ -156,8 +157,10 @@ export default defineComponent({
 		};
 
 		const inputPreviews = computed(() =>
-			props.channel.inputPreviews.filter((preview) =>
-				isInputPreviewShown(preview, store.state.settings)
+			props.channel.inputPreviews.filter(
+				(preview) =>
+					isInputPreviewShown(preview, store.state.settings) &&
+					!isPreviewFiltered(store.state.settings.previewFilters, preview.link)
 			)
 		);
 

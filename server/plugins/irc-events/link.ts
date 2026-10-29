@@ -11,6 +11,7 @@ import path from "path";
 import log from "../../log";
 import Config from "../../config";
 import {findLinksWithSchema} from "../../../shared/linkify";
+import {blocksLink} from "../../../shared/previewFilters";
 import {cleanIrcMessage} from "../../../shared/irc";
 import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
@@ -21,6 +22,7 @@ import {
 	blockedUrlReason,
 	createLookup,
 	isPrefetchBlocked,
+	userMatcher,
 } from "../prefetchBlock";
 import Client from "../../client";
 import Chan from "../../models/chan";
@@ -100,6 +102,13 @@ function fetchPreviews(client: Client, text: string, emit: PreviewEmitter, queue
 
 		if (blocked) {
 			log.debug(`Not fetching a preview for ${url}: ${blocked}`);
+			return cleanLinks;
+		}
+
+		// The user's own rules (previewFilters setting): checked before the shared preview
+		// cache, so a cached preview isn't shown to them and they never fetch or cache it
+		if (blocksLink(userMatcher(client), url)) {
+			log.debug(`Not fetching a preview for ${url}: matches a rule of ${client.name}`);
 			return cleanLinks;
 		}
 

@@ -9,7 +9,13 @@ import util from "../util";
 import log from "../../server/log";
 import Config from "../../server/config";
 import link, {prefetchInputLinks} from "../../server/plugins/irc-events/link";
-import {checkUrl, classifyAddress, createLookup} from "../../server/plugins/prefetchBlock";
+import {
+	checkUrl,
+	classifyAddress,
+	createLookup,
+	userMatcher,
+} from "../../server/plugins/prefetchBlock";
+import {blocksLink, lintFilters} from "../../shared/previewFilters";
 import * as blocklist from "../../server/plugins/prefetchBlocklist";
 import {LinkPreview} from "../../shared/types/msg";
 
@@ -438,6 +444,103 @@ describe("prefetchBlock", function () {
 			expect(await resolve("rebind.test", {}, true)).to.equal("127.0.0.1");
 			Config.values.prefetchBlockPrivate = false;
 			expect(await resolve("rebind.test", {})).to.equal("127.0.0.1");
+		});
+	});
+
+	describe("user rules", function () {
+		it("should lint with line numbers", function () {
+			const lint = lintFilters(
+				[
+					"! comment",
+					"||a.test^",
+					"",
+					"||b.test^$image",
+					"example.com##.ad",
+					"/(/",
+					"*",
+					"@@||c.test^",
+				].join("\n")
+			);
+			expect(lint.rules).to.equal(2);
+			expect(lint.problems.map((p) => [p.line, p.text])).to.deep.equal([
+				[4, "||b.test^$image"],
+				[5, "example.com##.ad"],
+				[6, "/(/"],
+				[7, "*"],
+			]);
+		});
+
+		it("should use the same parser as prefetchBlocklist", function () {
+			const client = {
+				config: {clientSettings: {previewFilters: "||ads.test^\n|https://x.test/a"}},
+			};
+			const user = userMatcher(client);
+			const server = blocklist.compileFilters("||ads.test^\n|https://x.test/a");
+
+			for (const url of ["https://sub.ads.test/", "https://x.test/abc", "https://x.test/b"]) {
+				expect(user.match(new URL(url))).to.equal(server.match(new URL(url)));
+			}
+		});
+
+		it("should recompile when the setting changes", function () {
+			const client = {config: {clientSettings: {previewFilters: "||a.test^"}}};
+			expect(userMatcher(client).match(new URL("http://a.test/"))).to.equal("block");
+			client.config.clientSettings.previewFilters = "||b.test^";
+			expect(userMatcher(client).match(new URL("http://a.test/"))).to.equal(null);
+			expect(userMatcher({config: {clientSettings: {}}}).rules).to.equal(0);
+		});
+
+		it("should only lift the user's own rules with @@", function () {
+			Config.values.prefetchBlockPrivate = true;
+			Config.values.prefetchBlocklist = ["||server.test^"];
+			const client = util.createClient() as any;
+			client.config.clientSettings = {
+				previewFilters: "||mine.test^\n@@||ok.mine.test^\n@@||server.test^\n@@||localhost^",
+			};
+			const network = util.createNetwork();
+			const debug = vi.spyOn(log, "debug").mockImplementation(() => undefined);
+
+			const posted = (url: string): number => {
+				const message = client.createMessage({text: url});
+				link(client, network.channels[0], message, message.text);
+
+				return (message.previews as unknown[]).length;
+			};
+
+			// Server list and prefetchBlockPrivate win over the user's exceptions
+			expect(posted("http://server.test/")).to.equal(0);
+			expect(posted("http://localhost/")).to.equal(0);
+			// Their own block, and their exception to it
+			expect(posted("http://www.mine.test/")).to.equal(0);
+			expect(userMatcher(client).match(new URL("http://ok.mine.test/"))).to.equal("allow");
+			expect(
+				debug.mock.calls.some((c) => String(c[0]).includes("matches a rule of"))
+			).to.equal(true);
+		});
+
+		it("should answer input links blocked by the user's rules right away", async function () {
+			// Accepted links are only found out to be private once resolved, and then removed
+			Config.values.prefetchBlockPrivate = true;
+			stubDns({"mine.test": ["127.0.0.1"]});
+			const client = util.createClient() as any;
+			client.config.clientSettings = {previewFilters: "|https://mine.test/blocked"};
+			const emitted: LinkPreview[] = [];
+			const links = ["https://mine.test/blocked#x", "https://mine.test/ok"];
+
+			expect(prefetchInputLinks(client, links, (p) => emitted.push(p))).to.deep.equal({
+				accepted: ["https://mine.test/ok"],
+				blocked: ["https://mine.test/blocked#x"],
+			});
+			await vi.waitFor(() =>
+				expect(emitted.map((p) => p.link)).to.deep.equal(["https://mine.test/ok"])
+			);
+		});
+
+		it("should match links like the server fetches them, without the hash", function () {
+			const matcher = blocklist.compileFilters("/#secret/\n|https://x.test/a|");
+			expect(blocksLink(matcher, "https://x.test/a#secret")).to.equal(true);
+			expect(blocksLink(matcher, "https://y.test/#secret")).to.equal(false);
+			expect(blocksLink(matcher, "not a url")).to.equal(false);
 		});
 	});
 

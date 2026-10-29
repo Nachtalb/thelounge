@@ -59,6 +59,10 @@ const defaultConfig = {
 		default: "",
 		sync: "always",
 	},
+	previewFilters: {
+		default: "",
+		sync: "always",
+	},
 	awayMessage: {
 		default: "",
 		sync: "always",
