@@ -32,6 +32,21 @@ export default <IrcEventHandler>function (irc, network) {
 			chan = lobby;
 		}
 
+		if (data.nick && data.type.toUpperCase() === "PING") {
+			const rtt = network.resolvePendingPing(data.nick, data.message.substring(5).trim());
+
+			if (rtt !== undefined) {
+				const msg = new Msg({
+					type: MessageType.CTCP,
+					time: data.time,
+					from: chan.getUser(data.nick),
+					ctcpMessage: `PING reply in ${(rtt / 1000).toFixed(3)}s`,
+				});
+				chan.pushMessage(client, msg, true);
+				return;
+			}
+		}
+
 		const msg = new Msg({
 			type: MessageType.CTCP,
 			time: data.time,

@@ -2,10 +2,25 @@ import Msg from "../../models/msg";
 import {PluginInputHandler} from "./index";
 import {MessageType} from "../../../shared/types/msg";
 
-const commands = ["ctcp"];
+const commands = ["ctcp", "ping"];
 
-const input: PluginInputHandler = function ({irc}, chan, cmd, args) {
-	if (args.length < 2) {
+const input: PluginInputHandler = function (network, chan, cmd, args) {
+	const {irc} = network;
+
+	if (cmd === "ping") {
+		if (args.length !== 1) {
+			chan.pushMessage(
+				this,
+				new Msg({
+					type: MessageType.ERROR,
+					text: "Usage: /ping <nick>",
+				})
+			);
+			return;
+		}
+
+		args = [args[0], "PING", network.addPendingPing(args[0])];
+	} else if (args.length < 2) {
 		chan.pushMessage(
 			this,
 			new Msg({
