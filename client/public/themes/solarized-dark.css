@@ -1,0 +1,228 @@
+@import "default.css";
+
+/* Solarized Dark. Colours from the official Solarized palette, https://ethanschoonover.com/solarized/ */
+:root {
+	/* Backgrounds */
+	--body-bg-color: #073642;
+	--window-bg-color: #002b36;
+	--form-bg-color: #073642;
+	--window-shadow-color: rgb(0 0 0 / 75%);
+	--shadow-color: rgb(0 0 0 / 35%);
+	--shadow-color-subtle: rgb(0 0 0 / 25%);
+
+	/* Text */
+	--body-color: #839496;
+	--body-color-muted: #93a1a1;
+	--window-heading-color: #93a1a1;
+	--placeholder-color: #586e75;
+	--chat-placeholder-color: var(--placeholder-color);
+	--setting-input-placeholder-color: var(--placeholder-color);
+
+	/* Borders */
+	--border-color: #073642;
+	--content-border-color: #073642;
+	--table-border-color: #073642;
+
+	/* Links */
+	--link-color: #268bd2;
+
+	/* Status and accent colours */
+	--positive-color: #859900;
+	--negative-color: #dc322f;
+	--neutral-color: #586e75;
+	--status-away-color: #586e75;
+	--error-color: #dc322f;
+	--error-text-color: #002b36;
+	--alert-info-color: #839496;
+	--alert-info-bg-color: rgb(38 139 210 / 20%);
+	--alert-warning-color: #839496;
+	--alert-warning-bg-color: rgb(181 137 0 / 20%);
+	--alert-error-color: #839496;
+	--alert-error-bg-color: rgb(220 50 47 / 20%);
+	--alert-success-color: #839496;
+	--alert-success-bg-color: rgb(133 153 0 / 20%);
+
+	/* Messages */
+	--highlight-bg-color: #073642;
+	--highlight-border-color: #b58900;
+	--highlight-time-color: #93a1a1;
+	--msg-action-color: #d33682;
+	--msg-notice-color: #268bd2;
+	--msg-error-color: var(--error-color);
+	--msg-warn-color: #b58900;
+	--msg-note-color: #2aa198;
+	--statusmsg-color: #002b36;
+	--statusmsg-bg-color: #cb4b16;
+	--reply-context-icon-color: #586e75;
+	--reply-context-hover-bg-color: #073642;
+	--reply-bar-bg-color: #073642;
+	--reply-bar-border-color: var(--border-color);
+	--msg-actions-border-color: #073642;
+	--msg-actions-shadow-color: var(--shadow-color-subtle);
+	--msg-actions-hover-bg-color: #073642;
+	--channel-list-loading-color: #93a1a1;
+	--channel-list-truncated-color: #dc322f;
+
+	/* Unread and date markers, mentions */
+	--date-marker-color: #859900;
+	--unread-marker-color: #dc322f;
+	--notification-color: #dc322f;
+
+	/* Nick colours. --nick-color is used when colored nicks are off */
+	--nick-color: #839496;
+	--nick-color-1: #b58900;
+	--nick-color-2: #cb4b16;
+	--nick-color-3: #dc322f;
+	--nick-color-4: #d33682;
+	--nick-color-5: #6c71c4;
+	--nick-color-6: #268bd2;
+	--nick-color-7: #2aa198;
+	--nick-color-8: #859900;
+	--nick-color-9: #b58900;
+	--nick-color-10: #cb4b16;
+	--nick-color-11: #dc322f;
+	--nick-color-12: #d33682;
+	--nick-color-13: #6c71c4;
+	--nick-color-14: #268bd2;
+	--nick-color-15: #2aa198;
+	--nick-color-16: #859900;
+	--nick-color-17: #b58900;
+	--nick-color-18: #cb4b16;
+	--nick-color-19: #dc322f;
+	--nick-color-20: #d33682;
+	--nick-color-21: #6c71c4;
+	--nick-color-22: #268bd2;
+	--nick-color-23: #2aa198;
+	--nick-color-24: #859900;
+	--nick-color-25: #b58900;
+	--nick-color-26: #cb4b16;
+	--nick-color-27: #dc322f;
+	--nick-color-28: #d33682;
+	--nick-color-29: #6c71c4;
+	--nick-color-30: #268bd2;
+	--nick-color-31: #2aa198;
+	--nick-color-32: #859900;
+
+	/* IRC formatting colours 0-15 (text and background). 16-98 are fixed by the IRC spec */
+	--irc-fg-color-0: #fdf6e3;
+	--irc-fg-color-1: #002b36;
+	--irc-fg-color-2: #268bd2;
+	--irc-fg-color-3: #859900;
+	--irc-fg-color-4: #dc322f;
+	--irc-fg-color-5: #cb4b16;
+	--irc-fg-color-6: #6c71c4;
+	--irc-fg-color-7: #cb4b16;
+	--irc-fg-color-8: #b58900;
+	--irc-fg-color-9: #859900;
+	--irc-fg-color-10: #2aa198;
+	--irc-fg-color-11: #2aa198;
+	--irc-fg-color-12: #268bd2;
+	--irc-fg-color-13: #d33682;
+	--irc-fg-color-14: #586e75;
+	--irc-fg-color-15: #93a1a1;
+	--irc-bg-color-0: #fdf6e3;
+	--irc-bg-color-1: #002b36;
+	--irc-bg-color-2: #268bd2;
+	--irc-bg-color-3: #859900;
+	--irc-bg-color-4: #dc322f;
+	--irc-bg-color-5: #cb4b16;
+	--irc-bg-color-6: #6c71c4;
+	--irc-bg-color-7: #cb4b16;
+	--irc-bg-color-8: #b58900;
+	--irc-bg-color-9: #859900;
+	--irc-bg-color-10: #2aa198;
+	--irc-bg-color-11: #2aa198;
+	--irc-bg-color-12: #268bd2;
+	--irc-bg-color-13: #d33682;
+	--irc-bg-color-14: #586e75;
+	--irc-bg-color-15: #93a1a1;
+
+	/* Buttons. --button-color applies to border, text, and background on hover */
+	--button-color: #2aa198;
+	--button-text-color-hover: #002b36;
+	--focus-ring-color: rgb(42 161 152 / 50%);
+	--radio-pill-checked-color: #002b36;
+	--icon-button-color: #93a1a1;
+	--input-button-color: #93a1a1;
+	--upload-progressbar-color: var(--button-color);
+
+	/* Inputs */
+	--input-color: #839496;
+	--input-bg-color: #073642;
+	--input-border-color: #586e75;
+	--input-border-color-focus: var(--button-color);
+	--input-disabled-bg-color: #073642;
+	--setting-input-color: var(--input-color);
+	--setting-input-bg-color: var(--input-bg-color);
+	--setting-input-border-color: var(--input-border-color);
+	--search-input-bg-color: #073642;
+	--search-icon-color: #586e75;
+	--form-nick-color: #839496;
+	--form-nick-bg-color: #073642;
+
+	/* User list */
+	--userlist-active-bg-color: #073642;
+
+	/* Sidebar (drawn on var(--body-bg-color)) */
+	--sidebar-color: #839496;
+	--sidebar-color-active: #eee8d5;
+	--sidebar-hover-bg-color: rgb(0 43 54 / 50%);
+	--sidebar-active-bg-color: #002b36;
+	--sidebar-lobby-color: #859900;
+	--sidebar-lobby-color-active: #2aa198;
+	--sidebar-warning-color: #cb4b16;
+	--sidebar-warning-color-active: #b58900;
+	--sidebar-error-color: #dc322f;
+	--sidebar-error-color-active: #d33682;
+	--sidebar-badge-color: #839496;
+	--sidebar-badge-bg-color: #002b36;
+	--sidebar-badge-highlight-color: #073642;
+	--sidebar-badge-highlight-bg-color: #b58900;
+	--sidebar-input-bg-color: #002b36;
+	--sidebar-input-placeholder-color: #586e75;
+	--sidebar-drag-border-color: #586e75;
+	--sidebar-shadow-color: rgb(0 0 0 / 50%);
+
+	/* Scrollbars. --scrollbar-color is "thumb track" or auto */
+	--scrollbar-color: #586e75 transparent;
+	--scrollbar-thumb-color: #586e75;
+	--scrollbar-thumb-color-active: #586e75;
+	--scrollbar-track-color-hover: #073642;
+
+	/* Overlays, context menus, image viewer */
+	--overlay-bg-color: rgb(0 0 0 / 50%);
+	--menu-color: #839496;
+	--menu-bg-color: #073642;
+	--menu-border-color: #073642;
+	--menu-shadow-color: var(--shadow-color);
+	--menu-divider-color: #073642;
+	--menu-hover-bg-color: #073642;
+	--image-viewer-bg-color: rgb(0 0 0 / 90%);
+	--image-viewer-button-color: white;
+	--confirm-dialog-buttons-bg-color: rgb(0 0 0 / 30%);
+
+	/* Code and monospace */
+	--code-color: #cb4b16;
+	--code-bg-color: #073642;
+	--monospace-block-bg-color: #073642;
+	--pre-color: #839496;
+	--pre-bg-color: #073642;
+	--kbd-color: #839496;
+	--kbd-bg-color: #073642;
+	--kbd-gradient-color: rgb(0 0 0 / 25%);
+	--kbd-border-color: #002b36;
+	--kbd-highlight-color: #586e75;
+	--kbd-shade-color: #002b36;
+	--kbd-text-shadow: 0 1px 0 #002b36;
+
+	/* Link previews */
+	--embed-bg-color: #073642;
+	--embed-muted-color: #93a1a1;
+	--embed-shadow-color: rgb(0 0 0 / 35%);
+
+	/* Logo. Dark themes swap these to show the inverted (light) logo */
+	--logo-display: none;
+	--logo-inverted-display: inline-block;
+	--sidebar-logo-display: none;
+	--sidebar-logo-inverted-display: inline;
+}
