@@ -565,7 +565,8 @@
 				<div class="description">
 					<p>
 						Open this help window. With a <code>topic</code>, ask the IRC server for
-						help on it instead.
+						help on it instead and switch to the network lobby, where the answer
+						appears.
 					</p>
 				</div>
 			</div>
