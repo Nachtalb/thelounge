@@ -2,7 +2,7 @@ import socket from "../socket";
 import eventbus from "../eventbus";
 import type {ClientChan, ClientNetwork, ClientUser} from "../types";
 import {switchToChannel} from "../router";
-import {TypedStore} from "../store";
+import {store as globalStore, TypedStore} from "../store";
 import useCloseChannel from "../hooks/use-close-channel";
 import {ChanType} from "../../../shared/types/chan";
 
@@ -28,6 +28,30 @@ export type ContextMenuItem =
 	| ContextMenuItemWithAction
 	| ContextMenuItemWithLink
 	| ContextMenuDividerItem;
+
+function generateMediaPreviewToggle(network: ClientNetwork, name: string): ContextMenuItem[] {
+	// The server fetches no previews at all when prefetch is disabled
+	if (!globalStore.state.serverConfiguration?.prefetch) {
+		return [];
+	}
+
+	const lowerName = name.toLowerCase();
+	const blocked = network.mediaPreviewBlocklist.some((n) => n.toLowerCase() === lowerName);
+
+	return [
+		{
+			label: blocked ? "Enable media previews" : "Disable media previews",
+			type: "item",
+			class: "media-preview",
+			action() {
+				socket.emit("network:media-preview-toggle", {
+					uuid: network.uuid,
+					name,
+				});
+			},
+		},
+	];
+}
 
 export function generateChannelContextMenu(
 	channel: ClientChan,
@@ -199,6 +223,8 @@ export function generateChannelContextMenu(
 				);
 			},
 		});
+
+		items.push(...generateMediaPreviewToggle(network, channel.name));
 	}
 
 	const humanFriendlyChanTypeMap: Record<string, string> = {
@@ -335,6 +361,7 @@ export function generateUserContextMenu(
 				});
 			},
 		},
+		...generateMediaPreviewToggle(network, user.nick),
 		{
 			label: "Direct messages",
 			type: "item",

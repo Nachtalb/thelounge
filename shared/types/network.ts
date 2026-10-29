@@ -33,6 +33,7 @@ export type SharedNetwork = {
 	name: string;
 	nick: string;
 	serverOptions: SharedServerOptions;
+	mediaPreviewBlocklist: string[];
 	status: SharedNetworkStatus;
 	channels: SharedNetworkChan[];
 };

@@ -89,6 +89,7 @@ export type NetworkConfig = {
 	proxyEnabled: boolean;
 	highlightRegex?: string;
 	ignoreList: any[];
+	mediaPreviewBlocklist?: string[];
 };
 
 class Network {
@@ -123,6 +124,7 @@ class Network {
 
 	chanCache!: Chan[];
 	ignoreList!: IgnoreList;
+	mediaPreviewBlocklist!: string[];
 	keepNick!: string | null;
 
 	status!: NetworkStatus;
@@ -185,6 +187,7 @@ class Network {
 
 			chanCache: [],
 			ignoreList: [],
+			mediaPreviewBlocklist: [],
 			keepNick: null,
 			monitorList: [],
 			toBeMonitored: [],
@@ -559,12 +562,29 @@ class Network {
 		}
 	}
 
+	isMediaPreviewBlocked(...names: string[]) {
+		const blocked = this.mediaPreviewBlocklist.map((name) => name.toLowerCase());
+		return names.some((name) => blocked.includes(name.toLowerCase()));
+	}
+
+	toggleMediaPreviewBlock(name: string) {
+		if (this.isMediaPreviewBlocked(name)) {
+			const lowerName = name.toLowerCase();
+			this.mediaPreviewBlocklist = this.mediaPreviewBlocklist.filter(
+				(blocked) => blocked.toLowerCase() !== lowerName
+			);
+		} else {
+			this.mediaPreviewBlocklist.push(name);
+		}
+	}
+
 	getFilteredClone(lastActiveChannel?: number, lastMessage?: number): SharedNetwork {
 		return {
 			uuid: this.uuid,
 			name: this.name,
 			nick: this.nick,
 			serverOptions: this.serverOptions,
+			mediaPreviewBlocklist: this.mediaPreviewBlocklist,
 			status: this.getNetworkStatus(),
 			channels: this.channels.map((channel) =>
 				channel.getFilteredClone(lastActiveChannel, lastMessage)
@@ -690,6 +710,7 @@ class Network {
 			"saslPassword",
 			"commands",
 			"ignoreList",
+			"mediaPreviewBlocklist",
 
 			"proxyHost",
 			"proxyPort",

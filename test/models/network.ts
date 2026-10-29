@@ -130,7 +130,14 @@ describe("Network", function () {
 					{name: "PrivateChat", type: "query", muted: true},
 				],
 				ignoreList: [],
+				mediaPreviewBlocklist: [],
 			});
+		});
+
+		it("should export the media preview blocklist", function () {
+			const network = new Network({mediaPreviewBlocklist: ["#nsfw", "SpamBot"]});
+
+			expect(network.export().mediaPreviewBlocklist).to.deep.equal(["#nsfw", "SpamBot"]);
 		});
 	});
 
@@ -368,6 +375,7 @@ describe("Network", function () {
 					ip: "newIp",
 					hostname: "newHostname",
 					uuid: "newuuid",
+					mediaPreviewBlocklist: ["#overwritten"],
 				}
 			);
 
@@ -400,6 +408,41 @@ describe("Network", function () {
 				"/whois test",
 			]);
 		});
+
+		it("should keep the media preview blocklist", function () {
+			const network = new Network({mediaPreviewBlocklist: ["#nsfw"]});
+			(network as any).edit({emit() {}, save() {}}, {nick: "nick", host: "irc.example.com"});
+
+			expect(network.mediaPreviewBlocklist).to.deep.equal(["#nsfw"]);
+		});
+	});
+
+	describe("#isMediaPreviewBlocked(...names)", function () {
+		it("should match blocked nicks and channels case-insensitively", function () {
+			const network = new Network({mediaPreviewBlocklist: ["#NSFW", "spambot"]});
+
+			expect(network.isMediaPreviewBlocked("#nsfw", "someone")).to.be.true;
+			expect(network.isMediaPreviewBlocked("#thelounge", "SpamBot")).to.be.true;
+			expect(network.isMediaPreviewBlocked("#thelounge", "someone")).to.be.false;
+		});
+
+		it("should block nothing by default", function () {
+			expect(new Network().isMediaPreviewBlocked("#thelounge", "someone")).to.be.false;
+		});
+	});
+
+	describe("#toggleMediaPreviewBlock(name)", function () {
+		it("should block and unblock a name case-insensitively", function () {
+			const network = new Network();
+
+			network.toggleMediaPreviewBlock("#NSFW");
+			expect(network.mediaPreviewBlocklist).to.deep.equal(["#NSFW"]);
+			expect(network.isMediaPreviewBlocked("#nsfw")).to.be.true;
+
+			network.toggleMediaPreviewBlock("#nsfw");
+			expect(network.mediaPreviewBlocklist).to.be.empty;
+			expect(network.isMediaPreviewBlocked("#NSFW")).to.be.false;
+		});
 	});
 
 	describe("#getFilteredClone(lastActiveChannel, lastMessage)", function () {
@@ -420,7 +463,15 @@ describe("Network", function () {
 
 			expect(clone)
 				.to.be.an("object")
-				.that.has.all.keys("channels", "status", "nick", "name", "serverOptions", "uuid");
+				.that.has.all.keys(
+					"channels",
+					"status",
+					"nick",
+					"name",
+					"serverOptions",
+					"mediaPreviewBlocklist",
+					"uuid"
+				);
 
 			expect(clone.status).to.be.an("object").that.has.all.keys("connected", "secure");
 		});

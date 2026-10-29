@@ -542,6 +542,28 @@ function initializeClient(
 		(network as NetworkWithIrcFramework).edit(client, data);
 	});
 
+	socket.on("network:media-preview-toggle", (data) => {
+		if (!_.isPlainObject(data) || typeof data.name !== "string" || !data.name) {
+			return;
+		}
+
+		const network = _.find(client.networks, {uuid: data.uuid});
+
+		if (!network) {
+			return;
+		}
+
+		network.toggleMediaPreviewBlock(data.name);
+		client.save();
+
+		for (const attachedClient of Object.keys(client.attachedClients)) {
+			manager!.sockets.in(attachedClient).emit("network:info", {
+				uuid: network.uuid,
+				mediaPreviewBlocklist: network.mediaPreviewBlocklist,
+			});
+		}
+	});
+
 	socket.on("history:clear", (data) => {
 		if (_.isPlainObject(data)) {
 			client.clearHistory(data);

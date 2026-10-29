@@ -76,6 +76,26 @@ describe("Client", function () {
 		expect(network.channels[3].type).to.equal(ChanType.CHANNEL);
 	});
 
+	it("should load the media preview blocklist", function () {
+		const manager = new ClientManager();
+		const networkConfig: NetworkConfig = {
+			...commonNetworkConfig,
+			mediaPreviewBlocklist: ["#nsfw", "SpamBot", 42 as any],
+		};
+		const client = new Client(manager, "test", {
+			log: false,
+			password: "foo",
+			sessions: {},
+			clientSettings: {},
+			networks: [networkConfig],
+		});
+
+		const network = client.networkFromConfig(networkConfig);
+
+		expect(network.mediaPreviewBlocklist).to.deep.equal(["#nsfw", "SpamBot"]);
+		expect(network.export().mediaPreviewBlocklist).to.deep.equal(["#nsfw", "SpamBot"]);
+	});
+
 	it("should ignore invalid channel types", function () {
 		const manager = new ClientManager();
 		const channel: ChanConfig = {name: "AAAA!", type: "query"};

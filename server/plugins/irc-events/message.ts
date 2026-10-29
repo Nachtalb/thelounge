@@ -216,7 +216,11 @@ export default <IrcEventHandler>function (irc, network) {
 		}
 
 		// No prefetch URLs unless are simple MESSAGE or ACTION types
-		if ([MessageType.MESSAGE, MessageType.ACTION].includes(data.type)) {
+		// and previews are not blocked for this channel or sender
+		if (
+			[MessageType.MESSAGE, MessageType.ACTION].includes(data.type) &&
+			!network.isMediaPreviewBlocked(chan.name, data.nick)
+		) {
 			LinkPrefetch(client, chan, msg, cleanMessage);
 		}
 
