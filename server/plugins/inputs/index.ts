@@ -41,7 +41,7 @@ type ExternalPluginCommand = {
 	allowDisconnected?: boolean;
 };
 
-const clientSideCommands = ["/collapse", "/expand", "/search"];
+const clientSideCommands = ["/collapse", "/expand", "/help", "/network", "/search", "/settings"];
 
 const passThroughCommands = [
 	"/as",
