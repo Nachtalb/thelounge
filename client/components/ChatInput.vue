@@ -371,14 +371,19 @@ export default defineComponent({
 					return;
 				}
 
-				wrapCursor(
-					e.target as HTMLTextAreaElement,
-					modifier,
-					(e.target as HTMLTextAreaElement).selectionStart ===
-						(e.target as HTMLTextAreaElement).selectionEnd
-						? ""
-						: modifier
-				);
+				const target = e.target as HTMLTextAreaElement;
+				const hasSelection = target.selectionStart !== target.selectionEnd;
+
+				wrapCursor(target, modifier, hasSelection ? modifier : "");
+
+				if (hasSelection) {
+					// Let autocomplete see the cursor at the start of the wrapped
+					// selection, so the colour menu opens there and not at its end
+					const {selectionStart, selectionEnd} = target;
+					target.setSelectionRange(selectionStart, selectionStart);
+					target.dispatchEvent(new Event("input"));
+					target.setSelectionRange(selectionStart, selectionEnd);
+				}
 
 				return false;
 			});

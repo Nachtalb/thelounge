@@ -1,7 +1,7 @@
 import constants from "./constants";
 
 import Mousetrap from "mousetrap";
-import {Textcomplete, StrategyProps} from "@textcomplete/core";
+import {Textcomplete, StrategyProps, SearchResult} from "@textcomplete/core";
 import {TextareaEditor} from "@textcomplete/textarea";
 
 import fuzzy from "fuzzy";
@@ -227,7 +227,21 @@ function enableAutocomplete(input: HTMLTextAreaElement) {
 		backgroundColorStrategy,
 	];
 
-	const editor = new TextareaEditor(input);
+	// TextareaEditor ignores the chosen item while text is selected (e.g. after
+	// a formatting shortcut wrapped the selection), so apply it at the start of
+	// the selection and keep the selection
+	class ChatInputEditor extends TextareaEditor {
+		applySearchResult(searchResult: SearchResult) {
+			const {selectionStart, selectionEnd} = input;
+			input.setSelectionRange(selectionStart, selectionStart);
+			super.applySearchResult(searchResult);
+
+			const start = input.selectionStart;
+			input.setSelectionRange(start, start + selectionEnd - selectionStart);
+		}
+	}
+
+	const editor = new ChatInputEditor(input);
 	const textcomplete = new Textcomplete(editor, strategies, {
 		dropdown: {
 			className: "textcomplete-menu",
