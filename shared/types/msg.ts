@@ -47,6 +47,7 @@ export type LinkPreview = {
 	shown?: boolean | null;
 	error?: string;
 	message?: string;
+	filename?: string | null;
 
 	media?: string;
 	mediaType?: string;

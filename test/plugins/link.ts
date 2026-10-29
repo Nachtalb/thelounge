@@ -2,7 +2,7 @@ import path from "path";
 import {expect} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
-import link from "../../server/plugins/irc-events/link";
+import link, {getFilename, normalizeMediaType} from "../../server/plugins/irc-events/link";
 import {LinkPreview} from "../../shared/types/msg";
 
 describe("Link plugin", function () {
@@ -450,6 +450,123 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				expect(data.preview.size).to.equal(960);
 				resolve();
 			});
+		});
+	});
+
+	it("should send the filename of an image preview from the url", function () {
+		return new Promise<void>((resolve) => {
+			const real_image_url = _makeUrl("real-test-image.png");
+			const message = irc.createMessage({
+				text: real_image_url,
+			});
+
+			link(irc, network.channels[0], message, message.text);
+
+			irc.once("msg:preview", function (data) {
+				expect(data.preview.type).to.equal("image");
+				expect(data.preview.filename).to.equal("real-test-image.png");
+				resolve();
+			});
+		});
+	});
+
+	it("should prefer the filename from the Content-Disposition header", function () {
+		return new Promise<void>((resolve) => {
+			const url = _makeUrl("image-with-disposition");
+			const message = irc.createMessage({
+				text: url,
+			});
+
+			app.get("/image-with-disposition", function (req, res) {
+				res.setHeader(
+					"Content-Disposition",
+					"inline; filename=\"fallback.png\"; filename*=UTF-8''%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9.png"
+				);
+				res.sendFile(path.resolve("client/public/img/logo-grey-bg-120x120px.png"));
+			});
+
+			link(irc, network.channels[0], message, message.text);
+
+			irc.once("msg:preview", function (data) {
+				expect(data.preview.type).to.equal("image");
+				expect(data.preview.filename).to.equal("русский.png");
+				resolve();
+			});
+		});
+	});
+
+	it("should use the filename of the url after redirects", function () {
+		return new Promise<void>((resolve) => {
+			const url = _makeUrl("short-link");
+			const message = irc.createMessage({
+				text: url,
+			});
+
+			app.get("/short-link", function (req, res) {
+				res.redirect("/real-test-image.png");
+			});
+
+			link(irc, network.channels[0], message, message.text);
+
+			irc.once("msg:preview", function (data) {
+				expect(data.preview.type).to.equal("image");
+				expect(data.preview.filename).to.equal("real-test-image.png");
+				resolve();
+			});
+		});
+	});
+
+	it("should not send a filename for link previews", function () {
+		return new Promise<void>((resolve) => {
+			const url = _makeUrl("page.html");
+			const message = irc.createMessage({
+				text: url,
+			});
+
+			app.get("/page.html", function (req, res) {
+				res.send("<title>test title</title>");
+			});
+
+			link(irc, network.channels[0], message, message.text);
+
+			irc.once("msg:preview", function (data) {
+				expect(data.preview.type).to.equal("link");
+				expect(data.preview).to.not.have.property("filename");
+				resolve();
+			});
+		});
+	});
+
+	it("should send flac audio with a mime type browsers can play", function () {
+		expect(normalizeMediaType("audio/x-flac")).to.equal("audio/flac");
+		expect(normalizeMediaType("audio/flac")).to.equal("audio/flac");
+		expect(normalizeMediaType("audio/ogg")).to.equal("audio/ogg");
+	});
+
+	describe("getFilename", function () {
+		it("should use the Content-Disposition filename", function () {
+			expect(
+				getFilename("https://example.com/abc", 'attachment; filename="cat picture.jpg"')
+			).to.equal("cat picture.jpg");
+		});
+
+		it("should fall back to the decoded url path", function () {
+			expect(getFilename("https://example.com/files/%D1%82%D0%B5%D1%81%D1%82.flac")).to.equal(
+				"тест.flac"
+			);
+			expect(getFilename("https://example.com/a.png", "inline")).to.equal("a.png");
+		});
+
+		it("should ignore malformed headers and urls", function () {
+			expect(getFilename("https://example.com/a.png", "inline; filename=")).to.equal("a.png");
+			expect(getFilename("https://example.com/%E0%A4%A.png")).to.be.null;
+			expect(getFilename("not a url")).to.be.null;
+		});
+
+		it("should not return path segments without an extension", function () {
+			expect(getFilename("https://example.com/")).to.be.null;
+			expect(getFilename("https://example.com/image")).to.be.null;
+			expect(getFilename("https://example.com/.hidden")).to.be.null;
 		});
 	});
 

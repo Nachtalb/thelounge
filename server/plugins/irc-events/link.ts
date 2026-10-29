@@ -3,6 +3,8 @@ import type {Element} from "domhandler";
 import got from "got";
 import {URL} from "url";
 import mime from "mime-types";
+import contentDisposition from "content-disposition";
+import path from "path";
 
 import log from "../../log";
 import Config from "../../config";
@@ -17,6 +19,7 @@ type FetchRequest = {
 	data: Buffer;
 	type: string;
 	size: number;
+	filename: string | null;
 };
 const currentFetchPromises = new Map<string, Promise<FetchRequest>>();
 const imageTypeRegex = /^image\/.+/;
@@ -207,7 +210,7 @@ function parseHtmlMedia($: any, preview, client: Client): Promise<FetchRequest> 
 
 							preview.type = type;
 							preview.media = mediaUrl;
-							preview.mediaType = resMedia.type;
+							preview.mediaType = normalizeMediaType(resMedia.type);
 
 							resolve(resMedia);
 						})
@@ -286,7 +289,7 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 
 			preview.type = "audio";
 			preview.media = preview.link;
-			preview.mediaType = res.type;
+			preview.mediaType = normalizeMediaType(res.type);
 
 			break;
 
@@ -311,11 +314,43 @@ function parse(msg: Msg, chan: Chan, preview: LinkPreview, res: FetchRequest, cl
 			return removePreview(msg, preview);
 	}
 
+	if (res.filename && ["image", "audio", "video"].includes(preview.type)) {
+		preview.filename = res.filename;
+	}
+
 	if (!promise) {
 		return handlePreview(client, chan, msg, preview, res);
 	}
 
 	void promise.then((newRes) => handlePreview(client, chan, msg, preview, newRes));
+}
+
+// Browsers only recognise the registered mime type of some formats in <source type>
+export function normalizeMediaType(type: string): string {
+	return type === "audio/x-flac" ? "audio/flac" : type;
+}
+
+// Use the filename from the Content-Disposition header if there is one,
+// otherwise fall back to the last segment of the URL path if it has an extension
+export function getFilename(uri: string, disposition?: string): string | null {
+	if (disposition) {
+		try {
+			const filename = contentDisposition.parse(disposition).parameters.filename;
+
+			if (filename) {
+				return filename;
+			}
+		} catch {
+			// Ignore malformed headers and fall back to the url
+		}
+	}
+
+	try {
+		const basename = decodeURIComponent(path.posix.basename(new URL(uri).pathname));
+		return basename.indexOf(".") > 0 ? basename : null;
+	} catch {
+		return null;
+	}
 }
 
 function handlePreview(client: Client, chan: Chan, msg: Msg, preview: LinkPreview, res) {
@@ -417,6 +452,7 @@ function fetch(uri: string, headers: Record<string, string>) {
 		let buffer = Buffer.from("");
 		let contentLength = 0;
 		let contentType: string | undefined;
+		let filename: string | null = null;
 		let limit = Config.values.prefetchMaxImageSize * 1024;
 
 		try {
@@ -431,6 +467,8 @@ function fetch(uri: string, headers: Record<string, string>) {
 				.on("response", function (res) {
 					contentLength = parseInt(res.headers["content-length"], 10) || 0;
 					contentType = res.headers["content-type"];
+					// Use the final url after redirects for the filename fallback
+					filename = getFilename(res.url || uri, res.headers["content-disposition"]);
 
 					if (contentType && imageTypeRegex.test(contentType)) {
 						// response is an image
@@ -475,7 +513,7 @@ function fetch(uri: string, headers: Record<string, string>) {
 						type = contentType.split(/ *; */).shift() || "";
 					}
 
-					resolve({data: buffer, type, size});
+					resolve({data: buffer, type, size, filename});
 				});
 		} catch (e: any) {
 			return reject(e);

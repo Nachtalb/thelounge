@@ -8,7 +8,11 @@
 	>
 		<div
 			ref="content"
-			:class="['toggle-content', 'toggle-type-' + link.type, {opened: isContentShown}]"
+			:class="[
+				'toggle-content',
+				'toggle-type-' + link.type,
+				{opened: isContentShown, 'with-filename': link.filename},
+			]"
 		>
 			<template v-if="link.type === 'link'">
 				<a
@@ -64,7 +68,8 @@
 			<template v-else-if="link.type === 'image'">
 				<a
 					:href="link.link"
-					class="toggle-thumbnail"
+					:title="link.filename || undefined"
+					:class="['toggle-thumbnail', {'filename-beside': isFilenameBeside}]"
 					target="_blank"
 					rel="noopener"
 					@click="onThumbnailClick"
@@ -74,11 +79,13 @@
 						:src="link.thumb"
 						decoding="async"
 						alt=""
-						@load="onPreviewReady"
+						@load="onImageLoad"
 					/>
+					<span v-if="link.filename" class="media-filename">{{ link.filename }}</span>
 				</a>
 			</template>
 			<template v-else-if="link.type === 'video'">
+				<span v-if="link.filename" class="media-filename">{{ link.filename }}</span>
 				<video
 					v-show="link.sourceLoaded"
 					preload="metadata"
@@ -89,14 +96,25 @@
 				</video>
 			</template>
 			<template v-else-if="link.type === 'audio'">
-				<audio
-					v-show="link.sourceLoaded"
-					controls
-					preload="metadata"
-					@canplay="onPreviewReady"
-				>
-					<source :src="link.media" :type="link.mediaType" />
-				</audio>
+				<div>
+					<a
+						v-if="link.filename"
+						:href="link.link"
+						:title="link.filename"
+						class="media-filename"
+						target="_blank"
+						rel="noopener"
+						>{{ link.filename }}</a
+					>
+					<audio
+						v-show="link.sourceLoaded"
+						controls
+						preload="metadata"
+						@canplay="onPreviewReady"
+					>
+						<source :src="link.media" :type="link.mediaType" />
+					</audio>
+				</div>
 			</template>
 			<template v-else-if="link.type === 'error'">
 				<em v-if="link.error === 'image-too-big'">
@@ -167,6 +185,7 @@ export default defineComponent({
 
 		const showMoreButton = ref(false);
 		const isContentShown = ref(false);
+		const isFilenameBeside = ref(false);
 		const imageViewer = inject(imageViewerKey);
 
 		onBeforeRouteUpdate((to, from, next) => {
@@ -215,6 +234,17 @@ export default defineComponent({
 			if (props.link.type === "link") {
 				handleResize();
 			}
+		};
+
+		const onImageLoad = (e: Event) => {
+			const img = e.target as HTMLImageElement;
+
+			// Show the filename next to slim images (narrower than 16:10, or 4:3 on mobile)
+			// instead of above them, so it does not waste vertical space
+			const maxRatio = window.innerWidth < 480 ? 4 / 3 : 16 / 10;
+			isFilenameBeside.value = img.naturalWidth / img.naturalHeight <= maxRatio;
+
+			onPreviewReady();
 		};
 
 		const onPreviewUpdate = () => {
@@ -319,8 +349,10 @@ export default defineComponent({
 			onMoreClick,
 			onPreviewReady,
 			onPreviewUpdate,
+			onImageLoad,
 			showMoreButton,
 			isContentShown,
+			isFilenameBeside,
 			content,
 			container,
 		};

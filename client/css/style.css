@@ -1970,6 +1970,45 @@ textarea.input {
 	content: "\f0da"; /* https://fontawesome.com/icons/caret-right?style=solid */
 }
 
+#chat .toggle-content .media-filename {
+	font-weight: bold;
+	color: inherit;
+	overflow-wrap: anywhere;
+}
+
+#chat .toggle-type-image .toggle-thumbnail {
+	display: flex;
+	flex-direction: column-reverse;
+	color: inherit;
+}
+
+#chat .toggle-type-image .media-filename {
+	padding: 8px 10px;
+
+	/* Do not let the filename make the preview wider than the image */
+	width: 0;
+	min-width: 100%;
+}
+
+#chat .toggle-type-image .filename-beside {
+	flex-direction: row;
+}
+
+#chat .toggle-type-image .filename-beside .media-filename {
+	width: auto;
+	min-width: 0;
+	max-width: 300px;
+}
+
+#chat .toggle-type-audio.with-filename {
+	padding: 8px 10px 10px;
+}
+
+#chat .toggle-type-audio .media-filename {
+	display: block;
+	padding-bottom: 8px;
+}
+
 #chat audio {
 	width: 600px;
 	max-width: 100%;
@@ -1977,6 +2016,19 @@ textarea.input {
 
 #chat .toggle-type-video {
 	max-width: 640px;
+	position: relative;
+}
+
+#chat .toggle-type-video .media-filename {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 1;
+	padding: 8px 10px 16px;
+	background: linear-gradient(rgb(0 0 0 / 70%), transparent);
+	color: #fff;
+	pointer-events: none;
 }
 
 #chat video {
