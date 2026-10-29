@@ -8,6 +8,7 @@ import {RichInputEditor} from "./richinput/textcompleteEditor";
 import fuzzy from "fuzzy";
 
 import emojiMap from "./helpers/simplemap.json";
+import readableTextColor from "./helpers/readableTextColor";
 import {store} from "./store";
 import {ChanType} from "../../shared/types/chan";
 
@@ -87,6 +88,26 @@ const commandStrategy: StrategyProps = {
 // "None" (the IRC default colour 99) removes the colour again
 const colorChoices = [["99", "None"], ...constants.colorCodeMap];
 
+// Colour completions are swatches: the colour as background, with black or white
+// text, whichever is more readable on it. Themes recolour 0-15 (and foreground and
+// background separately), so read the colour the current theme actually renders
+function colorSwatch(code: string, label: string, type: "fg" | "bg") {
+	if (code === "99") {
+		return label;
+	}
+
+	const probe = document.createElement("span");
+	probe.className = `irc-${type}${parseInt(code, 10)}`;
+	document.body.appendChild(probe);
+	const style = getComputedStyle(probe);
+	const color = type === "fg" ? style.color : style.backgroundColor;
+	probe.remove();
+
+	return `<span class="color-swatch color-swatch-${readableTextColor(
+		color
+	)}" style="background-color: ${color}">${label}</span>`;
+}
+
 const foregroundColorStrategy: StrategyProps = {
 	id: "foreground-colors",
 	match: /\x03(\d{0,2}|[A-Za-z ]{0,10})$/,
@@ -112,7 +133,7 @@ const foregroundColorStrategy: StrategyProps = {
 		callback(matchingColorCodes);
 	},
 	template(value: string[]) {
-		return `<span class="irc-fg${parseInt(value[0], 10)}">${value[1]}</span>`;
+		return colorSwatch(value[0], value[1], "fg");
 	},
 	replace(value: string) {
 		return "\x03" + value[0];
@@ -123,7 +144,7 @@ const foregroundColorStrategy: StrategyProps = {
 const backgroundColorStrategy: StrategyProps = {
 	id: "background-colors",
 	match: /\x03(\d{2}),(\d{0,2}|[A-Za-z ]{0,10})$/,
-	search(term: string, callback: (matchingColorCodes: string[][]) => void, match: string[]) {
+	search(term: string, callback: (matchingColorCodes: string[][]) => void) {
 		term = term.toLowerCase();
 		const matchingColorCodes = colorChoices
 			.filter((i) => fuzzy.test(term, i[0]) || fuzzy.test(term, i[1]))
@@ -139,16 +160,12 @@ const backgroundColorStrategy: StrategyProps = {
 				}
 
 				return pair;
-			})
-			.map((pair) => pair.concat(match[1])); // Needed to pass fg color to `template`...
+			});
 
 		callback(matchingColorCodes);
 	},
 	template(value: string[]) {
-		return `<span class="irc-fg${parseInt(value[2], 10)} irc-bg irc-bg${parseInt(
-			value[0],
-			10
-		)}">${value[1]}</span>`;
+		return colorSwatch(value[0], value[1], "bg");
 	},
 	replace(value: string[]) {
 		return "\x03$1," + value[0];
