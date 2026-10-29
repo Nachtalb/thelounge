@@ -41,6 +41,14 @@ describe("public folder", function () {
 		expect(assets.some((f: string) => f.startsWith("emoji-") && f.endsWith(".js"))).to.be.true;
 	});
 
+	it("emoji images are self-hosted", function () {
+		for (const set of ["google", "twitter"]) {
+			const dir = path.join(publicFolder, "img", "emoji", set);
+			expect(fs.existsSync(path.join(dir, "1f1e8-1f1ed.png"))).to.be.true;
+			expect(fs.existsSync(path.join(dir, "LICENSE.txt"))).to.be.true;
+		}
+	});
+
 	it("style files are built", function () {
 		expect(fs.existsSync(path.join(publicFolder, "themes", "default.css"))).to.be.true;
 		expect(fs.existsSync(path.join(publicFolder, "themes", "morning.css"))).to.be.true;

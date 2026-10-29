@@ -2336,6 +2336,16 @@ electron-to-chromium@^1.5.328:
   resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.363.tgz#6e9ee6bbb98d4aa12e96853e89993990d577eec8"
   integrity sha512-VjUKPyWzGnT1fujlkEGC/BvN70Hh70KXtAqcmniXviYlJC/ivcT+BWGPyxWVbJZLfvtKR6dqg1L7T7pgAMBtWA==
 
+emoji-datasource-google@16.0.0:
+  version "16.0.0"
+  resolved "https://registry.yarnpkg.com/emoji-datasource-google/-/emoji-datasource-google-16.0.0.tgz#a80ac3e8106cbd4d8648ce758aa099e8827b6157"
+  integrity sha512-ZRexfzs7MVoLnmzZmNsO4TKhnAJp5D++Vm6PpUpH/jEQQlemp3l88CjZ+DoZ2faM9R4QxZkOPJCoT8DlPhfQ3A==
+
+emoji-datasource-twitter@16.0.0:
+  version "16.0.0"
+  resolved "https://registry.yarnpkg.com/emoji-datasource-twitter/-/emoji-datasource-twitter-16.0.0.tgz#e2bd39a8acb77e158106f8249dd7b4cd93fa1b14"
+  integrity sha512-7F+uCuHH+7Qnrc15P5tnbvKkg9E6tlzi4MnT2uW1RlN4pLYTza6cP/dstIfSDMtpjFLWuZewWg8jBbuL2eyELQ==
+
 emoji-datasource@16.0.0:
   version "16.0.0"
   resolved "https://registry.yarnpkg.com/emoji-datasource/-/emoji-datasource-16.0.0.tgz#7977edaa5b0099696bc720e43dd608d91ae2f208"
