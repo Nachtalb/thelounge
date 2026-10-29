@@ -13,6 +13,7 @@ import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
 import previewCache from "./plugins/previewCache";
+import * as prefetchBlocklist from "./plugins/prefetchBlocklist";
 import {backfillPreviews, prefetchInputLinks, routeCachedImage} from "./plugins/irc-events/link";
 import type Msg from "./models/msg";
 import Helper from "./helper";
@@ -320,6 +321,11 @@ export default async function (
 				});
 		}
 
+		// Download the remote prefetchBlocklist lists and refresh them daily
+		if (Config.values.prefetch) {
+			prefetchBlocklist.start();
+		}
+
 		if (previewCache.isEnabled()) {
 			void previewCache.cleanup();
 			setInterval(() => void previewCache.cleanup(), 24 * 60 * 60 * 1000).unref();
@@ -470,15 +476,23 @@ function initializeClient(
 		}
 	});
 
-	socket.on("input:preview", (data) => {
-		if (!_.isPlainObject(data) || !client.find(data.target)) {
-			return;
-		}
+	// Acknowledged right away with the accepted and blocked links, previews follow as events
+	socket.on("input:preview", (data, ack) => {
+		const result =
+			_.isPlainObject(data) && client.find(data.target)
+				? // Only the requesting socket gets the previews, the message has not been sent yet
+				  prefetchInputLinks(client, data.links, (preview, removed) => {
+						socket.emit("input:preview", {
+							target: data.target,
+							preview,
+							removed: !!removed,
+						});
+				  })
+				: {accepted: [], blocked: []};
 
-		// Only the requesting socket gets the previews, the message has not been sent yet
-		prefetchInputLinks(client, data.links, (preview, removed) => {
-			socket.emit("input:preview", {target: data.target, preview, removed: !!removed});
-		});
+		if (typeof ack === "function") {
+			ack(result);
+		}
 	});
 
 	socket.on("typing", (data) => {

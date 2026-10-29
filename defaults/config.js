@@ -232,6 +232,83 @@ module.exports = {
 	// This value is set to `""` (no proxy) by default.
 	prefetchProxy: "",
 
+	// ### `prefetchBlockPrivate`
+	//
+	// When set to `true`, The Lounge never fetches link previews from hosts
+	// that are, or resolve to, a non-public address, so people in a channel
+	// can't make the server send requests into its own network: loopback
+	// (`127.0.0.0/8`, `::1`), private networks (`10.0.0.0/8`, `172.16.0.0/12`,
+	// `192.168.0.0/16`, `fc00::/7`), carrier-grade NAT (`100.64.0.0/10`),
+	// link-local (`169.254.0.0/16`, `fe80::/10`), `0.0.0.0/8`, `::`,
+	// multicast, broadcast and other reserved and documentation ranges, the
+	// same addresses inside IPv4-mapped, NAT64 and 6to4 IPv6 addresses, and
+	// the host names `localhost` and `*.localhost`.
+	//
+	// Every redirect is checked again, and the address a host name resolves
+	// to is checked when connecting to it, so a DNS answer that changes
+	// between check and connection (DNS rebinding) is blocked too.
+	//
+	// With a `socks5://` `prefetchProxy` host names are resolved locally and
+	// checked the same way. With `socks5h://` and HTTP proxies the proxy
+	// resolves host names (The Lounge does not look them up, to keep DNS
+	// private), so only IP addresses and `localhost` names in links are
+	// blocked; what other host names reach is up to the proxy's network.
+	//
+	// Links matching a `@@` exception rule in `prefetchBlocklist` (e.g.
+	// `"@@||nas.lan^"`) are exempt, to allow specific internal hosts.
+	//
+	// Blocked links get no preview, are not cached and log only a debug line.
+	//
+	// This value is set to `true` by default.
+	prefetchBlockPrivate: true,
+
+	// ### `prefetchBlocklist`
+	//
+	// Adblock-style filter rules for link previews: links matching a rule get
+	// no preview (they are not fetched, not cached, and only a debug line is
+	// logged). Rules are matched against the full, normalised URL of the link
+	// and of every redirect.
+	//
+	// Each entry is one of:
+	//
+	// - an `http://` or `https://` URL of a filter list (e.g. EasyList style
+	//   lists). Lists are downloaded at startup and every 24 hours through
+	//   `prefetchProxy` (if set) and cached in `${THELOUNGE_HOME}/cache/blocklists`;
+	//   if a download fails, a warning is logged and the last copy is kept.
+	// - a path to a local filter list file: absolute, or starting with `./`,
+	//   `../` (relative to `${THELOUNGE_HOME}`) or `~/`. Re-read every 24 hours.
+	// - otherwise a single inline rule.
+	//
+	// Supported rule syntax (subset of Adblock Plus / uBlock Origin network
+	// filters):
+	//
+	// - `||example.com^`: the domain and all its subdomains
+	// - `|https://example.com/path`: URLs starting with this (`|` at the end
+	//   anchors the end)
+	// - `example.com/ads*banner^`: substring, `*` is a wildcard, `^` a
+	//   separator (anything but a letter, digit, `_`, `-`, `.` or `%`, or the end)
+	// - `/regex/`: a regular expression (case-insensitive)
+	// - `@@` before any rule: exception, overrides blocking rules and
+	//   `prefetchBlockPrivate`
+	// - `!` comments and `[Adblock Plus 2.0]` headers are ignored, so are
+	//   cosmetic rules (`##`, `#@#`, ...)
+	// - rules with `$` options (`$image`, `$domain=...`) are skipped, since
+	//   previews have no request type or originating page
+	//
+	// Inline substring rules that start with `/` are read as file paths:
+	// write them as `*/ads/` instead. To keep blocking IP address links when
+	// you set your own list, keep the two default rules in it.
+	//
+	// The default rules block links whose host is a raw IP address (IPv4 or
+	// IPv6, public or not, e.g. `http://203.0.113.7/` or `http://[2001:db8::1]/`),
+	// so previews are only fetched for host names. Other spellings of an IPv4
+	// address (`http://2130706433/`, `http://0x7f.1/`) are normalised to the
+	// dotted form first and blocked too.
+	prefetchBlocklist: [
+		"/^[a-z][a-z0-9+.-]*:\\/\\/(\\d{1,3}\\.){3}\\d{1,3}(:\\d+)?([\\/?#]|$)/",
+		"/^[a-z][a-z0-9+.-]*:\\/\\/\\[[0-9a-f:.]+\\](:\\d+)?([\\/?#]|$)/",
+	],
+
 	// ### `fileUpload`
 	//
 	// Allow uploading files to the server hosting The Lounge.

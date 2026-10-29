@@ -106,6 +106,8 @@ export type ConfigType = {
 	prefetchMaxSearchSize: number;
 	prefetchTimeout: number;
 	prefetchProxy: string;
+	prefetchBlockPrivate: boolean;
+	prefetchBlocklist: string[];
 	fileUpload: FileUpload;
 	transports: string[];
 	leaveMessage: string;

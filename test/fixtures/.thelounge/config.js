@@ -8,6 +8,9 @@ config.defaults.name = "Example IRC Server";
 config.defaults.host = "irc.Example.com";
 config.public = true;
 config.prefetch = true;
+// Tests fetch previews from local servers
+config.prefetchBlockPrivate = false;
+config.prefetchBlocklist = [];
 // @ts-ignore
 config.host = config.bind = "127.0.0.1";
 config.port = 61337;

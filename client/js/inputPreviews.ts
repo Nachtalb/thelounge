@@ -1,6 +1,7 @@
 import socket from "./socket";
 import {store} from "./store";
 import {
+	acceptInputPreviews,
 	dropInputPlaceholders,
 	getInputLinks,
 	resolveInputPreview,
@@ -11,9 +12,10 @@ import type {ClientChan} from "./types";
 // Links of the last update per channel, to not resync on every keystroke
 const lastLinks = new Map<number, string>();
 
-// Every new link gets a loading placeholder that the server response replaces.
-// Responses for links without a placeholder are dropped, so a slow prefetch can
-// not bring back a preview after the message was sent or the link removed.
+// Every new link is requested from the server, which answers right away (before fetching)
+// which links it accepts; only those get a loading placeholder that the preview replaces,
+// so blocked links never flash one. Responses for links without a placeholder are dropped,
+// so a slow prefetch can not bring back a preview after the message was sent or the link removed.
 export function updateInputPreviews(channel: ClientChan) {
 	const {settings, serverConfiguration} = store.state;
 	const enabled = serverConfiguration?.prefetch && (settings.links || settings.media);
@@ -30,7 +32,9 @@ export function updateInputPreviews(channel: ClientChan) {
 	channel.inputPreviews = previews;
 
 	if (missing.length > 0) {
-		socket.emit("input:preview", {target: channel.id, links: missing});
+		socket.emit("input:preview", {target: channel.id, links: missing}, ({accepted}) => {
+			channel.inputPreviews = acceptInputPreviews(channel.inputPreviews, missing, accepted);
+		});
 	}
 }
 

@@ -6,12 +6,20 @@ import tls from "tls";
 import {Duplex} from "stream";
 import {SocksClient} from "socks";
 
+import Config from "../config";
+
 // Outbound proxy for link preview fetches (`prefetchProxy`), so that the sites
 // posted in chat do not see the IP of the server running The Lounge.
 
 export type ProxyAgents = {http: http.Agent; https: https.Agent};
 
-type Target = {host: string; port: number; localAddress?: string};
+type Target = {
+	host: string;
+	port: number;
+	localAddress?: string;
+	// The lookup of the request (prefetchBlockPrivate checks), used by socks5://
+	lookup?: typeof dns.lookup;
+};
 
 const defaultPorts: Record<string, number> = {
 	"http:": 80,
@@ -58,10 +66,13 @@ function proxyAuthorization(proxy: URL) {
 async function socksTunnel(proxy: URL, target: Target, timeout: number) {
 	let host = target.host;
 
-	// socks5:// resolves the target locally (leaks the DNS lookup),
-	// socks5h:// lets the proxy resolve it
+	// socks5:// resolves the target locally (leaks the DNS lookup) with the lookup
+	// of the request, so prefetchBlockPrivate applies; socks5h:// lets the proxy resolve it
 	if (proxy.protocol === "socks5:") {
-		host = (await dns.promises.lookup(host)).address;
+		const lookup = target.lookup || dns.lookup;
+		host = await new Promise<string>((resolve, reject) =>
+			lookup(host, {}, (err, address) => (err ? reject(err) : resolve(address)))
+		);
 	}
 
 	const {socket} = await SocksClient.createConnection({
@@ -137,6 +148,7 @@ class TunnelAgent extends http.Agent {
 			host: options.host || "localhost",
 			port: Number(options.port),
 			localAddress: options.localAddress,
+			lookup: options.lookup as typeof dns.lookup | undefined,
 		}).then(
 			(socket) => callback(null, socket),
 			(err: Error) => callback(err)
@@ -155,6 +167,7 @@ class TunnelHttpsAgent extends https.Agent {
 			host: options.host || "localhost",
 			port: Number(options.port),
 			localAddress: options.localAddress,
+			lookup: options.lookup as typeof dns.lookup | undefined,
 		}).then(
 			(socket) =>
 				callback(null, tls.connect({...(options as tls.ConnectionOptions), socket})),
@@ -210,4 +223,25 @@ export function createProxyAgents(value: string, timeout: number): ProxyAgents {
 		http: isSocks ? new TunnelAgent(tunnel) : new ForwardAgent(proxy),
 		https: new TunnelHttpsAgent(tunnel),
 	};
+}
+
+let cachedAgents: {proxy: string; agents: ProxyAgents} | undefined;
+
+// Agents for link preview requests, or undefined to connect directly
+export function getPrefetchAgents() {
+	const proxy = Config.values.prefetchProxy;
+
+	if (!proxy) {
+		return undefined;
+	}
+
+	if (cachedAgents?.proxy !== proxy) {
+		// Throws on an invalid proxy, which fails the fetch instead of going direct
+		cachedAgents = {
+			proxy,
+			agents: createProxyAgents(proxy, Config.values.prefetchTimeout || 5000),
+		};
+	}
+
+	return cachedAgents.agents;
 }

@@ -912,7 +912,7 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 				irc.on("msg:preview", onMsgPreview);
 
-				prefetchInputLinks(irc, [url], (preview, removed) => {
+				const result = prefetchInputLinks(irc, [url], (preview, removed) => {
 					irc.removeListener("msg:preview", onMsgPreview);
 					expect(removed).to.not.equal(true);
 					expect(preview.type).to.equal("link");
@@ -920,31 +920,38 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 					expect(preview.link).to.equal(url);
 					resolve();
 				});
+
+				expect(result).to.deep.equal({accepted: [url], blocked: []});
 			});
 		});
 
-		it("should only fetch valid links and report the others as removed", function () {
+		it("should only fetch valid links and report the others as blocked right away", function () {
 			const requests: string[] = [];
 			app.get("/input-preview-invalid", function (req, res) {
 				requests.push(req.url);
 				res.send("<title>should not be fetched</title>");
 			});
 
-			const removed: string[] = [];
+			const emitted: LinkPreview[] = [];
+			const emit = (preview: LinkPreview) => emitted.push(preview);
+			const ftp = "ftp://example.com/input-preview-invalid";
 
-			const emit = (preview: LinkPreview, isRemoved?: boolean) => {
-				expect(isRemoved).to.equal(true);
-				removed.push(preview.link);
-			};
-
-			prefetchInputLinks(irc, "not an array", emit);
-			prefetchInputLinks(irc, [{link: _makeUrl("input-preview-invalid")}, 42], emit);
-			prefetchInputLinks(irc, ["ftp://example.com/input-preview-invalid"], emit);
+			expect(prefetchInputLinks(irc, "not an array", emit)).to.deep.equal({
+				accepted: [],
+				blocked: [],
+			});
+			expect(
+				prefetchInputLinks(irc, [{link: _makeUrl("input-preview-invalid")}, 42], emit)
+			).to.deep.equal({accepted: [], blocked: []});
+			expect(prefetchInputLinks(irc, [ftp], emit)).to.deep.equal({
+				accepted: [],
+				blocked: [ftp],
+			});
 
 			return new Promise<void>((resolve) => {
 				setTimeout(() => {
 					expect(requests).to.deep.equal([]);
-					expect(removed).to.deep.equal(["ftp://example.com/input-preview-invalid"]);
+					expect(emitted).to.deep.equal([]);
 					resolve();
 				}, 200);
 			});
@@ -961,9 +968,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			Config.values.prefetch = false;
 
 			try {
-				prefetchInputLinks(irc, [_makeUrl("input-preview-disabled")], (preview) =>
-					emitted.push(preview)
-				);
+				expect(
+					prefetchInputLinks(irc, [_makeUrl("input-preview-disabled")], (preview) =>
+						emitted.push(preview)
+					)
+				).to.deep.equal({accepted: [], blocked: [_makeUrl("input-preview-disabled")]});
 			} finally {
 				Config.values.prefetch = true;
 			}

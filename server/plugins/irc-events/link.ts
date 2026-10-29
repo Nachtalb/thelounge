@@ -11,11 +11,19 @@ import path from "path";
 import log from "../../log";
 import Config from "../../config";
 import {findLinksWithSchema} from "../../../shared/linkify";
+import {blocksLink} from "../../../shared/previewFilters";
 import {cleanIrcMessage} from "../../../shared/irc";
 import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
 import previewCache from "../previewCache";
-import {createProxyAgents, ProxyAgents} from "../prefetchProxy";
+import {getPrefetchAgents} from "../prefetchProxy";
+import {
+	assertUrlAllowed,
+	blockedUrlReason,
+	createLookup,
+	isPrefetchBlocked,
+	userMatcher,
+} from "../prefetchBlock";
 import Client from "../../client";
 import Chan from "../../models/chan";
 import Msg from "../../models/msg";
@@ -32,7 +40,6 @@ const mediaTypeRegex = /^(audio|video)\/.+/;
 const backfilled = new WeakSet<Msg>();
 const backfillQueue: (() => Promise<void>)[] = [];
 let backfillRunning = 0;
-let proxyAgents: {proxy: string; agents: ProxyAgents} | undefined;
 
 // `removed` is set when there is nothing to preview for the link
 type PreviewEmitter = (preview: LinkPreview, removed?: boolean) => void;
@@ -67,21 +74,18 @@ export default function prefetch(
 }
 
 // Prefetch links of a message that is still being typed and has not been sent yet.
-// Finished previews are handed to `emit` instead of being stored on a message.
+// Returns right away, before anything is fetched, which links get a preview (`accepted`)
+// and which don't (blocked, invalid or too many), so the client only shows a loading
+// placeholder for accepted links. Finished previews and links that turn out to be blocked
+// later (DNS answer, redirect) are handed to `emit` instead of being stored on a message.
 export function prefetchInputLinks(client: Client, links: unknown, emit: PreviewEmitter) {
-	if (!Config.values.prefetch || !Array.isArray(links)) {
-		return;
-	}
+	const requested = Array.isArray(links)
+		? links.filter((link): link is string => typeof link === "string")
+		: [];
+	const previews = Config.values.prefetch ? fetchPreviews(client, requested.join(" "), emit) : [];
+	const accepted = requested.filter((link) => previews.some((p) => p.link === link));
 
-	const requested = links.filter((link): link is string => typeof link === "string");
-	const previews = fetchPreviews(client, requested.join(" "), emit);
-
-	// Links that are not fetched at all (invalid or too many) have nothing to preview either
-	for (const link of requested) {
-		if (!previews.some((preview) => preview.link === link)) {
-			emit({type: "error", head: "", body: "", thumb: "", size: -1, link, shown: null}, true);
-		}
-	}
+	return {accepted, blocked: requested.filter((link) => !accepted.includes(link))};
 }
 
 function fetchPreviews(client: Client, text: string, emit: PreviewEmitter, queued = false) {
@@ -90,6 +94,21 @@ function fetchPreviews(client: Client, text: string, emit: PreviewEmitter, queue
 
 		// If the URL is invalid and cannot be normalized, don't fetch it
 		if (!url) {
+			return cleanLinks;
+		}
+
+		// Links to internal hosts get no preview at all (prefetchBlockPrivate etc.)
+		const blocked = blockedUrlReason(url);
+
+		if (blocked) {
+			log.debug(`Not fetching a preview for ${url}: ${blocked}`);
+			return cleanLinks;
+		}
+
+		// The user's own rules (previewFilters setting): checked before the shared preview
+		// cache, so a cached preview isn't shown to them and they never fetch or cache it
+		if (blocksLink(userMatcher(client), url)) {
+			log.debug(`Not fetching a preview for ${url}: matches a rule of ${client.name}`);
 			return cleanLinks;
 		}
 
@@ -172,6 +191,12 @@ function loadPreview(
 				parse(previews, preview, res, client, emit);
 			})
 			.catch((err) => {
+				// A redirect or DNS answer pointing at a blocked address: no preview, no error
+				if (isPrefetchBlocked(err)) {
+					log.debug(`Not fetching a preview for ${url}: ${err.message}`);
+					return removePreview(previews, preview, emit);
+				}
+
 				preview.type = "error";
 				preview.error = "message";
 				preview.message = err.message;
@@ -575,26 +600,9 @@ function getRequestHeaders(headers: Record<string, string>) {
 	return formattedHeaders;
 }
 
-function getProxyAgents() {
-	const proxy = Config.values.prefetchProxy;
-
-	if (!proxy) {
-		return undefined;
-	}
-
-	if (proxyAgents?.proxy !== proxy) {
-		// Throws on an invalid proxy, which fails the fetch instead of going direct
-		proxyAgents = {
-			proxy,
-			agents: createProxyAgents(proxy, Config.values.prefetchTimeout || 5000),
-		};
-	}
-
-	return proxyAgents.agents;
-}
-
-// We know link prefetch can be used for SSRF, see https://github.com/thelounge/thelounge/issues/1990
-// This feature is disabled by default, do not report this as a security vulnerability.
+// Link prefetch could be used for SSRF (https://github.com/thelounge/thelounge/issues/1990):
+// every hop is checked against prefetchBlocklist and prefetchBlockPrivate, and connects
+// through a lookup that checks the resolved address.
 function fetch(uri: string, headers: Record<string, string>) {
 	// Stringify the object otherwise the objects won't compute to the same value
 	const cacheKey = JSON.stringify([uri, headers]);
@@ -620,12 +628,25 @@ function fetch(uri: string, headers: Record<string, string>) {
 		let limit = Config.values.prefetchMaxImageSize * 1024;
 
 		try {
+			// Whether the current hop matched a `@@` exception rule
+			let exempt = assertUrlAllowed(uri);
+
 			const gotStream = got.stream(uri, {
 				retry: 0,
 				timeout: prefetchTimeout || 5000, // milliseconds
 				headers: getRequestHeaders(headers),
 				localAddress: Config.values.bind,
-				agent: getProxyAgents(),
+				agent: getPrefetchAgents(),
+				// Used for direct connections; a proxy agent resolves on its own.
+				// got types this as cacheable-lookup's lookup, which has the same signature
+				lookup: createLookup(() => exempt) as never,
+				hooks: {
+					beforeRedirect: [
+						(options) => {
+							exempt = assertUrlAllowed(options.url);
+						},
+					],
+				},
 			});
 
 			gotStream
@@ -729,7 +750,7 @@ export async function routeCachedImage(req: Request, res: Response) {
 	const hash = req.params.hash;
 	const entry = previewCache.isValidHash(hash) ? await previewCache.read(hash) : null;
 
-	if (!previewCache.isEnabled() || !entry?.image) {
+	if (!previewCache.isEnabled() || !entry?.image || blockedUrlReason(entry.url)) {
 		return res.status(404).send("Not found");
 	}
 

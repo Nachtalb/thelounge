@@ -60,10 +60,13 @@ import {computed, defineComponent, ref, watch} from "vue";
 import eventbus from "../js/eventbus";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
+import {useStore} from "../js/store";
+import {isPreviewFiltered} from "../js/helpers/previewFilters";
 
 export default defineComponent({
 	name: "ImageViewer",
 	setup() {
+		const store = useStore();
 		const viewer = ref<HTMLDivElement>();
 		const image = ref<HTMLImageElement>();
 
@@ -74,7 +77,11 @@ export default defineComponent({
 		const images = computed(() =>
 			(channel.value?.messages || []).flatMap((message) =>
 				(message.previews || [])
-					.filter((preview) => preview.thumb)
+					.filter(
+						(preview) =>
+							preview.thumb &&
+							!isPreviewFiltered(store.state.settings.previewFilters, preview.link)
+					)
 					.map((preview) => ({message, preview}))
 			)
 		);

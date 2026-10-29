@@ -55,7 +55,7 @@
 					dir="auto"
 				/>&#32;<ParsedMessage :message="message" />
 				<LinkPreview
-					v-for="preview in message.previews"
+					v-for="preview in previews"
 					:key="preview.link"
 					:keep-scroll-position="keepScrollPosition"
 					:link="preview"
@@ -101,7 +101,7 @@
 				<StatusmsgMarker :group="message.statusmsgGroup" />
 				<ParsedMessage :network="network" :message="message" />
 				<LinkPreview
-					v-for="preview in message.previews"
+					v-for="preview in previews"
 					:key="preview.link"
 					:keep-scroll-position="keepScrollPosition"
 					:link="preview"
@@ -143,6 +143,7 @@ import StatusmsgMarker from "./StatusmsgMarker.vue";
 import type {ClientChan, ClientMessage, ClientNetwork} from "../js/types";
 import {MessageType} from "../../shared/types/msg";
 import {useStore} from "../js/store";
+import {isPreviewFiltered} from "../js/helpers/previewFilters";
 
 MessageTypes.ParsedMessage = ParsedMessage;
 MessageTypes.LinkPreview = LinkPreview;
@@ -172,6 +173,12 @@ export default defineComponent({
 		let swipeStart: {x: number; y: number} | null = null;
 		let swipeAxis: SwipeAxis = "pending";
 		let swipeDx = 0;
+
+		const previews = computed(() =>
+			props.message.previews.filter(
+				(preview) => !isPreviewFiltered(store.state.settings.previewFilters, preview.link)
+			)
+		);
 
 		const timeFormat = computed(() => {
 			let format: keyof typeof constants.timeFormats;
@@ -374,6 +381,7 @@ export default defineComponent({
 		});
 
 		return {
+			previews,
 			timeFormat,
 			messageTime,
 			messageTimeLocale,

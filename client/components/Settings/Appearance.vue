@@ -54,6 +54,44 @@
 			/>
 		</SettingCard>
 
+		<SettingCard
+			v-if="
+				store.state.serverConfiguration?.prefetch &&
+				!store.state.serverConfiguration?.public
+			"
+			title="Link preview filters"
+		>
+			<div class="setting-card-intro">
+				No previews for links matching these rules, in addition to the server's. One
+				adblock-style rule per line: <code>||example.com^</code>,
+				<code>|https://prefix</code>, <code>*</code> wildcards, <code>/regex/</code>,
+				<code>@@</code> exceptions (only lift your own rules) and <code>!</code> comments
+			</div>
+			<label for="preview-filters-input" class="sr-only">Link preview filters</label>
+			<textarea
+				id="preview-filters-input"
+				:value="previewFiltersText"
+				class="input"
+				name="previewFilters"
+				spellcheck="false"
+				autocomplete="off"
+				placeholder="||example.com^"
+				@input="previewFiltersText = ($event.target as HTMLTextAreaElement).value"
+			/>
+			<div id="preview-filters-status" class="setting-row-description">
+				{{ previewFiltersLint.rules }} active
+				{{ previewFiltersLint.rules === 1 ? "rule" : "rules" }}
+				<div
+					v-for="problem in previewFiltersLint.problems"
+					:key="problem.line"
+					class="preview-filters-problem"
+				>
+					Line {{ problem.line }}: {{ problem.reason }} (<code>{{ problem.text }}</code
+					>)
+				</div>
+			</div>
+		</SettingCard>
+
 		<SettingCard title="Status messages">
 			<div class="setting-card-intro">
 				Control how joins, parts, quits, kicks, nick changes, and mode changes appear
@@ -142,10 +180,20 @@
 textarea#user-specified-css-input {
 	height: 100px;
 }
+
+textarea#preview-filters-input {
+	height: 100px;
+	font-family: monospace;
+}
+
+.preview-filters-problem {
+	color: var(--error-color);
+}
 </style>
 
 <script lang="ts">
-import {defineComponent} from "vue";
+import {computed, defineComponent, ref, watch} from "vue";
+import {lintFilters} from "../../../shared/previewFilters";
 import {useStore} from "../../js/store";
 import SettingCard from "./SettingCard.vue";
 import SettingToggle from "./SettingToggle.vue";
@@ -158,9 +206,18 @@ export default defineComponent({
 	},
 	setup() {
 		const store = useStore();
+		// What is typed, validated live; saved like the other settings on change (blur)
+		const previewFiltersText = ref(String(store.state.settings.previewFilters || ""));
+		watch(
+			() => store.state.settings.previewFilters,
+			(value) => (previewFiltersText.value = String(value || ""))
+		);
+		const previewFiltersLint = computed(() => lintFilters(previewFiltersText.value));
 
 		return {
 			store,
+			previewFiltersText,
+			previewFiltersLint,
 		};
 	},
 });
