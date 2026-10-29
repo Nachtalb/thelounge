@@ -69,9 +69,9 @@ export function closeWindowOnEscape(e: KeyboardEvent): boolean {
 
 	// This Escape belongs to an open dialog or menu
 	if (
+		(e.target as HTMLElement).tagName === "OPTION" ||
 		document.querySelector(
-			"#confirm-dialog-overlay.opened, #context-menu-container, #mentions-popup-container, " +
-				'[role="combobox"][aria-expanded="true"]'
+			"#confirm-dialog-overlay.opened, #context-menu-container, #mentions-popup-container"
 		)
 	) {
 		return false;

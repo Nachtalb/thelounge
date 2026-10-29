@@ -18,13 +18,24 @@
 			</select>
 		</SettingCard>
 
-		<SettingCard title="Emoji style" title-id="emoji-style-title">
-			<EmojiStylePicker
-				:options="emojiStyleOptions"
-				:model-value="emojiStyle"
-				labelledby="emoji-style-title"
-				@update:model-value="setEmojiStyle"
-			/>
+		<SettingCard title="Emoji style">
+			<label for="emoji-style-select" class="sr-only">Emoji style</label>
+			<select id="emoji-style-select" :value="emojiStyle" name="emojiStyle" class="input">
+				<!-- Shows the selected option's smiley where the customizable select is supported -->
+				<button><component :is="'selectedcontent'" /></button>
+				<option v-for="style in emojiStyleOptions" :key="style.id" :value="style.id">
+					<img
+						v-if="emojiImageUrl('1f642', style.id)"
+						class="emoji-style-preview"
+						:src="emojiImageUrl('1f642', style.id)!"
+						alt=""
+						width="20"
+						height="20"
+					/>
+					<span v-else class="emoji-style-preview" aria-hidden="true">🙂</span>
+					{{ style.name }}
+				</option>
+			</select>
 		</SettingCard>
 
 		<SettingCard title="Messages">
@@ -206,15 +217,13 @@ import {lintFilters} from "../../../shared/previewFilters";
 import {useStore} from "../../js/store";
 import SettingCard from "./SettingCard.vue";
 import SettingToggle from "./SettingToggle.vue";
-import EmojiStylePicker from "./EmojiStylePicker.vue";
-import {availableEmojiSets, emojiStyle} from "../../js/helpers/emoji";
+import {availableEmojiSets, emojiImageUrl, emojiStyle} from "../../js/helpers/emoji";
 
 export default defineComponent({
 	name: "AppearanceSettings",
 	components: {
 		SettingCard,
 		SettingToggle,
-		EmojiStylePicker,
 	},
 	setup() {
 		const store = useStore();
@@ -235,8 +244,7 @@ export default defineComponent({
 				{id: "native", name: "Native (system font)"},
 			]),
 			emojiStyle,
-			setEmojiStyle: (value: string) =>
-				store.dispatch("settings/update", {name: "emojiStyle", value, sync: true}),
+			emojiImageUrl,
 		};
 	},
 });
