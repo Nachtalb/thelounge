@@ -104,6 +104,8 @@
 	.settings-menu {
 		/* the dropdown below is absolutely positioned against this */
 		position: relative;
+		/* the fixed sidebar's offset would push the dropdown over the first card */
+		top: auto;
 		width: min(480px, 100%);
 		align-self: center;
 		margin: 0 auto 12px;
