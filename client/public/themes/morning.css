@@ -1,216 +1,119 @@
 @import "default.css";
 
+/* Dark theme. Only overrides the variables listed in :root of client/css/style.css */
 :root {
-	--body-color: #f3f3f3;
-	--body-color-muted: #b7c5d1;
-	--link-color: #77abd9;
+	/* Backgrounds */
 	--window-bg-color: #303e4a;
 	--form-bg-color: #28333d;
+	--window-shadow-color: rgb(0 0 0 / 75%);
+
+	/* Text */
+	--body-color: #f3f3f3;
+	--body-color-muted: #b7c5d1;
 	--window-heading-color: #b7c5d1;
-	--date-marker-color: #97ea70;
-	--unread-marker-color: #f92772;
+	--chat-placeholder-color: rgb(183 197 209 / 75%);
+	--setting-input-placeholder-color: #b7c5d1;
+
+	/* Borders */
+	--border-color: #28333d;
+	--content-border-color: #28333d;
+
+	/* Links */
+	--link-color: #77abd9;
+
+	/* Messages */
 	--highlight-bg-color: #4d4332;
 	--highlight-border-color: #b08c4f;
+	--highlight-time-color: white;
+	--msg-error-color: #f92772;
+	--msg-warn-color: #e6a23c;
+	--msg-note-color: #4a90d9;
+	--reply-context-icon-color: #607080;
+	--reply-bar-bg-color: #28333d;
+	--reply-bar-border-color: #1e2830;
+	--msg-actions-border-color: #28333d;
+	--msg-actions-shadow-color: rgb(0 0 0 / 25%);
+	--msg-actions-hover-bg-color: rgb(255 255 255 / 8%);
+
+	/* Unread and date markers */
+	--date-marker-color: #97ea70;
+	--unread-marker-color: #f92772;
+
+	/* Nick colours */
+	--nick-color: #b0bacf;
+	--nick-color-1: #f7adf7;
+	--nick-color-2: #abf99f;
+	--nick-color-3: #86efdc;
+	--nick-color-4: #c890eb;
+	--nick-color-5: #f9a4b3;
+	--nick-color-6: #f7999a;
+	--nick-color-7: #f497b9;
+	--nick-color-8: #f9a9d7;
+	--nick-color-9: #85a7e3;
+	--nick-color-10: #a8b8ff;
+	--nick-color-11: #b695fc;
+	--nick-color-12: #f4aead;
+	--nick-color-13: #fc7cb1;
+	--nick-color-14: #ff72e0;
+	--nick-color-15: #8cb6ea;
+	--nick-color-16: #f9857c;
+	--nick-color-17: #ed9b82;
+	--nick-color-18: #8df484;
+	--nick-color-19: #ffcce3;
+	--nick-color-20: #efcc81;
+	--nick-color-21: #92a2ed;
+	--nick-color-22: #f4d484;
+	--nick-color-23: #97ea70;
+	--nick-color-24: #fcbbba;
+	--nick-color-25: #eef975;
+	--nick-color-26: #c7ff93;
+	--nick-color-27: #ffade1;
+	--nick-color-28: #98ecf2;
+	--nick-color-29: #91a2f5;
+	--nick-color-30: #b19aea;
+	--nick-color-31: #f2a4eb;
+	--nick-color-32: #85f27d;
+
+	/* Increase contrast of some IRC colors */
+	--irc-fg-color-2: #0074d9;
+	--irc-fg-color-5: #e969a7;
+	--irc-fg-color-12: #50a8ff;
+
+	/* Buttons and inputs */
+	--icon-button-color: #b7c5d1;
+	--setting-input-color: var(--body-color);
+	--setting-input-bg-color: #28333d;
+	--setting-input-border-color: #28333d;
+	--search-input-bg-color: #28333d;
+	--search-icon-color: #b7c5d1;
+	--form-nick-color: #f3f3f3;
+	--form-nick-bg-color: #242a33;
+
+	/* User list */
+	--userlist-active-bg-color: #28333d;
+
+	/* Scrollbars */
+	--scrollbar-color: rgb(0 0 0 / 30%) rgb(0 0 0 / 5%);
+
+	/* Code and monospace */
+	--code-color: #f3f3f3;
+	--code-bg-color: #28333d;
+	--monospace-block-color: #f3f3f3;
+	--monospace-block-bg-color: #28333d;
+	--kbd-color: #eee;
+	--kbd-bg-color: #333;
+	--kbd-gradient-color: rgb(0 0 0 / 25%);
+	--kbd-border-color: #000;
+	--kbd-highlight-color: #777;
+	--kbd-shade-color: #222;
+	--kbd-text-shadow: 0 -1px 0 #000;
+
+	/* Link previews */
+	--embed-color: #f3f3f3;
+	--embed-bg-color: #28333d;
+	--embed-muted-color: #99a2b4;
+
+	/* Logo */
+	--logo-display: none;
+	--logo-inverted-display: inline-block;
 }
-
-body {
-	scrollbar-color: rgb(0 0 0 / 30%) rgb(0 0 0 / 5%);
-}
-
-#chat .chat-view[data-type="channel"] .msg.highlight .time {
-	color: white;
-}
-
-#loading .logo,
-.window .logo {
-	display: none;
-}
-
-#loading .logo-inverted,
-.window .logo-inverted {
-	display: inline-block;
-}
-
-#chat .userlist .count {
-	background-color: #28333d;
-}
-
-#chat .count::before {
-	color: #b7c5d1;
-}
-
-/* Borders */
-#chat .content,
-#chat .header,
-#chat .user-mode::before,
-#chat .userlist {
-	border-color: #28333d;
-}
-
-/* User list */
-#chat .userlist .user.active {
-	background-color: #28333d;
-}
-
-/* Nicknames */
-.user {
-	color: #b0bacf;
-}
-
-.user.color-1 { color: #f7adf7; }
-.user.color-2 { color: #abf99f; }
-.user.color-3 { color: #86efdc; }
-.user.color-4 { color: #c890eb; }
-.user.color-5 { color: #f9a4b3; }
-.user.color-6 { color: #f7999a; }
-.user.color-7 { color: #f497b9; }
-.user.color-8 { color: #f9a9d7; }
-.user.color-9 { color: #85a7e3; }
-.user.color-10 { color: #a8b8ff; }
-.user.color-11 { color: #b695fc; }
-.user.color-12 { color: #f4aead; }
-.user.color-13 { color: #fc7cb1; }
-.user.color-14 { color: #ff72e0; }
-.user.color-15 { color: #8cb6ea; }
-.user.color-16 { color: #f9857c; }
-.user.color-17 { color: #ed9b82; }
-.user.color-18 { color: #8df484; }
-.user.color-19 { color: #ffcce3; }
-.user.color-20 { color: #efcc81; }
-.user.color-21 { color: #92a2ed; }
-.user.color-22 { color: #f4d484; }
-.user.color-23 { color: #97ea70; }
-.user.color-24 { color: #fcbbba; }
-.user.color-25 { color: #eef975; }
-.user.color-26 { color: #c7ff93; }
-.user.color-27 { color: #ffade1; }
-.user.color-28 { color: #98ecf2; }
-.user.color-29 { color: #91a2f5; }
-.user.color-30 { color: #b19aea; }
-.user.color-31 { color: #f2a4eb; }
-.user.color-32 { color: #85f27d; }
-
-/* Increase contrast of some IRC colors */
-.irc-fg2 { color: #0074d9; }
-.irc-fg5 { color: #e969a7; }
-.irc-fg12 { color: #50a8ff; }
-
-/* Reply context & actions */
-#chat .msg .reply-context-icon::before {
-	color: #607080;
-}
-
-#chat .msg .msg-actions {
-	border-color: #28333d;
-	box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
-}
-
-#chat .msg .msg-actions button {
-	color: #b7c5d1;
-}
-
-#chat .msg .msg-actions button:hover,
-#chat .msg .msg-actions button:focus-visible {
-	background: rgb(255 255 255 / 8%);
-	color: #f3f3f3;
-}
-
-#form .reply-bar {
-	background: #28333d;
-	border-bottom-color: #1e2830;
-}
-
-/* Message form */
-#form {
-	border-color: #28333d;
-	color: var(--body-color);
-}
-
-#form #nick {
-	background: #242a33;
-	color: #f3f3f3;
-}
-
-.window {
-	box-shadow: 0 0 25px rgb(0 0 0 / 75%);
-}
-
-#viewport .lt,
-#viewport .rt,
-#chat button.mentions,
-#chat button.menu,
-#chat button.close,
-#form #submit {
-	color: #b7c5d1;
-}
-
-/* Search Form */
-form.message-search input {
-	background-color: #28333d;
-}
-
-#chat form.message-search button {
-	color: #b7c5d1;
-}
-
-/* Setup text colors */
-#chat .msg[data-type="error"],
-#chat .msg[data-type="error"] .from {
-	color: #f92772;
-}
-
-#chat .msg[data-type="warn"],
-#chat .msg[data-type="warn"] .from {
-	color: #e6a23c;
-}
-
-#chat .msg[data-type="note"],
-#chat .msg[data-type="note"] .from {
-	color: #4a90d9;
-}
-
-#chat .msg[data-type="monospace_block"] .text,
-code,
-.irc-monospace {
-	background: #28333d;
-	color: #f3f3f3;
-}
-
-kbd {
-	color: #eee;
-	text-shadow: 0 -1px 0 #000;
-	border-color: #000;
-	background-color: #333;
-	background-image: linear-gradient(rgb(0 0 0 / 25%), transparent);
-	box-shadow: 0 2px 0 #000, inset 0 1px 1px #777, inset 0 -1px 3px #222;
-}
-
-/* Embeds */
-#chat .toggle-content {
-	background: #28333d;
-	color: #f3f3f3;
-}
-
-#chat .toggle-content .body {
-	color: #99a2b4;
-}
-
-/* Form elements */
-
-#chat-container ::placeholder {
-	color: #b7c5d1;
-	opacity: 0.75;
-}
-
-.setting-card input::placeholder,
-.setting-card textarea::placeholder {
-	color: var(--body-color-muted);
-}
-
-.setting-card .input {
-	background-color: #28333d;
-	color: var(--body-color);
-	border: 1px solid #28333d;
-}
-
-/* End form elements */

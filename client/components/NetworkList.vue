@@ -153,19 +153,19 @@
 	margin: 0;
 	width: 100%;
 	border: 0;
-	color: #fff;
-	background-color: rgba(255, 255, 255, 0.1);
+	color: var(--sidebar-color-active);
+	background-color: var(--sidebar-input-bg-color);
 	padding-right: 35px;
 	appearance: none;
 }
 
 .jump-to-input .input::placeholder {
-	color: rgba(255, 255, 255, 0.35);
+	color: var(--sidebar-input-placeholder-color);
 }
 
 .jump-to-input::before {
 	content: "\f002"; /* http://fontawesome.io/icon/search/ */
-	color: rgba(255, 255, 255, 0.35);
+	color: var(--sidebar-input-placeholder-color);
 	position: absolute;
 	right: 8px;
 	top: 0;

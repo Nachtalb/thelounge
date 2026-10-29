@@ -20,7 +20,7 @@
 <style>
 #confirm-dialog {
 	background: var(--body-bg-color);
-	color: #fff;
+	color: var(--sidebar-color-active);
 	margin: 10px;
 	border-radius: 5px;
 	max-width: 500px;
@@ -41,7 +41,7 @@
 	display: flex;
 	justify-content: flex-end;
 	padding: 15px;
-	background: rgba(0, 0, 0, 0.3);
+	background: var(--confirm-dialog-buttons-bg-color);
 }
 
 #confirm-dialog .confirm-buttons .btn {
