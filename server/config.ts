@@ -95,6 +95,8 @@ export type ConfigType = {
 	prefetch: boolean;
 	disableMediaPreview: boolean;
 	prefetchStorage: boolean;
+	prefetchCache: boolean;
+	prefetchCacheMaxAge: number;
 	prefetchMaxImageSize: number;
 	prefetchMaxSearchSize: number;
 	prefetchTimeout: number;
@@ -134,6 +136,10 @@ class Config {
 
 	getStoragePath() {
 		return path.join(this.#homePath, "storage");
+	}
+
+	getPreviewCachePath() {
+		return path.join(this.#homePath, "cache", "previews");
 	}
 
 	getFileUploadPath() {

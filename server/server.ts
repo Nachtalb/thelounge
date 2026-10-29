@@ -12,6 +12,7 @@ import log from "./log";
 import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
+import previewCache from "./plugins/previewCache";
 import Helper from "./helper";
 import Config from "./config";
 import Identification from "./identification";
@@ -314,6 +315,11 @@ export default async function (
 				.catch((err: Error) => {
 					log.error(`Could not clear storage folder, ${err.message}`);
 				});
+		}
+
+		if (previewCache.isEnabled()) {
+			void previewCache.cleanup();
+			setInterval(() => void previewCache.cleanup(), 24 * 60 * 60 * 1000).unref();
 		}
 
 		changelog.checkForUpdates(manager);
