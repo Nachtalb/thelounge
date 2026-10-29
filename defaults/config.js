@@ -206,6 +206,32 @@ module.exports = {
 	// This value is set to `5000` milliseconds by default.
 	prefetchTimeout: 5000,
 
+	// ### `prefetchProxy`
+	//
+	// When `prefetch` is enabled, all link preview requests (pages, images,
+	// media and thumbnails, including the ones saved by `prefetchStorage`, the
+	// images `prefetchCache` fetches again on demand and the previews it fills
+	// in for history) are sent through this proxy, so the linked sites do not
+	// see the IP address of the server. IRC connections, file uploads and
+	// everything else still connect directly.
+	//
+	// Supported formats:
+	//
+	// - `http://user:password@host:port` or `https://…` (HTTP proxy)
+	// - `socks5h://user:password@host:port` (SOCKS5, the proxy resolves hostnames)
+	// - `socks5://user:password@host:port` (SOCKS5, hostnames are resolved by
+	//   The Lounge, so your DNS server sees every previewed domain)
+	//
+	// For privacy prefer `socks5h://` over `socks5://`. Note that the proxy can
+	// reach whatever is reachable from its own network, so link previews may
+	// still be used to probe hosts on the proxy's network.
+	//
+	// If the value is not a valid proxy URL, an error is logged and link
+	// previews are disabled instead of connecting directly.
+	//
+	// This value is set to `""` (no proxy) by default.
+	prefetchProxy: "",
+
 	// ### `fileUpload`
 	//
 	// Allow uploading files to the server hosting The Lounge.

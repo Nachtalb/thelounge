@@ -10,6 +10,7 @@ import log from "./log";
 import Helper from "./helper";
 import Utils from "./command-line/utils";
 import Network from "./models/network";
+import {parseProxyUrl} from "./plugins/prefetchProxy";
 
 // TODO: Type this
 export type WebIRC = {
@@ -104,6 +105,7 @@ export type ConfigType = {
 	prefetchMaxImageSize: number;
 	prefetchMaxSearchSize: number;
 	prefetchTimeout: number;
+	prefetchProxy: string;
 	fileUpload: FileUpload;
 	transports: string[];
 	leaveMessage: string;
@@ -260,6 +262,20 @@ class Config {
 					`The ${colors.bold("fileUpload.baseUrl")} you specified is invalid: ${String(
 						e
 					)}`
+				);
+			}
+		}
+
+		if (this.values.prefetchProxy) {
+			try {
+				parseProxyUrl(this.values.prefetchProxy);
+			} catch (e: any) {
+				this.values.prefetch = false;
+
+				log.error(
+					`The ${colors.bold("prefetchProxy")} you specified is invalid: ${String(
+						e
+					)}, link previews are disabled.`
 				);
 			}
 		}

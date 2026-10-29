@@ -15,6 +15,7 @@ import {cleanIrcMessage} from "../../../shared/irc";
 import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
 import previewCache from "../previewCache";
+import {createProxyAgents, ProxyAgents} from "../prefetchProxy";
 import Client from "../../client";
 import Chan from "../../models/chan";
 import Msg from "../../models/msg";
@@ -31,6 +32,7 @@ const mediaTypeRegex = /^(audio|video)\/.+/;
 const backfilled = new WeakSet<Msg>();
 const backfillQueue: (() => Promise<void>)[] = [];
 let backfillRunning = 0;
+let proxyAgents: {proxy: string; agents: ProxyAgents} | undefined;
 
 export default function prefetch(
 	client: Client,
@@ -524,6 +526,24 @@ function getRequestHeaders(headers: Record<string, string>) {
 	return formattedHeaders;
 }
 
+function getProxyAgents() {
+	const proxy = Config.values.prefetchProxy;
+
+	if (!proxy) {
+		return undefined;
+	}
+
+	if (proxyAgents?.proxy !== proxy) {
+		// Throws on an invalid proxy, which fails the fetch instead of going direct
+		proxyAgents = {
+			proxy,
+			agents: createProxyAgents(proxy, Config.values.prefetchTimeout || 5000),
+		};
+	}
+
+	return proxyAgents.agents;
+}
+
 // We know link prefetch can be used for SSRF, see https://github.com/thelounge/thelounge/issues/1990
 // This feature is disabled by default, do not report this as a security vulnerability.
 function fetch(uri: string, headers: Record<string, string>) {
@@ -556,6 +576,7 @@ function fetch(uri: string, headers: Record<string, string>) {
 				timeout: prefetchTimeout || 5000, // milliseconds
 				headers: getRequestHeaders(headers),
 				localAddress: Config.values.bind,
+				agent: getProxyAgents(),
 			});
 
 			gotStream
