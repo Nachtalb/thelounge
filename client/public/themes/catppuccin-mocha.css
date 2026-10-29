@@ -1,0 +1,228 @@
+@import "default.css";
+
+/* Catppuccin Mocha. Colours from the official Catppuccin palette, https://catppuccin.com/palette */
+:root {
+	/* Backgrounds */
+	--body-bg-color: #181825;
+	--window-bg-color: #1e1e2e;
+	--form-bg-color: #181825;
+	--window-shadow-color: rgb(0 0 0 / 75%);
+	--shadow-color: rgb(0 0 0 / 35%);
+	--shadow-color-subtle: rgb(0 0 0 / 25%);
+
+	/* Text */
+	--body-color: #cdd6f4;
+	--body-color-muted: #a6adc8;
+	--window-heading-color: #bac2de;
+	--placeholder-color: #6c7086;
+	--chat-placeholder-color: var(--placeholder-color);
+	--setting-input-placeholder-color: var(--placeholder-color);
+
+	/* Borders */
+	--border-color: #313244;
+	--content-border-color: #313244;
+	--table-border-color: #313244;
+
+	/* Links */
+	--link-color: #89b4fa;
+
+	/* Status and accent colours */
+	--positive-color: #a6e3a1;
+	--negative-color: #f38ba8;
+	--neutral-color: #6c7086;
+	--status-away-color: #6c7086;
+	--error-color: #f38ba8;
+	--error-text-color: #1e1e2e;
+	--alert-info-color: #cdd6f4;
+	--alert-info-bg-color: rgb(137 180 250 / 20%);
+	--alert-warning-color: #cdd6f4;
+	--alert-warning-bg-color: rgb(249 226 175 / 20%);
+	--alert-error-color: #cdd6f4;
+	--alert-error-bg-color: rgb(243 139 168 / 20%);
+	--alert-success-color: #cdd6f4;
+	--alert-success-bg-color: rgb(166 227 161 / 20%);
+
+	/* Messages */
+	--highlight-bg-color: #313244;
+	--highlight-border-color: #f9e2af;
+	--highlight-time-color: #a6adc8;
+	--msg-action-color: #cba6f7;
+	--msg-notice-color: #89b4fa;
+	--msg-error-color: var(--error-color);
+	--msg-warn-color: #f9e2af;
+	--msg-note-color: #89dceb;
+	--statusmsg-color: #1e1e2e;
+	--statusmsg-bg-color: #fab387;
+	--reply-context-icon-color: #6c7086;
+	--reply-context-hover-bg-color: #313244;
+	--reply-bar-bg-color: #181825;
+	--reply-bar-border-color: var(--border-color);
+	--msg-actions-border-color: #313244;
+	--msg-actions-shadow-color: var(--shadow-color-subtle);
+	--msg-actions-hover-bg-color: #313244;
+	--channel-list-loading-color: #a6adc8;
+	--channel-list-truncated-color: #f38ba8;
+
+	/* Unread and date markers, mentions */
+	--date-marker-color: #a6e3a1;
+	--unread-marker-color: #f38ba8;
+	--notification-color: #f38ba8;
+
+	/* Nick colours. --nick-color is used when colored nicks are off */
+	--nick-color: #cdd6f4;
+	--nick-color-1: #f5e0dc;
+	--nick-color-2: #f2cdcd;
+	--nick-color-3: #f5c2e7;
+	--nick-color-4: #cba6f7;
+	--nick-color-5: #f38ba8;
+	--nick-color-6: #eba0ac;
+	--nick-color-7: #fab387;
+	--nick-color-8: #f9e2af;
+	--nick-color-9: #a6e3a1;
+	--nick-color-10: #94e2d5;
+	--nick-color-11: #89dceb;
+	--nick-color-12: #74c7ec;
+	--nick-color-13: #89b4fa;
+	--nick-color-14: #b4befe;
+	--nick-color-15: #f5e0dc;
+	--nick-color-16: #f2cdcd;
+	--nick-color-17: #f5c2e7;
+	--nick-color-18: #cba6f7;
+	--nick-color-19: #f38ba8;
+	--nick-color-20: #eba0ac;
+	--nick-color-21: #fab387;
+	--nick-color-22: #f9e2af;
+	--nick-color-23: #a6e3a1;
+	--nick-color-24: #94e2d5;
+	--nick-color-25: #89dceb;
+	--nick-color-26: #74c7ec;
+	--nick-color-27: #89b4fa;
+	--nick-color-28: #b4befe;
+	--nick-color-29: #f5e0dc;
+	--nick-color-30: #f2cdcd;
+	--nick-color-31: #f5c2e7;
+	--nick-color-32: #cba6f7;
+
+	/* IRC formatting colours 0-15 (text and background). 16-98 are fixed by the IRC spec */
+	--irc-fg-color-0: #cdd6f4;
+	--irc-fg-color-1: #11111b;
+	--irc-fg-color-2: #89b4fa;
+	--irc-fg-color-3: #a6e3a1;
+	--irc-fg-color-4: #f38ba8;
+	--irc-fg-color-5: #eba0ac;
+	--irc-fg-color-6: #cba6f7;
+	--irc-fg-color-7: #fab387;
+	--irc-fg-color-8: #f9e2af;
+	--irc-fg-color-9: #94e2d5;
+	--irc-fg-color-10: #74c7ec;
+	--irc-fg-color-11: #89dceb;
+	--irc-fg-color-12: #b4befe;
+	--irc-fg-color-13: #f5c2e7;
+	--irc-fg-color-14: #7f849c;
+	--irc-fg-color-15: #bac2de;
+	--irc-bg-color-0: #cdd6f4;
+	--irc-bg-color-1: #11111b;
+	--irc-bg-color-2: #89b4fa;
+	--irc-bg-color-3: #a6e3a1;
+	--irc-bg-color-4: #f38ba8;
+	--irc-bg-color-5: #eba0ac;
+	--irc-bg-color-6: #cba6f7;
+	--irc-bg-color-7: #fab387;
+	--irc-bg-color-8: #f9e2af;
+	--irc-bg-color-9: #94e2d5;
+	--irc-bg-color-10: #74c7ec;
+	--irc-bg-color-11: #89dceb;
+	--irc-bg-color-12: #b4befe;
+	--irc-bg-color-13: #f5c2e7;
+	--irc-bg-color-14: #7f849c;
+	--irc-bg-color-15: #bac2de;
+
+	/* Buttons. --button-color applies to border, text, and background on hover */
+	--button-color: #cba6f7;
+	--button-text-color-hover: #1e1e2e;
+	--focus-ring-color: rgb(203 166 247 / 50%);
+	--radio-pill-checked-color: #1e1e2e;
+	--icon-button-color: #a6adc8;
+	--input-button-color: #a6adc8;
+	--upload-progressbar-color: var(--button-color);
+
+	/* Inputs */
+	--input-color: #cdd6f4;
+	--input-bg-color: #181825;
+	--input-border-color: #45475a;
+	--input-border-color-focus: var(--button-color);
+	--input-disabled-bg-color: #313244;
+	--setting-input-color: var(--input-color);
+	--setting-input-bg-color: var(--input-bg-color);
+	--setting-input-border-color: var(--input-border-color);
+	--search-input-bg-color: #181825;
+	--search-icon-color: #6c7086;
+	--form-nick-color: #cdd6f4;
+	--form-nick-bg-color: #313244;
+
+	/* User list */
+	--userlist-active-bg-color: #313244;
+
+	/* Sidebar (drawn on var(--body-bg-color)) */
+	--sidebar-color: #a6adc8;
+	--sidebar-color-active: #cdd6f4;
+	--sidebar-hover-bg-color: rgb(49 50 68 / 50%);
+	--sidebar-active-bg-color: #313244;
+	--sidebar-lobby-color: #a6e3a1;
+	--sidebar-lobby-color-active: #94e2d5;
+	--sidebar-warning-color: #fab387;
+	--sidebar-warning-color-active: #f9e2af;
+	--sidebar-error-color: #f38ba8;
+	--sidebar-error-color-active: #eba0ac;
+	--sidebar-badge-color: #a6adc8;
+	--sidebar-badge-bg-color: #313244;
+	--sidebar-badge-highlight-color: #181825;
+	--sidebar-badge-highlight-bg-color: #cba6f7;
+	--sidebar-input-bg-color: #313244;
+	--sidebar-input-placeholder-color: #6c7086;
+	--sidebar-drag-border-color: #6c7086;
+	--sidebar-shadow-color: rgb(0 0 0 / 50%);
+
+	/* Scrollbars. --scrollbar-color is "thumb track" or auto */
+	--scrollbar-color: #585b70 transparent;
+	--scrollbar-thumb-color: #585b70;
+	--scrollbar-thumb-color-active: #6c7086;
+	--scrollbar-track-color-hover: #313244;
+
+	/* Overlays, context menus, image viewer */
+	--overlay-bg-color: rgb(0 0 0 / 50%);
+	--menu-color: #cdd6f4;
+	--menu-bg-color: #181825;
+	--menu-border-color: #313244;
+	--menu-shadow-color: var(--shadow-color);
+	--menu-divider-color: #313244;
+	--menu-hover-bg-color: #313244;
+	--image-viewer-bg-color: rgb(0 0 0 / 90%);
+	--image-viewer-button-color: white;
+	--confirm-dialog-buttons-bg-color: rgb(0 0 0 / 30%);
+
+	/* Code and monospace */
+	--code-color: #fab387;
+	--code-bg-color: #181825;
+	--monospace-block-bg-color: #181825;
+	--pre-color: #cdd6f4;
+	--pre-bg-color: #181825;
+	--kbd-color: #cdd6f4;
+	--kbd-bg-color: #313244;
+	--kbd-gradient-color: rgb(0 0 0 / 25%);
+	--kbd-border-color: #11111b;
+	--kbd-highlight-color: #45475a;
+	--kbd-shade-color: #11111b;
+	--kbd-text-shadow: 0 1px 0 #1e1e2e;
+
+	/* Link previews */
+	--embed-bg-color: #181825;
+	--embed-muted-color: #a6adc8;
+	--embed-shadow-color: rgb(0 0 0 / 35%);
+
+	/* Logo. Dark themes swap these to show the inverted (light) logo */
+	--logo-display: none;
+	--logo-inverted-display: inline-block;
+	--sidebar-logo-display: none;
+	--sidebar-logo-inverted-display: inline;
+}
