@@ -285,6 +285,16 @@
 
 			<div class="help-item">
 				<div class="subject">
+					<span v-if="!isApple"><kbd>Ctrl</kbd> <kbd>C</kbd></span>
+					<span v-else><kbd>⌘</kbd> <kbd>C</kbd></span>
+				</div>
+				<div class="description">
+					<p>Copy the image (its link where the image can't be copied).</p>
+				</div>
+			</div>
+
+			<div class="help-item">
+				<div class="subject">
 					<span><kbd>←</kbd> or <kbd>A</kbd></span>
 				</div>
 				<div class="description">

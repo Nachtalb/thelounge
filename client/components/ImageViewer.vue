@@ -39,6 +39,12 @@
 				title="Download image"
 				@click.stop="downloadImage"
 			></a>
+			<button
+				class="copy-btn"
+				aria-label="Copy image"
+				title="Copy image (Ctrl+C)"
+				@click.stop="copyCurrentImage"
+			></button>
 			<a class="open-btn" :href="link.link" target="_blank" rel="noopener"></a>
 
 			<img
@@ -50,6 +56,8 @@
 				@mousedown="onImageMouseDown"
 				@touchstart.passive="onImageTouchStart"
 			/>
+
+			<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
 		</template>
 	</div>
 </template>
@@ -62,6 +70,7 @@ import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
 import {useStore} from "../js/store";
 import {isPreviewFiltered} from "../js/helpers/previewFilters";
+import {browserEnv, copyImage, copyResultMessages} from "../js/helpers/copyImage";
 
 export default defineComponent({
 	name: "ImageViewer",
@@ -72,6 +81,9 @@ export default defineComponent({
 
 		const link = ref<ClientLinkPreview | null>(null);
 		const channel = ref<ClientChan | null>();
+		// Brief feedback after copying
+		const toast = ref("");
+		let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 		// All images of the channel in order, with the message they belong to
 		const images = computed(() =>
@@ -142,6 +154,7 @@ export default defineComponent({
 			historyBatchesLeft = 0;
 			channel.value = null;
 			link.value = null;
+			toast.value = "";
 		};
 
 		const loadOlderMessages = () => {
@@ -275,6 +288,44 @@ export default defineComponent({
 			document.body.appendChild(a);
 			a.click();
 			a.remove();
+		};
+
+		const showToast = (message: string) => {
+			clearTimeout(toastTimer);
+			toast.value = message;
+			toastTimer = setTimeout(() => (toast.value = ""), 2000);
+		};
+
+		const copyCurrentImage = () => {
+			const preview = link.value;
+
+			if (!preview) {
+				return;
+			}
+
+			// Runs synchronously up to the clipboard call, so the user gesture is kept
+			void copyImage(preview, browserEnv(image.value)).then((result) => {
+				if (link.value === preview) {
+					showToast(copyResultMessages[result]);
+				}
+			});
+		};
+
+		// Text selected inside the viewer is copied as usual
+		const onCopyKey = () => {
+			const selection = window.getSelection();
+
+			if (
+				selection &&
+				!selection.isCollapsed &&
+				selection.toString() !== "" &&
+				viewer.value?.contains(selection.anchorNode)
+			) {
+				return true;
+			}
+
+			copyCurrentImage();
+			return false;
 		};
 
 		const prepareImage = () => {
@@ -591,7 +642,7 @@ export default defineComponent({
 				document.removeEventListener("focusin", blurInput);
 				eventbus.off("escapekey", closeViewer);
 				eventbus.off("resize", correctPosition);
-				Mousetrap.unbind(["left", "a", "right", "d", "mod+s", "o", "g"]);
+				Mousetrap.unbind(["left", "a", "right", "d", "mod+s", "mod+c", "o", "g"]);
 				return;
 			}
 
@@ -603,6 +654,7 @@ export default defineComponent({
 				Mousetrap.bind(["left", "a"], previous);
 				Mousetrap.bind(["right", "d"], next);
 				Mousetrap.bind("mod+s", downloadImage);
+				Mousetrap.bind("mod+c", onCopyKey);
 				Mousetrap.bind("o", openLink);
 				Mousetrap.bind("g", gotoMessage);
 			}
@@ -613,6 +665,8 @@ export default defineComponent({
 			channel,
 			image,
 			downloadImage,
+			copyCurrentImage,
+			toast,
 			transform,
 			closeViewer,
 			next,
