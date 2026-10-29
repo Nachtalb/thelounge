@@ -41,7 +41,8 @@ import {closeWindowOnEscape, focusInput} from "../../../client/js/closeWindow";
 import useUnsavedChanges from "../../../client/js/hooks/use-unsaved-changes";
 
 describe("closeWindowOnEscape", function () {
-	const escape = () => ({key: "Escape", defaultPrevented: false} as KeyboardEvent);
+	const escape = (tagName = "SELECT") =>
+		({key: "Escape", defaultPrevented: false, target: {tagName}} as unknown as KeyboardEvent);
 	const focused = {blur: vi.fn(), focus: vi.fn()};
 	const lobby = {id: 1};
 	let openOverlay: unknown = null;
@@ -96,6 +97,7 @@ describe("closeWindowOnEscape", function () {
 	});
 
 	it("should leave the Escape to an open dialog or menu", function () {
+		expect(closeWindowOnEscape(escape("OPTION"))).to.be.false;
 		openOverlay = {};
 		expect(closeWindowOnEscape(escape())).to.be.false;
 		expect(router.push).not.toHaveBeenCalled();

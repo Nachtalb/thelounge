@@ -11,5 +11,14 @@ module.exports = {
 		"value-no-vendor-prefix": true,
 		"selector-class-pattern": null,
 		"selector-id-pattern": null,
+		// Customizable select, newer than this stylelint
+		"selector-pseudo-element-no-unknown": [
+			true,
+			{ignorePseudoElements: ["picker", "picker-icon", "checkmark"]},
+		],
+		"selector-type-no-unknown": [
+			true,
+			{ignore: ["custom-elements"], ignoreTypes: ["selectedcontent"]},
+		],
 	},
 };

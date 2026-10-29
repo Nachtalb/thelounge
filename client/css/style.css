@@ -2930,62 +2930,71 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	margin: 0 calc((32px - 1.3em) / 2);
 }
 
-/* Settings > Appearance > Emoji style: a select whose options show their own smiley */
-.emoji-style-picker {
-	position: relative;
+/* Customizable select (Chromium); other browsers keep their native list */
+select,
+::picker(select) {
+	appearance: base-select;
 }
 
-.emoji-style-combobox {
+select.input,
+selectedcontent,
+option {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	cursor: pointer;
-	user-select: none;
 }
 
-.emoji-style-combobox::after {
+select.input {
+	cursor: pointer;
+}
+
+select::picker-icon {
 	content: "";
-	flex: none;
 	width: 10px;
 	height: 6px;
-	margin: 0 -7px 2px auto;
+	margin-left: auto;
 	background-color: currentcolor;
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-.emoji-style-list {
-	position: absolute;
-	z-index: 10;
-	top: 100%;
-	left: 0;
-	right: 0;
+/* The open list takes the closed select's colours, so it matches in every theme */
+::picker(select) {
 	max-height: 300px;
-	margin: 0;
-	padding: 4px 0;
-	overflow-y: auto;
-	list-style: none;
-	font-size: 14px;
-	color: var(--menu-color);
-	background-color: var(--menu-bg-color);
-	border: 1px solid var(--input-border-color);
+	padding: 0;
+	scrollbar-width: thin;
+	color: inherit;
+	background-color: inherit;
+	border: 1px solid;
+	border-color: inherit;
 	border-radius: 2px;
 	box-shadow: 0 3px 12px var(--menu-shadow-color);
 }
 
-.emoji-style-list li {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 10px;
+option {
+	padding: 4px 10px;
+	line-height: 20px;
 	cursor: pointer;
 }
 
-.emoji-style-list li.active {
-	background-color: var(--menu-hover-bg-color);
+@media (pointer: coarse) {
+	option {
+		padding-block: 8px;
+	}
 }
 
-.emoji-style-list li[aria-selected="true"] {
+option:hover,
+option:focus-visible {
+	background-color: color-mix(in srgb, currentcolor 15%, transparent);
+	outline: none;
+}
+
+option:checked {
 	font-weight: bold;
+}
+
+option::checkmark {
+	order: 1;
+	margin-left: auto;
 }
 
 .emoji-style-preview {
@@ -2995,12 +3004,6 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	font-size: 17px;
 	line-height: 20px;
 	text-align: center;
-}
-
-.emoji-style-name {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 /* Colour completions fill the whole row with the colour; the text colour is picked in JS */
