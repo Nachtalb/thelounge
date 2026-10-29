@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import sharp from "sharp";
 
 import log from "../log";
 import Config from "../config";
@@ -20,6 +21,34 @@ type Entry = {
 
 const hashRegex = /^[0-9a-f]{64}$/;
 const writes = new Map<string, Promise<unknown>>();
+const thumbs = new Map<string, Promise<unknown>>();
+const thumbSize = 640;
+
+// Small inline preview of a cached image: animated formats become an animated webp, the rest avif
+export function thumbFormat(type: string) {
+	if (type === "image/svg+xml") {
+		return null;
+	}
+
+	return type === "image/gif" || type === "image/webp" ? "webp" : "avif";
+}
+
+export async function makeThumb(data: Buffer, type: string) {
+	const format = thumbFormat(type);
+
+	if (!format) {
+		return null;
+	}
+
+	const thumb = await sharp(data, {animated: format === "webp"})
+		.rotate()
+		.resize(thumbSize, thumbSize, {fit: "inside", withoutEnlargement: true})
+		.toFormat(format)
+		.toBuffer();
+
+	return thumb.length < data.length ? thumb : null;
+}
+
 let salt = "";
 
 class PreviewCache {
@@ -60,7 +89,7 @@ class PreviewCache {
 		return hashRegex.test(hash);
 	}
 
-	getPath(hash: string, extension: "json" | "img") {
+	getPath(hash: string, extension: "json" | "img" | "avif" | "webp") {
 		return path.join(
 			Config.getPreviewCachePath(),
 			hash.substring(0, 2),
@@ -94,7 +123,13 @@ class PreviewCache {
 		return this.update(url, {preview: cached});
 	}
 
-	// Stores image data for a thumbnail url, allowing the image route to serve it, and returns its hash
+	// Waits for the thumbnail of this entry, if it is still being made
+	async waitForThumb(hash: string) {
+		await thumbs.get(hash);
+	}
+
+	// Stores image data for a thumbnail url, allowing the image route to serve it, and returns its
+	// hash. A small thumbnail is made in the background; until then the original is served.
 	async setImage(url: string, type: string, data: Buffer) {
 		const hash = this.hash(url);
 		const file = this.getPath(hash, "img");
@@ -105,6 +140,18 @@ class PreviewCache {
 		} catch (e: any) {
 			// The image route fetches it from the source again
 			log.error("Failed to write preview cache image", e.message);
+		}
+
+		const format = thumbFormat(type);
+
+		if (format) {
+			const thumb = makeThumb(data, type)
+				.then(
+					(buffer) => buffer && fs.promises.writeFile(this.getPath(hash, format), buffer)
+				)
+				.catch((e: Error) => log.error("Failed to make preview thumbnail", e.message))
+				.finally(() => thumbs.get(hash) === thumb && thumbs.delete(hash));
+			thumbs.set(hash, thumb);
 		}
 
 		await this.update(url, {image: type});
@@ -131,7 +178,7 @@ class PreviewCache {
 
 	// Waits for all pending writes
 	async flush() {
-		await Promise.all(writes.values());
+		await Promise.all([...writes.values(), ...thumbs.values()]);
 	}
 
 	// Deletes cache files older than prefetchCacheMaxAge days

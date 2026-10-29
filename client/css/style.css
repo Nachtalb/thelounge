@@ -2263,7 +2263,8 @@ textarea.input {
 
 :is(#chat, #input-previews) video {
 	max-width: 100%;
-	max-height: 240px;
+	max-height: 128px; /* Same as image previews */
+	object-fit: contain;
 }
 
 /* Do not display an empty div when there are no previews. Useful for example in
