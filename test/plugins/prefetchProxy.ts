@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import dns from "dns";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -6,7 +7,7 @@ import http from "http";
 import https from "https";
 import net, {AddressInfo} from "net";
 import forge from "node-forge";
-import {expect} from "vitest";
+import {expect, vi} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
 import link, {backfillPreviews, routeCachedImage} from "../../server/plugins/irc-events/link";
@@ -165,6 +166,58 @@ describe("prefetchProxy", function () {
 		expect(data.head).to.equal("proxied title");
 		expect(seen).to.deep.equal([`localhost:${targetPort}`, `127.0.0.1:${targetPort}`]);
 		expect(targetRequests).to.equal(2);
+	});
+
+	it("should check private addresses as far as the proxy type allows", async function () {
+		const seen: string[] = [];
+		const proxy = createSocksProxy(seen);
+		const proxyPort = await listen(proxy);
+		const lookup = dns.lookup;
+		vi.spyOn(dns, "lookup").mockImplementation(((
+			host: string,
+			options: unknown,
+			cb: (...args: unknown[]) => void
+		) => {
+			if (host === "rebind.test") {
+				process.nextTick(() => cb(null, [{address: "127.0.0.1", family: 4}]));
+			} else {
+				(lookup as any)(host, options, cb);
+			}
+		}) as any);
+		Config.values.prefetchBlockPrivate = true;
+
+		try {
+			const message = (url: string) => {
+				const client = util.createClient();
+				const msg = client.createMessage({text: url});
+				const dropped = new Promise<void>((resolve) =>
+					client.on("msg:preview", () => resolve())
+				);
+				link(client as any, util.createNetwork().channels[0], msg, msg.text);
+				return {msg, dropped};
+			};
+
+			// socks5:// resolves locally, so the resolved address is checked
+			Config.values.prefetchProxy = `socks5://127.0.0.1:${proxyPort}`;
+			const local = message(`http://rebind.test:${targetPort}/socks5`);
+			await vi.waitFor(() => expect(local.msg.previews).to.deep.equal([]));
+
+			// IP addresses are checked before the proxy is asked
+			Config.values.prefetchProxy = `socks5h://127.0.0.1:${proxyPort}`;
+			expect(message(`http://127.0.0.1:${targetPort}/socks5h`).msg.previews).to.deep.equal(
+				[]
+			);
+			expect(seen).to.deep.equal([]);
+
+			// socks5h:// leaves host names to the proxy (no local DNS lookup)
+			await message(`http://rebind.test:${targetPort}/remote-dns`).dropped;
+			expect(seen).to.deep.equal([`rebind.test:${targetPort}`]);
+			expect(targetRequests).to.equal(1);
+		} finally {
+			Config.values.prefetchBlockPrivate = false;
+			vi.restoreAllMocks();
+			await close(proxy);
+		}
 	});
 
 	it("should tunnel https through HTTP CONNECT and SOCKS5", async function () {

@@ -24,13 +24,15 @@ export function getInputLinks(text: string): string[] {
 }
 
 // Same defaults as LinkPreview.vue, errors are never shown above the input.
-// Loading placeholders are shown until the server answers.
+// Pending links (not yet accepted by the server) are hidden, so a blocked link never flashes
+// a placeholder; loading placeholders of accepted links are shown until the preview arrives.
 export function isInputPreviewShown(
 	preview: ClientLinkPreview,
 	settings: {links: boolean; media: boolean}
 ) {
 	switch (preview.type) {
 		case "error":
+		case "pending":
 			return false;
 		case "loading":
 			return true;
@@ -41,14 +43,14 @@ export function isInputPreviewShown(
 	}
 }
 
-// Drops previews of links that are no longer in the input and adds a loading
-// placeholder for every new link, in the order of the links in the input.
+// Drops previews of links that are no longer in the input and adds a hidden pending
+// entry for every new link, in the order of the links in the input.
 // `missing` are the new links that have to be requested from the server.
 export function syncInputPreviews(previews: ClientLinkPreview[], links: string[]) {
 	const missing = links.filter((link) => !previews.some((p) => p.link === link));
 	const placeholders = missing.map(
 		(link): ClientLinkPreview => ({
-			type: "loading",
+			type: "pending",
 			head: "",
 			body: "",
 			thumb: "",
@@ -64,6 +66,21 @@ export function syncInputPreviews(previews: ClientLinkPreview[], links: string[]
 			.sort((a, b) => links.indexOf(a.link) - links.indexOf(b.link)),
 		missing,
 	};
+}
+
+// Applies the server's immediate answer to a request for `requested`: pending links it accepted
+// get a loading placeholder, the others (blocked, invalid) become hidden errors, so they are not
+// requested again while they stay in the input.
+export function acceptInputPreviews(
+	previews: ClientLinkPreview[],
+	requested: string[],
+	accepted: string[]
+): ClientLinkPreview[] {
+	return previews.map((p) =>
+		p.type === "pending" && requested.includes(p.link)
+			? {...p, type: accepted.includes(p.link) ? "loading" : "error"}
+			: p
+	);
 }
 
 // Replaces the loading placeholder of a link with the preview sent by the server.
@@ -90,5 +107,5 @@ export function resolveInputPreview(
 
 // Placeholders whose response can no longer arrive, e.g. after a disconnect
 export function dropInputPlaceholders(previews: ClientLinkPreview[]) {
-	return previews.filter((p) => p.type !== "loading");
+	return previews.filter((p) => p.type !== "loading" && p.type !== "pending");
 }

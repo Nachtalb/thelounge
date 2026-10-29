@@ -1,5 +1,6 @@
 import {expect} from "vitest";
 import {
+	acceptInputPreviews,
 	dropInputPlaceholders,
 	getInputLinks,
 	isInputPreviewShown,
@@ -44,13 +45,14 @@ describe("inputPreviews helper", function () {
 		expect(isInputPreviewShown(preview("a", "image"), all)).to.equal(true);
 		expect(isInputPreviewShown(preview("a", "error"), all)).to.equal(false);
 		expect(isInputPreviewShown(preview("a", "loading"), all)).to.equal(true);
+		expect(isInputPreviewShown(preview("a", "pending"), all)).to.equal(false);
 		expect(isInputPreviewShown(preview("a"), {links: false, media: true})).to.equal(false);
 		expect(isInputPreviewShown(preview("a", "video"), {links: true, media: false})).to.equal(
 			false
 		);
 	});
 
-	it("should add a placeholder per new link and drop removed links, in input order", function () {
+	it("should add a hidden entry per new link and drop removed links, in input order", function () {
 		const a = preview("https://a.example/");
 		const c = preview("https://c.example/");
 		const links = ["https://b.example/", "https://a.example/"];
@@ -58,21 +60,40 @@ describe("inputPreviews helper", function () {
 
 		expect(missing).to.deep.equal(["https://b.example/"]);
 		expect(previews.map((p) => [p.link, p.type])).to.deep.equal([
-			["https://b.example/", "loading"],
+			["https://b.example/", "pending"],
 			["https://a.example/", "link"],
 		]);
 		expect(previews[1]).to.equal(a);
 	});
 
+	it("should only show a placeholder for links the server accepted", function () {
+		const all = {links: true, media: true};
+		const links = ["https://a.example/", "https://b.example/", "https://c.example/"];
+		const {previews} = syncInputPreviews([], links);
+		// c was requested by a later request whose answer is still outstanding
+		const accepted = acceptInputPreviews(previews, links.slice(0, 2), ["https://b.example/"]);
+
+		expect(accepted.map((p) => p.type)).to.deep.equal(["error", "loading", "pending"]);
+		expect(accepted.map((p) => isInputPreviewShown(p, all))).to.deep.equal([
+			false,
+			true,
+			false,
+		]);
+		// A late preview of a blocked link stays hidden
+		expect(resolveInputPreview(accepted, preview("https://a.example/"))).to.equal(accepted);
+	});
+
 	it("should replace the placeholder with the preview from the server", function () {
-		const {previews} = syncInputPreviews([], ["https://a.example/", "https://b.example/"]);
+		const links = ["https://a.example/", "https://b.example/"];
+		const previews = acceptInputPreviews(syncInputPreviews([], links).previews, links, links);
 		const resolved = resolveInputPreview(previews, preview("https://b.example/"));
 
 		expect(resolved.map((p) => p.type)).to.deep.equal(["loading", "link"]);
 	});
 
 	it("should hide the placeholder when there is nothing to preview", function () {
-		const {previews} = syncInputPreviews([], ["https://a.example/"]);
+		const links = ["https://a.example/"];
+		const previews = acceptInputPreviews(syncInputPreviews([], links).previews, links, links);
 		const resolved = resolveInputPreview(previews, preview("https://a.example/"), true);
 
 		expect(resolved).to.have.lengthOf(1);
@@ -90,7 +111,14 @@ describe("inputPreviews helper", function () {
 
 	it("should drop placeholders whose response can not arrive anymore", function () {
 		const a = preview("https://a.example/");
-		const {previews} = syncInputPreviews([a], ["https://a.example/", "https://b.example/"]);
-		expect(dropInputPlaceholders(previews)).to.deep.equal([a]);
+		const links = ["https://a.example/", "https://b.example/", "https://c.example/"];
+		const {previews} = syncInputPreviews([a], links);
+		const loading = acceptInputPreviews(
+			previews,
+			["https://b.example/"],
+			["https://b.example/"]
+		);
+		expect(loading.map((p) => p.type)).to.deep.equal(["link", "loading", "pending"]);
+		expect(dropInputPlaceholders(loading)).to.deep.equal([a]);
 	});
 });

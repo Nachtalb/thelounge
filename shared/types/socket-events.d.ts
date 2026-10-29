@@ -142,7 +142,10 @@ interface ClientToServerEvents {
 	names: EventHandler<{target: number}>;
 
 	input: EventHandler<{target: number; text: string; replyTo?: string}>;
-	"input:preview": EventHandler<{target: number; links: string[]}>;
+	"input:preview": (
+		data: {target: number; links: string[]},
+		ack: (result: {accepted: string[]; blocked: string[]}) => void
+	) => void;
 
 	"upload:auth": NoPayloadEventHandler;
 	"upload:ping": (token: string) => void;

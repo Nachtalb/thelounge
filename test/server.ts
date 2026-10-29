@@ -117,7 +117,7 @@ describe("Server", function () {
 				});
 			}));
 
-		it("should send input previews back to the requesting socket", () =>
+		it("should acknowledge accepted and blocked input links before sending previews", () =>
 			new Promise<void>((resolve) => {
 				client.on("init", () => {
 					client.emit("network:new", {
@@ -133,8 +133,13 @@ describe("Server", function () {
 
 				client.on("network", (data) => {
 					const target = data.network.channels[1].id;
+					const blocked = "http://blocked.test/";
+					const events: string[] = [];
+					Config.values.prefetchBlocklist = ["||blocked.test^"];
 
 					client.on("input:preview", (preview) => {
+						events.push("preview");
+						expect(events).to.deep.equal(["ack", "preview"]);
 						expect(preview.target).to.equal(target);
 						expect(preview.removed).to.equal(false);
 						expect(preview.preview.link).to.equal(webURL);
@@ -142,7 +147,11 @@ describe("Server", function () {
 						resolve();
 					});
 
-					client.emit("input:preview", {target, links: [webURL]});
+					client.emit("input:preview", {target, links: [webURL, blocked]}, (result) => {
+						Config.values.prefetchBlocklist = [];
+						events.push("ack");
+						expect(result).to.deep.equal({accepted: [webURL], blocked: [blocked]});
+					});
 				});
 			}));
 
