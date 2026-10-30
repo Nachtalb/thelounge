@@ -30,16 +30,27 @@ jobs:
         with:
           node-version-file: ".node-version"
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
       - name: Install
-        run: yarn --frozen-lockfile --non-interactive
+        run: bun install --frozen-lockfile
 
       - name: Build
-        run: yarn build
+        run: bun run build
         env:
           NODE_ENV: production
 
       - name: Test
-        run: yarn test
+        run: bun run test
 
   package:
     name: Packaged install smoke test
@@ -54,11 +65,22 @@ jobs:
         with:
           node-version-file: ".node-version"
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
       - name: Install
-        run: yarn --frozen-lockfile --non-interactive
+        run: bun install --frozen-lockfile
 
       - name: Build
-        run: yarn build
+        run: bun run build
         env:
           NODE_ENV: production
 

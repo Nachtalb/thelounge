@@ -24,9 +24,9 @@
     "lint:eslint": "eslint . --report-unused-disable-directives --color",
     "lint:prettier": "prettier --list-different \"**/*.*\"",
     "lint:stylelint": "stylelint --color \"client/**/*.css\"",
-    "lint": "run-p --aggregate-output --continue-on-error lint:*",
+    "lint": "bun run --parallel --no-exit-on-error \"lint:*\"",
     "start": "node index start",
-    "test": "run-p --aggregate-output --continue-on-error lint:* test:vitest",
+    "test": "bun run --parallel --no-exit-on-error \"lint:*\" test:vitest",
     "test:vitest": "vitest run",
     "watch": "vite build --watch",
     "githooks-install": "git config core.hooksPath scripts/git-hooks"
@@ -42,13 +42,14 @@
     "thelounge"
   ],
   "license": "MIT",
+  "packageManager": "bun@1.4.2",
   "engines": {
     "node": ">=22.0.0"
   },
   "files": [
     "./.thelounge_home",
     "./index.js",
-    "./yarn.lock",
+    "./bun.lock",
     "./dist/package.json",
     "./dist/**/*.js",
     "./public/**"

@@ -14,7 +14,7 @@ test/fixtures/.thelounge/sts-policies.json
 *.sh
 *.opts
 *.txt
-yarn.lock
+bun.lock
 .gitignore
 .npmrc
 .npmignore

@@ -1,10 +1,10 @@
-FROM node:24-trixie-slim AS build
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM oven/bun:1.4.2 AS build
 WORKDIR /src
 COPY . .
-RUN yarn install --frozen-lockfile --non-interactive \
- && NODE_ENV=production yarn build \
- && yarn install --production --frozen-lockfile --non-interactive --ignore-scripts
+RUN bun install --frozen-lockfile \
+ && NODE_ENV=production bun run build \
+ && rm -rf node_modules \
+ && bun install --production --frozen-lockfile --ignore-scripts
 
 FROM gcr.io/distroless/nodejs24-debian13:nonroot
 ENV NODE_ENV=production THELOUNGE_HOME=/var/opt/thelounge

@@ -25,16 +25,21 @@ jobs:
           # https://github.com/nodejs/node/issues/62425
           node-version: "24"
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
       - name: Install
-        run: yarn --frozen-lockfile --non-interactive
+        run: bun install --frozen-lockfile
 
       - name: Build
-        run: yarn build
+        run: bun run build
         env:
           NODE_ENV: production
 
       - name: Test
-        run: yarn test
+        run: bun run test
 
       - name: Publish latest
         if: "!contains(github.ref, '-')"
