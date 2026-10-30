@@ -7,7 +7,6 @@ import Settings from "../components/Windows/Settings.vue";
 import Help from "../components/Windows/Help.vue";
 import Changelog from "../components/Windows/Changelog.vue";
 import NetworkEdit from "../components/Windows/NetworkEdit.vue";
-import SearchResults from "../components/Windows/SearchResults.vue";
 import RoutedChat from "../components/RoutedChat.vue";
 import {store} from "./store";
 
@@ -100,11 +99,6 @@ const router = createRouter({
 			name: "RoutedChat",
 			path: "/chan-:id",
 			component: RoutedChat,
-		},
-		{
-			name: "SearchResults",
-			path: "/chan-:id/search",
-			component: SearchResults,
 		},
 	],
 });

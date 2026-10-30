@@ -55,6 +55,10 @@
 							:keep-scroll-position="keepScrollPosition"
 							:is-previous-source="isPreviousSource(message, id)"
 							:focused="message.id === focused"
+							:highlight="
+								channel.id === chatSearch.chanId ? chatSearch.query : undefined
+							"
+							:class="{'jump-target': message.id === jumpTarget}"
 							@toggle-link-preview="onLinkPreviewToggle"
 						/>
 					</div>
@@ -71,6 +75,8 @@ import {MessageType, SharedMsg} from "../../shared/types/msg";
 import eventbus from "../js/eventbus";
 import clipboard from "../js/clipboard";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
+import {jumpTarget, loadingBack} from "../js/helpers/jumpToMessage";
+import {chatSearch} from "../js/helpers/chatSearch";
 import socket from "../js/socket";
 import Message from "./Message.vue";
 import MessageCondensed from "./MessageCondensed.vue";
@@ -323,6 +329,7 @@ export default defineComponent({
 		};
 
 		let lastScrollTop = 0;
+		let jumping = 0; // id of the running scrollToMessage, 0 = none
 
 		// Ask for older messages well before the top is reached (slow connections),
 		// one request at a time and again as soon as one lands
@@ -331,6 +338,8 @@ export default defineComponent({
 
 			if (
 				el &&
+				!jumping &&
+				!loadingBack.value &&
 				!props.channel.scrolledToBottom &&
 				props.channel.moreHistoryAvailable &&
 				!props.channel.historyLoading &&
@@ -387,26 +396,78 @@ export default defineComponent({
 			void keepScrollPosition();
 		};
 
-		// Only rows near the viewport are rendered, so scroll the row into view
-		// first and then return the element (e.g. to highlight it)
+		// Resolves once the list stopped scrolling
+		const settled = () =>
+			new Promise<void>((resolve) => {
+				const el = chat.value;
+				let timer = 0;
+
+				const onScroll = () => {
+					clearTimeout(timer);
+					timer = window.setTimeout(() => {
+						el?.removeEventListener("scroll", onScroll);
+						resolve();
+					}, 150);
+				};
+
+				el?.addEventListener("scroll", onScroll, {passive: true});
+				onScroll();
+			});
+
+		// Only rows near the viewport are rendered, so let the virtualizer scroll to the row.
+		// Eases the last bit (all of it within two screens, else half a screen) relative to
+		// the row, so rows loading or resizing on the way can't throw it off; instant with
+		// reduced motion. Returns the element once landed (e.g. to highlight it)
 		const scrollToMessage = async (id: number) => {
 			const index = condensedMessages.value.findIndex(
 				(m) =>
 					m.id === id || (m.type === "condensed" && m.messages.some((c) => c.id === id))
 			);
+			const v = virtualizer.value;
 
-			if (index < 0 || !virtualizer.value) {
+			if (index < 0 || !v) {
 				return null;
 			}
 
-			virtualizer.value.scrollToIndex(index, {align: "center"});
-			await new Promise((resolve) =>
-				requestAnimationFrame(() => requestAnimationFrame(resolve))
-			);
+			const jump = ++jumping;
+			const stop = () => (jumping = 0);
+			props.channel.scrolledToBottom = false;
+			chat.value?.addEventListener("wheel", stop, {passive: true, once: true});
+			chat.value?.addEventListener("touchstart", stop, {passive: true, once: true});
 
-			const el = document.getElementById(`msg-${id}`);
-			el?.scrollIntoView({block: "center"});
-			return el;
+			const viewport = v.viewportSize;
+			const centre =
+				startMargin.value + v.getItemOffset(index) + (v.getItemSize(index) - viewport) / 2;
+			const distance = v.scrollOffset - centre;
+			const from = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+				? 0
+				: Math.abs(distance) > 2 * viewport
+				? (Math.sign(distance) * viewport) / 2
+				: distance;
+			const start = performance.now();
+
+			for (let t = from ? 0 : 1; jump === jumping; ) {
+				v.scrollToIndex(index, {align: "center", offset: from * (1 - t) ** 3});
+
+				if (t === 1) {
+					break;
+				}
+
+				await new Promise(requestAnimationFrame);
+				t = Math.min(1, (performance.now() - start) / 300);
+			}
+
+			await settled();
+			chat.value?.removeEventListener("wheel", stop);
+			chat.value?.removeEventListener("touchstart", stop);
+
+			if (jump !== jumping) {
+				return null;
+			}
+
+			jumping = 0;
+			loadOlderIfNear();
+			return document.getElementById(`msg-${id}`);
 		};
 
 		const onScrollToMessage = (id: number, done?: (el: HTMLElement) => void) => {
@@ -470,6 +531,8 @@ export default defineComponent({
 		return {
 			chat,
 			store,
+			chatSearch,
+			jumpTarget,
 			onShowMoreClick,
 			loadMoreButton,
 			onCopy,

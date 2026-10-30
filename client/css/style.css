@@ -63,6 +63,7 @@
 	/* Messages */
 	--highlight-bg-color: #efe8dc; /* Background and left border of messages that mention you */
 	--highlight-border-color: #b08c4f;
+	--search-current-bg-color: color-mix(in srgb, var(--highlight-border-color) 20%, transparent); /* Jumped-to message */
 	--highlight-time-color: #696969;
 	--msg-action-color: #f39c12; /* /me */
 	--msg-notice-color: #0074d9;
@@ -1916,6 +1917,22 @@ textarea.input {
 	border-left: 1px solid var(--highlight-bg-color);
 }
 
+#chat .msg.jump-target {
+	animation: jump-target 2.5s ease-in;
+}
+
+#chat .msg.jump-target mark {
+	box-shadow: 0 0 0 1px var(--highlight-border-color);
+}
+
+@keyframes jump-target {
+	0%,
+	40% {
+		background-color: var(--search-current-bg-color);
+		box-shadow: inset 4px 0 var(--highlight-border-color);
+	}
+}
+
 /* Reply context — compact preview above message text, inside .content */
 #chat .msg .reply-context {
 	display: flex;
@@ -3702,11 +3719,4 @@ mark {
 #chat table.channel-list .topic,
 .header .topic {
 	white-space: nowrap;
-}
-
-.chat-view[data-type="search-results"] .search-status {
-	display: flex;
-	height: 100%;
-	justify-content: center;
-	align-items: center;
 }

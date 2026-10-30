@@ -49,7 +49,7 @@
 							</span>
 						</div>
 					</div>
-					<div class="content" dir="auto">
+					<div class="content" dir="auto" @click="jump(message)">
 						<ParsedMessage :message="(message as any)" />
 					</div>
 				</div>
@@ -97,6 +97,7 @@
 }
 
 .mentions-popup .msg .content {
+	cursor: pointer;
 	background-color: var(--highlight-bg-color);
 	border-radius: 5px;
 	padding: 6px;
@@ -150,6 +151,7 @@ import ParsedMessage from "./ParsedMessage.vue";
 import socket from "../js/socket";
 import eventbus from "../js/eventbus";
 import localetime from "../js/helpers/localetime";
+import jumpToMessage from "../js/helpers/jumpToMessage";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import {computed, watch, defineComponent, ref, onMounted, onUnmounted} from "vue";
@@ -217,6 +219,13 @@ export default defineComponent({
 			}
 		};
 
+		const jump = (message: MentionWithContext) => {
+			if (message.channel) {
+				isOpen.value = false;
+				void jumpToMessage(message.channel.channel, message);
+			}
+		};
+
 		const togglePopup = () => {
 			isOpen.value = !isOpen.value;
 
@@ -248,6 +257,7 @@ export default defineComponent({
 			dismissMention,
 			dismissAllMentions,
 			containerClick,
+			jump,
 		};
 	},
 });
