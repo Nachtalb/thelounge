@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import type {Element} from "domhandler";
 import got from "got";
-import type {Request, Response} from "express";
+import {sendFile} from "../../sendFile";
 import fs from "fs";
 import {URL} from "url";
 import mime from "mime-types";
@@ -752,9 +752,9 @@ function normalizeURL(link: string, baseLink?: string, disallowHttp = false) {
 
 // Serves a cached preview image by its url hash, fetching it from the source if it is not cached.
 // Only urls the link plugin recorded as preview images can be requested, so this is not an open proxy.
-export async function routeCachedImage(req: Request, res: Response) {
+export async function routeCachedImage(req: Request, hashParam: string): Promise<Response | null> {
 	// <hash> is the full image, <hash>.avif / <hash>.webp its thumbnail
-	const [hash, format] = req.params.hash.split(".");
+	const [hash, format] = hashParam.split(".");
 	const entry = previewCache.isValidHash(hash) ? await previewCache.read(hash) : null;
 
 	if (
@@ -763,37 +763,38 @@ export async function routeCachedImage(req: Request, res: Response) {
 		blockedUrlReason(entry.url) ||
 		(format !== undefined && format !== thumbFormat(entry.image))
 	) {
-		return res.status(404).send("Not found");
+		return null;
 	}
 
-	res.setHeader("Cache-Control", "max-age=86400");
-	res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+	const headers = {
+		"Cache-Control": "max-age=86400",
+		"Content-Security-Policy": "default-src 'none'; sandbox",
+	};
 
 	const filePath = previewCache.getPath(hash, "img");
 
 	const sendThumb = async () => {
 		if (!format) {
-			return false;
+			return null;
 		}
 
 		await previewCache.waitForThumb(hash);
 		const thumbPath = previewCache.getPath(hash, format as "avif" | "webp");
 
-		if (fs.existsSync(thumbPath)) {
-			res.contentType(`image/${format}`).sendFile(thumbPath);
-			return true;
-		}
-
-		return false;
+		return sendFile(req, thumbPath, {headers: {...headers, "Content-Type": `image/${format}`}});
 	};
 
-	if (await sendThumb()) {
-		return;
+	const thumb = await sendThumb();
+
+	if (thumb) {
+		return thumb;
 	}
 
 	// No thumbnail (old entry, or making it failed): serve the original
-	if (fs.existsSync(filePath)) {
-		return res.contentType(entry.image).sendFile(filePath);
+	const original = sendFile(req, filePath, {headers: {...headers, "Content-Type": entry.image}});
+
+	if (original) {
+		return original;
 	}
 
 	try {
@@ -804,17 +805,18 @@ export async function routeCachedImage(req: Request, res: Response) {
 			image.size > Config.values.prefetchMaxImageSize * 1024 ||
 			image.data.length < image.size
 		) {
-			return res.status(404).send("Not found");
+			return null;
 		}
 
 		await previewCache.setImage(entry.url, image.type, image.data);
 
-		if (await sendThumb()) {
-			return;
-		}
-
-		return res.contentType(image.type).send(image.data);
+		return (
+			(await sendThumb()) ||
+			new Response(new Uint8Array(image.data), {
+				headers: {...headers, "Content-Type": image.type},
+			})
+		);
 	} catch {
-		return res.status(404).send("Not found");
+		return null;
 	}
 }

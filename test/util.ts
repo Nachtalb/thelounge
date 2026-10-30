@@ -64,6 +64,23 @@ export default {
 	createWebserver() {
 		return express();
 	},
+	// Mounts a server route that answers with a fetch Response (404 for null) on express
+	webRoute(handler: (req: Request, params: Record<string, string>) => Promise<Response | null>) {
+		return (req: express.Request, res: express.Response) => {
+			const url = `http://${req.headers.host || "localhost"}${req.originalUrl}`;
+
+			void handler(new Request(url), req.params).then(async (response) => {
+				if (!response) {
+					res.status(404).send("Not found");
+					return;
+				}
+
+				res.status(response.status);
+				response.headers.forEach((value, key) => res.setHeader(key, value));
+				res.send(Buffer.from(await response.arrayBuffer()));
+			});
+		};
+	},
 	sanitizeLog,
 	isRunningOnCI() {
 		return process.env.CI || process.env.GITHUB_ACTIONS;

@@ -5,7 +5,7 @@
 // set.json is a set, found on each call so installs need no restart.
 import fs from "fs";
 import path from "path";
-import type {Request, Response, NextFunction} from "express";
+import {sendFile} from "../sendFile";
 import Config from "../config";
 import Utils from "../command-line/utils";
 
@@ -261,23 +261,22 @@ const svgHeaders = {
 // GET /img/emoji/:set/:file for installed sets (bundled ones are served from
 // public/ before this). The client asks for emoji-datasource names; an emoji the
 // set has no image for gets the image of the fallback bundled set instead.
-export function emojiSetRequest(req: Request, res: Response, next: NextFunction) {
-	const {set, file} = req.params;
+export function emojiSetRequest(req: Request, set: string, file: string) {
 	const manifest = readEmojiSet(set);
 
 	if (!manifest || !/^[0-9a-f-]+\.png$/.test(file)) {
-		return next();
+		return null;
 	}
 
-	const options = {maxAge: 86400 * 1000};
+	const options = {maxAge: 86400};
 	const key = emojiKey(file);
 	const image = key && path.join(getEmojiSetPath(set), `${key}.${manifest.format}`);
+	const response =
+		image &&
+		sendFile(req, image, {...options, headers: manifest.format === "svg" ? svgHeaders : {}});
 
-	if (image && fs.existsSync(image)) {
-		return res.sendFile(image, {
-			...options,
-			headers: manifest.format === "svg" ? svgHeaders : {},
-		});
+	if (response) {
+		return response;
 	}
 
 	const fallback = Utils.getFileFromRelativeToRoot(
@@ -288,9 +287,5 @@ export function emojiSetRequest(req: Request, res: Response, next: NextFunction)
 		file
 	);
 
-	if (fs.existsSync(fallback)) {
-		return res.sendFile(fallback, options);
-	}
-
-	return next();
+	return sendFile(req, fallback, options);
 }

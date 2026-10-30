@@ -7,7 +7,8 @@ import crypto from "crypto";
 import log from "../log";
 import contentDisposition from "content-disposition";
 import type {Socket} from "socket.io";
-import {Request, Response} from "express";
+import {Readable} from "stream";
+import {sendFile} from "../sendFile";
 import NodeBuffer, {Buffer} from "buffer";
 
 // Map of allowed mime types to their respecive default filenames
@@ -69,19 +70,25 @@ class Uploader {
 		return setTimeout(() => uploadTokens.delete(token), 60 * 1000);
 	}
 
-	// TODO: type
-	static router(this: void, express: any) {
-		express.get("/uploads/:name/:slug*?", Uploader.routeGetFile);
-		express.post("/uploads/new/:token", Uploader.routeUploadFile);
+	static routes(this: void) {
+		const getFile = (req: Bun.BunRequest<string>) =>
+			req.method === "GET" || req.method === "HEAD"
+				? Uploader.routeGetFile(req, req.params.name, new URL(req.url).pathname)
+				: null;
+
+		return {
+			"/uploads/:name": getFile,
+			"/uploads/:name/*": getFile,
+			"/uploads/new/:token": (req: Bun.BunRequest<"/uploads/new/:token">) =>
+				req.method === "POST" ? Uploader.routeUploadFile(req, req.params.token) : null,
+		};
 	}
 
-	static async routeGetFile(this: void, req: Request, res: Response) {
-		const name = req.params.name;
-
+	static async routeGetFile(this: void, req: Request, name: string, pathname: string) {
 		const nameRegex = /^[0-9a-f]{16}$/;
 
 		if (!nameRegex.test(name)) {
-			return res.status(404).send("Not found");
+			return null;
 		}
 
 		const folder = name.substring(0, 2);
@@ -91,11 +98,18 @@ class Uploader {
 
 		// doesn't exist
 		if (detectedMimeType === null) {
-			return res.status(404).send("Not found");
+			return null;
 		}
 
 		// Force a download in the browser if it's not an allowed type (binary or otherwise unknown)
-		let slug = req.params.slug;
+		let slug: string | undefined = pathname.split("/")[3];
+
+		try {
+			slug = slug && decodeURIComponent(slug);
+		} catch {
+			return null;
+		}
+
 		const isInline = detectedMimeType in inlineContentDispositionTypes;
 		let disposition = isInline ? "inline" : "attachment";
 
@@ -122,14 +136,23 @@ class Uploader {
 			detectedMimeType = "video/mp4";
 		}
 
-		res.setHeader("Content-Disposition", disposition);
-		res.setHeader("Cache-Control", "max-age=86400");
-		res.contentType(detectedMimeType);
-
-		return res.sendFile(filePath);
+		return sendFile(req, filePath, {
+			headers: {
+				"Content-Disposition": disposition,
+				"Cache-Control": "max-age=86400",
+				"Content-Type": detectedMimeType,
+			},
+		});
 	}
 
-	static routeUploadFile(this: void, req: Request, res: Response) {
+	static routeUploadFile(this: void, req: Request, token: string) {
+		return new Promise<Response>((resolve) => Uploader.upload(req, token, resolve));
+	}
+
+	static upload(this: void, req: Request, token: string, respond: (res: Response) => void) {
+		const respondJson = (status: number, json: object) =>
+			respond(Response.json(json, {status}));
+		const body = req.body ? Readable.fromWeb(req.body as any) : null;
 		let busboyInstance: busboy | null | undefined;
 		let uploadUrl: string | URL;
 		let randomName: string;
@@ -141,8 +164,8 @@ class Uploader {
 		const doneCallback = () => {
 			// detach the stream and drain any remaining data
 			if (busboyInstance) {
-				req.unpipe(busboyInstance);
-				req.on("readable", req.read.bind(req));
+				body?.unpipe(busboyInstance);
+				body?.resume();
 
 				busboyInstance.removeAllListeners();
 				busboyInstance = null;
@@ -164,26 +187,23 @@ class Uploader {
 				destPath = null;
 			}
 
-			return res.status(400).json({error: err.message});
+			return respondJson(400, {error: err.message});
 		};
 
 		// if the authentication token is incorrect, bail out
-		if (uploadTokens.delete(req.params.token) !== true) {
+		if (uploadTokens.delete(token) !== true) {
 			return abortWithError(Error("Invalid upload token"));
 		}
 
 		// if the request does not contain any body data, bail out
-		if (req.headers["content-length"] && parseInt(req.headers["content-length"]) < 1) {
+		const contentLength = req.headers.get("content-length");
+
+		if (!body || (contentLength && parseInt(contentLength) < 1)) {
 			return abortWithError(Error("Length Required"));
 		}
 
 		// Only allow multipart, as busboy can throw an error on unsupported types
-		if (
-			!(
-				req.headers["content-type"] &&
-				req.headers["content-type"].startsWith("multipart/form-data")
-			)
-		) {
+		if (!req.headers.get("content-type")?.startsWith("multipart/form-data")) {
 			return abortWithError(Error("Unsupported Content Type"));
 		}
 
@@ -191,7 +211,7 @@ class Uploader {
 		// because it can throw on malformed headers
 		try {
 			busboyInstance = new busboy({
-				headers: req.headers as BusboyHeaders,
+				headers: Object.fromEntries(req.headers) as BusboyHeaders,
 				limits: {
 					files: 1, // only allow one file per upload
 					fileSize: Uploader.getMaxFileSize(),
@@ -236,10 +256,7 @@ class Uploader {
 			(
 				fieldname: any,
 				fileStream: {
-					on: (
-						arg0: string,
-						arg1: {(err: any): Response<any, Record<string, any>>; (): void}
-					) => void;
+					on: (arg0: string, arg1: (err?: any) => void) => void;
 					unpipe: (arg0: any) => void;
 					read: {bind: (arg0: any) => any};
 					pipe: (arg0: any) => void;
@@ -257,7 +274,6 @@ class Uploader {
 
 				// if the busboy data stream errors out or goes over the file size limit
 				// abort the processing with an error
-				// @ts-expect-error Argument of type '(err: any) => Response<any, Record<string, any>>' is not assignable to parameter of type '{ (err: any): Response<any, Record<string, any>>; (): void; }'.ts(2345)
 				fileStream.on("error", abortWithError);
 				fileStream.on("limit", () => {
 					fileStream.unpipe(streamWriter);
@@ -276,12 +292,12 @@ class Uploader {
 			doneCallback();
 
 			if (!uploadUrl) {
-				return res.status(400).json({error: "Missing file"});
+				return respondJson(400, {error: "Missing file"});
 			}
 
 			if (!Config.values.fileUpload.rustypaste?.url) {
 				// upload was done, send the generated file url to the client
-				return res.status(200).json({
+				return respondJson(200, {
 					url: uploadUrl,
 				});
 			}
@@ -291,10 +307,10 @@ class Uploader {
 
 			const forward = () => {
 				Uploader.forwardToRustypaste(localPath, originalName)
-					.then((url) => res.status(200).json({url}))
+					.then((url) => respondJson(200, {url}))
 					.catch((err: Error) => {
 						log.error(`Rustypaste upload failed: ${err.message}`);
-						res.status(400).json({error: err.message});
+						respondJson(400, {error: err.message});
 					})
 					.finally(() => fs.unlink(localPath, () => {}));
 			};
@@ -307,7 +323,7 @@ class Uploader {
 		});
 
 		// pipe request body to busboy for processing
-		return req.pipe(busboyInstance);
+		body.pipe(busboyInstance);
 	}
 
 	static async forwardToRustypaste(this: void, filePath: string, filename: string) {

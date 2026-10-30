@@ -12,7 +12,7 @@ import sinon from "ts-sinon";
 import ClientManager from "../server/clientManager";
 
 describe("Server", function () {
-	let server: import("http").Server;
+	let server: Bun.Server<any>;
 	let logInfoStub: sinon.SinonStub<string[], void>;
 	let logWarnStub: sinon.SinonStub<string[], void>;
 	let checkForUpdatesStub: sinon.SinonStub<[manager: ClientManager], void>;
@@ -41,14 +41,14 @@ describe("Server", function () {
 		logInfoStub.restore();
 		logWarnStub.restore();
 		checkForUpdatesStub.restore();
-		await new Promise<void>((resolve) => server.close(() => resolve()));
+		await server.stop(true);
 
 		await vi.dynamicImportSettled();
 	});
 
 	const webURL = `http://${Config.values.host}:${Config.values.port}/`;
 
-	describe("Express", () => {
+	describe("Web server", () => {
 		it("should run a web server on " + webURL, async () => {
 			const response = await got(webURL);
 			expect(response.statusCode).to.equal(200);

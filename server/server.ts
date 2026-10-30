@@ -1,8 +1,8 @@
 import _ from "lodash";
-import express, {NextFunction, Request, Response} from "express";
 import fs from "fs";
 import path from "path";
 import {Server as ioServer, Socket as ioSocket} from "socket.io";
+import {Server as Engine} from "@socket.io/bun-engine";
 import dns from "dns";
 import colors from "./colors";
 import net from "net";
@@ -23,6 +23,7 @@ import inputs from "./plugins/inputs";
 import Auth from "./plugins/auth";
 import {VALID_TYPING_STATUSES} from "../shared/types/typing";
 import {injectServerConfig} from "./plugins/html-config";
+import {sendFile, serveStatic} from "./sendFile";
 
 import themes from "./plugins/packages/themes";
 themes.loadLocalThemes();
@@ -55,6 +56,12 @@ type ServerOptions = {
 	dev: boolean;
 };
 
+type RouteRequest = Bun.BunRequest<string>;
+export type Route = (
+	req: RouteRequest,
+	server: Bun.Server<any>
+) => Response | null | Promise<Response | null>;
+
 // Cached built HTML (production only — read once at startup)
 let cachedHtml: string | null = null;
 
@@ -82,63 +89,107 @@ export default async function (
 	log.info(`Configuration file: ${colors.green(Config.getConfigPath())}`);
 
 	const staticOptions = {
-		redirect: false,
-		maxAge: 86400 * 1000,
+		maxAge: 86400,
 	};
-
-	const app = express();
 
 	isDev = options.dev;
 
-	if (options.dev) {
-		await (await import("./plugins/dev-server")).default(app);
-	}
+	// Socket.IO on Bun's own WebSocket server, see https://socket.io/blog/bun-engine/
+	const engine = new Engine({
+		path: "/socket.io/",
+		pingTimeout: 60000,
+		allowRequest(req) {
+			const transport = new URL(req.url).searchParams.get("transport");
+			return Config.values.transports.includes(transport as string)
+				? Promise.resolve()
+				: Promise.reject("Transport unknown");
+		},
+	});
 
-	app.set("env", "production")
-		.disable("x-powered-by")
-		.use(allRequests)
-		.use(addSecurityHeaders)
-		.get("/", indexRequest)
-		.get("/service-worker.js", forceNoCacheRequest)
-		.use(express.static(Utils.getFileFromRelativeToRoot("public"), staticOptions))
-		.use("/storage/", express.static(Config.getStoragePath(), staticOptions))
-		.get("/preview-cache/:hash", (req, res) => void routeCachedImage(req, res));
+	// The engine does not set the client's address, Socket.IO reads it from here
+	engine.on("connection", (conn, req, bunServer) => {
+		(conn as unknown as {remoteAddress?: string}).remoteAddress =
+			bunServer.requestIP(req)?.address;
+	});
 
-	// Operator-installed emoji sets (`thelounge emoji install`), next to the
-	// bundled ones in public/img/emoji/
-	app.get("/img/emoji/:set/:file", emojiSetRequest);
+	const sockets: Server = new ioServer();
+	sockets.bind(engine as any);
+
+	const routes: Record<string, Route> = {
+		"/": indexRequest,
+		"/service-worker.js": (req) =>
+			servePublic(req, {headers: {"Cache-Control": "no-cache, no-transform"}}),
+		"/storage/*": (req) =>
+			serveStatic(
+				req,
+				Config.getStoragePath(),
+				new URL(req.url).pathname.slice("/storage/".length),
+				staticOptions
+			),
+		"/preview-cache/:hash": (req) => routeCachedImage(req, req.params.hash),
+
+		// Operator-installed emoji sets (`thelounge emoji install`), next to the
+		// bundled ones in public/img/emoji/
+		"/img/emoji/:set/:file": (req) =>
+			servePublic(req) || emojiSetRequest(req, req.params.set, req.params.file),
+
+		// This route serves *installed themes only*. Local themes are served directly
+		// from the `public/themes/` folder as static assets, without entering this
+		// handler. Remember this if you make changes to this function, serving of
+		// local themes will not get those changes.
+		"/themes/:theme"(req) {
+			const local = servePublic(req);
+
+			if (local || !req.params.theme.endsWith(".css")) {
+				return local;
+			}
+
+			const themeName = encodeURIComponent(req.params.theme.slice(0, -".css".length));
+			const theme = themes.getByName(themeName);
+
+			if (theme === undefined || theme.filename === undefined) {
+				return null;
+			}
+
+			return sendFile(req, theme.filename);
+		},
+
+		"/packages/:package/:filename"(req) {
+			const packageName = req.params.package;
+			const fileName = req.params.filename;
+			const packageFile = packages.getPackage(packageName);
+
+			if (!packageFile || !packages.getFiles().includes(`${packageName}/${fileName}`)) {
+				return null;
+			}
+
+			const packagePath = Config.getPackageModulePath(packageName);
+			return sendFile(req, path.join(packagePath, fileName));
+		},
+	};
 
 	if (Config.values.fileUpload.enable) {
-		Uploader.router(app);
+		Object.assign(routes, Uploader.routes());
 	}
 
-	// This route serves *installed themes only*. Local themes are served directly
-	// from the `public/themes/` folder as static assets, without entering this
-	// handler. Remember this if you make changes to this function, serving of
-	// local themes will not get those changes.
-	app.get("/themes/:theme.css", (req, res) => {
-		const themeName = encodeURIComponent(req.params.theme);
-		const theme = themes.getByName(themeName);
+	// Built client files, for every path no route took
+	let fallback: Route = (req) => servePublic(req);
 
-		if (theme === undefined || theme.filename === undefined) {
-			return res.status(404).send("Not found");
+	if (options.dev) {
+		const vite = await (await import("./plugins/dev-server")).default();
+		const viteFirst =
+			(handler: Route): Route =>
+			async (req, bunServer) =>
+				(await vite(req)) || handler(req, bunServer);
+
+		// Vite answers first, like its middleware did in front of Express
+		for (const [route, handler] of Object.entries(routes)) {
+			routes[route] = viteFirst(handler);
 		}
 
-		return res.sendFile(theme.filename);
-	});
-
-	app.get("/packages/:package/:filename", (req, res) => {
-		const packageName = req.params.package;
-		const fileName = req.params.filename;
-		const packageFile = packages.getPackage(packageName);
-
-		if (!packageFile || !packages.getFiles().includes(`${packageName}/${fileName}`)) {
-			return res.status(404).send("Not found");
-		}
-
-		const packagePath = Config.getPackageModulePath(packageName);
-		return res.sendFile(path.join(packagePath, fileName));
-	});
+		fallback = viteFirst(fallback);
+		routes["/"] = vite.indexRequest;
+	}
 
 	if (Config.values.public && (Config.values.ldap || {}).enable) {
 		log.warn(
@@ -146,12 +197,9 @@ export default async function (
 		);
 	}
 
-	let server: import("http").Server | import("https").Server;
+	let tls: Bun.TLSOptions | undefined;
 
-	if (!Config.values.https.enable) {
-		const createServer = (await import("http")).createServer;
-		server = createServer(app);
-	} else {
+	if (Config.values.https.enable) {
 		const keyPath = Helper.expandHome(Config.values.https.key);
 		const certPath = Helper.expandHome(Config.values.https.certificate);
 		const caPath = Helper.expandHome(Config.values.https.ca);
@@ -171,177 +219,182 @@ export default async function (
 			process.exit(1);
 		}
 
-		const createServer = (await import("https")).createServer;
-		server = createServer(
-			{
-				key: fs.readFileSync(keyPath),
-				cert: fs.readFileSync(certPath),
-				ca: caPath ? fs.readFileSync(caPath) : undefined,
+		tls = {
+			key: fs.readFileSync(keyPath),
+			cert: fs.readFileSync(certPath),
+			ca: caPath ? fs.readFileSync(caPath) : undefined,
+		};
+	}
+
+	const unix =
+		typeof Config.values.host === "string" && Config.values.host.startsWith("unix:")
+			? Config.values.host.replace(/^unix:/, "")
+			: undefined;
+	const listen = unix ? {unix} : {port: Config.values.port, hostname: Config.values.host};
+
+	const {websocket, idleTimeout} = engine.handler();
+
+	const withHeaders =
+		(handler: Route) => async (req: RouteRequest, bunServer: Bun.Server<any>) => {
+			const res = (await handler(req, bunServer)) || notFound();
+			addSecurityHeaders(res);
+			return res;
+		};
+
+	let server: Bun.Server<any>;
+
+	try {
+		server = Bun.serve({
+			...listen,
+			tls,
+			websocket,
+			idleTimeout,
+			// Uploads enforce their own limit while streaming to disk
+			maxRequestBodySize: Number.MAX_SAFE_INTEGER,
+			routes: _.mapValues(routes, withHeaders) as any,
+			async fetch(req, bunServer) {
+				if (new URL(req.url).pathname === engine.opts.path) {
+					// Bun's body limit is lifted for uploads, so cap polling payloads here
+					const length = Number(req.headers.get("content-length") || 0);
+
+					if (req.method === "POST" && length > engine.opts.maxHttpBufferSize) {
+						return new Response(null, {status: 413});
+					}
+
+					return engine.handleRequest(req, bunServer);
+				}
+
+				return withHeaders(fallback)(req as RouteRequest, bunServer);
 			},
-			app
+			error(err) {
+				log.error(`HTTP request failed: ${err.message}`);
+				return new Response("Internal Server Error", {status: 500});
+			},
+		} as Bun.Serve.Options<any>);
+	} catch (e) {
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+		log.error(`${e}`);
+		process.exit(1);
+	}
+
+	if (unix) {
+		log.info("Available on socket " + colors.green(unix));
+	} else {
+		const protocol = Config.values.https.enable ? "https" : "http";
+		const host = server.hostname?.includes(":") ? `[${server.hostname}]` : server.hostname;
+
+		log.info(
+			"Available at " +
+				colors.green(`${protocol}://${host}:${server.port}/`) +
+				` in ${colors.bold(Config.values.public ? "public" : "private")} mode`
 		);
 	}
 
-	let listenParams:
-		| string
-		| {
-				port: number;
-				host: string | undefined;
-		  };
+	sockets.on("connect", (socket) => {
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+		socket.on("error", (err) => log.error(`io socket error: ${err}`));
 
-	if (typeof Config.values.host === "string" && Config.values.host.startsWith("unix:")) {
-		listenParams = Config.values.host.replace(/^unix:/, "");
-	} else {
-		listenParams = {
-			port: Config.values.port,
-			host: Config.values.host,
-		};
+		if (Config.values.public) {
+			performAuthentication.call(socket, {});
+		} else {
+			socket.on("auth:perform", performAuthentication);
+			socket.emit("auth:start", serverHash);
+		}
+	});
+
+	// `thelounge emoji install`/`remove` while running: update open pages too
+	watchEmojiSets((sets, defaultStyle) => sockets.emit("emoji:sets", {sets, defaultStyle}));
+
+	manager = new ClientManager();
+	packages.loadPackages();
+
+	const defaultTheme = themes.getByName(Config.values.theme);
+
+	if (defaultTheme === undefined) {
+		log.warn(
+			`The specified default theme "${colors.red(
+				Config.values.theme
+			)}" does not exist, verify your config.`
+		);
+		Config.values.theme = "default";
+	} else if (defaultTheme.themeColor) {
+		Config.values.themeColor = defaultTheme.themeColor;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-	server.on("error", (err) => log.error(`${err}`));
-
-	server.listen(listenParams, () => {
-		if (typeof listenParams === "string") {
-			log.info("Available on socket " + colors.green(listenParams));
-		} else {
-			const protocol = Config.values.https.enable ? "https" : "http";
-			const address = server?.address();
-
-			if (address && typeof address !== "string") {
-				// TODO: Node may revert the Node 18 family string --> number change
-				// @ts-expect-error This condition will always return 'false' since the types 'string' and 'number' have no overlap.
-				if (address.family === "IPv6" || address.family === 6) {
-					address.address = "[" + address.address + "]";
-				}
-
-				log.info(
-					"Available at " +
-						colors.green(`${protocol}://${address.address}:${address.port}/`) +
-						` in ${colors.bold(Config.values.public ? "public" : "private")} mode`
-				);
-			}
+	new Identification((identHandler, err) => {
+		if (err) {
+			log.error(`Could not start identd server, ${err.message}`);
+			process.exit(1);
+		} else if (!manager) {
+			log.error("Could not start identd server, ClientManager is undefined");
+			process.exit(1);
 		}
 
-		// This should never happen
-		if (!server) {
+		void manager.init(identHandler, sockets);
+	});
+
+	// Handle ctrl+c and kill gracefully
+	let suicideTimeout: NodeJS.Timeout | null = null;
+
+	const exitGracefully = async function () {
+		if (suicideTimeout !== null) {
 			return;
 		}
 
-		const sockets: Server = new ioServer(server, {
-			cookie: false,
-			serveClient: false,
+		log.info("Exiting...");
 
-			// TODO: type as Server.Transport[]
-			transports: Config.values.transports as any,
-			pingTimeout: 60000,
-		});
-
-		sockets.on("connect", (socket) => {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			socket.on("error", (err) => log.error(`io socket error: ${err}`));
-
-			if (Config.values.public) {
-				performAuthentication.call(socket, {});
-			} else {
-				socket.on("auth:perform", performAuthentication);
-				socket.emit("auth:start", serverHash);
-			}
-		});
-
-		// `thelounge emoji install`/`remove` while running: update open pages too
-		watchEmojiSets((sets, defaultStyle) => sockets.emit("emoji:sets", {sets, defaultStyle}));
-
-		manager = new ClientManager();
-		packages.loadPackages();
-
-		const defaultTheme = themes.getByName(Config.values.theme);
-
-		if (defaultTheme === undefined) {
-			log.warn(
-				`The specified default theme "${colors.red(
-					Config.values.theme
-				)}" does not exist, verify your config.`
-			);
-			Config.values.theme = "default";
-		} else if (defaultTheme.themeColor) {
-			Config.values.themeColor = defaultTheme.themeColor;
+		// Close all client and IRC connections
+		if (manager) {
+			manager.clients.forEach((client) => client.quit());
 		}
 
-		new Identification((identHandler, err) => {
-			if (err) {
-				log.error(`Could not start identd server, ${err.message}`);
-				process.exit(1);
-			} else if (!manager) {
-				log.error("Could not start identd server, ClientManager is undefined");
-				process.exit(1);
-			}
-
-			void manager.init(identHandler, sockets);
-		});
-
-		// Handle ctrl+c and kill gracefully
-		let suicideTimeout: NodeJS.Timeout | null = null;
-
-		const exitGracefully = async function () {
-			if (suicideTimeout !== null) {
-				return;
-			}
-
-			log.info("Exiting...");
-
-			// Close all client and IRC connections
-			if (manager) {
-				manager.clients.forEach((client) => client.quit());
-			}
-
-			if (Config.values.prefetchStorage) {
-				log.info("Clearing prefetch storage folder, this might take a while...");
-
-				(await import("./plugins/storage")).default.emptyDir();
-			}
-
-			// Forcefully exit after 3 seconds
-			suicideTimeout = setTimeout(() => process.exit(1), 3000);
-
-			// Close http server
-			server?.close(() => {
-				if (suicideTimeout !== null) {
-					clearTimeout(suicideTimeout);
-				}
-
-				process.exit(0);
-			});
-		};
-
-		/* eslint-disable @typescript-eslint/no-misused-promises */
-		process.on("SIGINT", exitGracefully);
-		process.on("SIGTERM", exitGracefully);
-		/* eslint-enable @typescript-eslint/no-misused-promises */
-
-		// Clear storage folder after server starts successfully
 		if (Config.values.prefetchStorage) {
-			import("./plugins/storage")
-				.then(({default: storage}) => {
-					storage.emptyDir();
-				})
-				.catch((err: Error) => {
-					log.error(`Could not clear storage folder, ${err.message}`);
-				});
+			log.info("Clearing prefetch storage folder, this might take a while...");
+
+			(await import("./plugins/storage")).default.emptyDir();
 		}
 
-		// Download the remote prefetchBlocklist lists and refresh them daily
-		if (Config.values.prefetch) {
-			prefetchBlocklist.start();
-		}
+		// Forcefully exit after 3 seconds
+		suicideTimeout = setTimeout(() => process.exit(1), 3000);
 
-		if (previewCache.isEnabled()) {
-			void previewCache.cleanup();
-			setInterval(() => void previewCache.cleanup(), 24 * 60 * 60 * 1000).unref();
-		}
+		// Close http server
+		engine.close();
+		void server.stop().then(() => {
+			if (suicideTimeout !== null) {
+				clearTimeout(suicideTimeout);
+			}
 
-		changelog.checkForUpdates(manager);
-	});
+			process.exit(0);
+		});
+	};
+
+	/* eslint-disable @typescript-eslint/no-misused-promises */
+	process.on("SIGINT", exitGracefully);
+	process.on("SIGTERM", exitGracefully);
+	/* eslint-enable @typescript-eslint/no-misused-promises */
+
+	// Clear storage folder after server starts successfully
+	if (Config.values.prefetchStorage) {
+		import("./plugins/storage")
+			.then(({default: storage}) => {
+				storage.emptyDir();
+			})
+			.catch((err: Error) => {
+				log.error(`Could not clear storage folder, ${err.message}`);
+			});
+	}
+
+	// Download the remote prefetchBlocklist lists and refresh them daily
+	if (Config.values.prefetch) {
+		prefetchBlocklist.start();
+	}
+
+	if (previewCache.isEnabled()) {
+		void previewCache.cleanup();
+		setInterval(() => void previewCache.cleanup(), 24 * 60 * 60 * 1000).unref();
+	}
+
+	changelog.checkForUpdates(manager);
 
 	return server;
 }
@@ -383,12 +436,18 @@ function getClientSecure(socket: Socket) {
 	return secure;
 }
 
-function allRequests(_req: Request, res: Response, next: NextFunction) {
-	res.setHeader("X-Content-Type-Options", "nosniff");
-	return next();
+function notFound() {
+	return new Response("Not found", {status: 404});
 }
 
-function addSecurityHeaders(_req: Request, res: Response, next: NextFunction) {
+function servePublic(req: Request, options = {}) {
+	return serveStatic(req, Utils.getFileFromRelativeToRoot("public"), new URL(req.url).pathname, {
+		maxAge: 86400,
+		...options,
+	});
+}
+
+function addSecurityHeaders(res: Response) {
 	const policies = [
 		"default-src 'none'", // default to nothing
 		"base-uri 'none'", // disallow <base>, has no fallback to default-src
@@ -412,17 +471,13 @@ function addSecurityHeaders(_req: Request, res: Response, next: NextFunction) {
 		policies.push("img-src http: https: data:");
 	}
 
-	res.setHeader("Content-Security-Policy", policies.join("; "));
-	res.setHeader("Referrer-Policy", "no-referrer");
+	// Routes may set a stricter policy of their own (preview images, svg emoji)
+	if (!res.headers.has("Content-Security-Policy")) {
+		res.headers.set("Content-Security-Policy", policies.join("; "));
+	}
 
-	return next();
-}
-
-function forceNoCacheRequest(_req: Request, res: Response, next: NextFunction) {
-	// Intermittent proxies must not cache the following requests,
-	// browsers must fetch the latest version of these files (service worker, source maps)
-	res.setHeader("Cache-Control", "no-cache, no-transform");
-	return next();
+	res.headers.set("X-Content-Type-Options", "nosniff");
+	res.headers.set("Referrer-Policy", "no-referrer");
 }
 
 function getBaseHtml(): string {
@@ -435,15 +490,14 @@ function getBaseHtml(): string {
 	return cachedHtml;
 }
 
-function indexRequest(_req: Request, res: Response) {
+function indexRequest() {
 	try {
 		const html = injectServerConfig(getBaseHtml());
-		res.setHeader("Content-Type", "text/html");
-		res.send(html);
+		return new Response(html, {headers: {"Content-Type": "text/html; charset=utf-8"}});
 	} catch (e) {
 		const err = e as Error;
 		log.error(`failed to serve index request: ${err.name}, ${err.message}`);
-		res.sendStatus(500);
+		return new Response("Internal Server Error", {status: 500});
 	}
 }
 

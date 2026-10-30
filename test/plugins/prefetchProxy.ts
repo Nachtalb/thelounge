@@ -280,7 +280,10 @@ describe("prefetchProxy", function () {
 		app.get("/history", (_req: any, res: any) => {
 			res.send("<title>history</title>");
 		});
-		app.get("/preview-cache/:hash", (req: any, res: any) => void routeCachedImage(req, res));
+		app.get(
+			"/preview-cache/:hash",
+			util.webRoute((req, params) => routeCachedImage(req, params.hash))
+		);
 		const server = app.listen(0, "127.0.0.1");
 		await new Promise((resolve) => server.once("listening", resolve));
 		const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
