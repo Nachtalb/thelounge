@@ -74,6 +74,10 @@ form.message-search input {
 	appearance: none;
 }
 
+form.message-search input::-webkit-search-cancel-button {
+	display: none;
+}
+
 form.message-search input::placeholder {
 	color: var(--chat-placeholder-color);
 }
@@ -133,6 +137,15 @@ form.message-search .search-newer::before {
 
 form.message-search .search-list::before {
 	content: "\f03a"; /* list */
+}
+
+#chat form.message-search .close::before {
+	content: "";
+	width: 16px;
+	height: 16px;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+		center / contain no-repeat;
 }
 </style>
 
