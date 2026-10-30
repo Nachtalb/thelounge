@@ -74,7 +74,6 @@
 	--reply-context-icon-color: #b0b0b0;
 	--reply-context-hover-bg-color: rgb(0 0 0 / 4%);
 	--reply-bar-bg-color: #f0f0f0;
-	--reply-bar-border-color: var(--border-color);
 	--channel-list-loading-color: #999;
 	--channel-list-truncated-color: #f00;
 
@@ -2006,19 +2005,38 @@ textarea.input {
 #form .reply-bar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 4px 10px;
+	margin-bottom: 6px;
+	padding: 2px 4px 2px 8px;
+	border-left: 3px solid var(--link-color);
+	border-radius: 3px;
 	background: var(--reply-bar-bg-color);
-	border-bottom: 1px solid var(--reply-bar-border-color);
 	font-size: 0.85em;
-	color: var(--body-color-muted);
+	line-height: 1.35;
 	width: 100%;
+	cursor: pointer;
 }
 
 #form .reply-bar-text {
+	flex: 1;
+	min-width: 0;
+	width: 0; /* else the quote's max-content width widens the whole chat */
+}
+
+#form .reply-bar-nick,
+#form .reply-bar-msg {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+#form .reply-bar-nick {
+	color: var(--link-color);
+	font-weight: bold;
+}
+
+#form .reply-bar-msg {
+	color: var(--body-color-muted);
 }
 
 #form .reply-bar-close {

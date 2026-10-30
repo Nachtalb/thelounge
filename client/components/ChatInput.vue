@@ -18,15 +18,18 @@
 				/>
 			</template>
 		</div>
-		<div v-if="channel.replyingTo" class="reply-bar">
+		<div v-if="channel.replyingTo" class="reply-bar" @click="jumpToReply">
 			<span class="reply-bar-text">
-				Replying to <strong>{{ channel.replyingTo.nick }}</strong>
+				<span class="reply-bar-nick">Reply to {{ channel.replyingTo.nick }}</span>
+				<span class="reply-bar-msg"
+					><ParsedMessage :text="channel.replyingTo.text" :network="network"
+				/></span>
 			</span>
 			<button
 				class="reply-bar-close"
 				type="button"
 				aria-label="Cancel reply"
-				@click="cancelReply"
+				@click.stop="cancelReply"
 			>
 				&times;
 			</button>
@@ -97,6 +100,7 @@ import {clearInputPreviews, updateInputPreviews} from "../js/inputPreviews";
 import {isInputPreviewShown} from "../js/helpers/inputPreviews";
 import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
+import ParsedMessage from "./ParsedMessage.vue";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
@@ -125,6 +129,7 @@ export default defineComponent({
 	name: "ChatInput",
 	components: {
 		LinkPreview,
+		ParsedMessage,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -320,6 +325,20 @@ export default defineComponent({
 			props.channel.replyingTo = null;
 		};
 
+		const jumpToReply = () => {
+			const msgid = props.channel.replyingTo?.msgid;
+			const msg = props.channel.messages.find((m) => m.msgid === msgid);
+
+			if (msg) {
+				eventbus.emit("scroll-to-message", msg.id, (el: HTMLElement) => {
+					if (!el.classList.contains("highlight")) {
+						el.classList.add("highlight");
+						setTimeout(() => el.classList.remove("highlight"), 2000);
+					}
+				});
+			}
+		};
+
 		const onReplyStart = (data: {msgid: string; nick: string; text: string}) => {
 			if (!data.msgid) {
 				return;
@@ -493,6 +512,7 @@ export default defineComponent({
 			getInputPlaceholder,
 			onSubmit,
 			cancelReply,
+			jumpToReply,
 		};
 	},
 });
