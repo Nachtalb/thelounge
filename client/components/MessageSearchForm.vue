@@ -11,6 +11,8 @@
 				enterkeyhint="search"
 				@keydown.enter.prevent="onEnter"
 				@keydown.esc.prevent="close"
+				@keydown.ctrl.f.prevent="focusSearch"
+				@keydown.meta.f.prevent="focusSearch"
 			/>
 			<span class="search-counter" aria-live="polite">{{ counter }}</span>
 			<button
@@ -150,6 +152,7 @@ import {useStore} from "../js/store";
 import {
 	chatSearch,
 	closeSearch,
+	focusSearch,
 	openSearch,
 	search,
 	searchResults,
@@ -261,6 +264,7 @@ export default defineComponent({
 
 		return {
 			chatSearch,
+			focusSearch,
 			searchResults,
 			searchInput,
 			searchInputField,

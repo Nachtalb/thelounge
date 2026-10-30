@@ -71,6 +71,12 @@ export function openSearch(channel: ClientChan) {
 	}
 }
 
+export function focusSearch() {
+	const field = document.querySelector<HTMLInputElement>("#chat .message-search input");
+	field?.focus();
+	field?.select();
+}
+
 export function closeSearch() {
 	Object.assign(chatSearch, {chanId: -1, query: "", pos: -1, more: false, listOpen: false});
 	jumpTarget.value = -1;
