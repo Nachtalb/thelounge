@@ -386,9 +386,9 @@ module.exports = {
 	// Set users' default `quit` and `part` messages if they are not providing
 	// one.
 	//
-	// This value is set to `"The Lounge - https://thelounge.chat"` by
+	// This value is set to `"The Lounge, maintained out of spite - https://github.com/Nachtalb/thelounge"` by
 	// default.
-	leaveMessage: "The Lounge - https://thelounge.chat",
+	leaveMessage: "The Lounge, maintained out of spite - https://github.com/Nachtalb/thelounge",
 
 	// ## Default network
 
