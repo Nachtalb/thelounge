@@ -130,6 +130,13 @@ class Config {
 		path.join(__dirname, "..", "defaults", "config.js")
 	)) as ConfigType;
 	#homePath = "";
+	#defaultLeaveMessage = this.values.leaveMessage;
+
+	// Generated config.js files and saved networks still carry upstream's old default
+	getLeaveMessage(networkMessage?: string): string {
+		const set = (msg?: string) => msg !== "The Lounge - https://thelounge.chat" && msg;
+		return set(networkMessage) || set(this.values.leaveMessage) || this.#defaultLeaveMessage;
+	}
 
 	getHomePath() {
 		return this.#homePath;
