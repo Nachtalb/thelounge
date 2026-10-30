@@ -490,7 +490,7 @@ p {
 }
 
 #chat #js-copy-hack .msg[data-type="condensed"]:not(.closed) .msg,
-#chat #js-copy-hack > .msg {
+#chat #js-copy-hack .msg:not(.msg .msg) {
 	display: block;
 }
 

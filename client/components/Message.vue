@@ -240,18 +240,16 @@ export default defineComponent({
 		};
 
 		const scrollToParent = () => {
-			if (!props.message.replyTo) {
+			const replyTo = props.message.replyTo;
+			const parent = replyTo && props.channel?.messages.find((m) => m.msgid === replyTo);
+
+			if (!parent) {
 				return;
 			}
 
-			const el = document.querySelector(
-				`.msg[data-msgid="${CSS.escape(props.message.replyTo)}"]`
-			);
-
-			if (el) {
+			eventbus.emit("scroll-to-message", parent.id, (el: HTMLElement) => {
 				const wasHighlighted = el.classList.contains("highlight");
 
-				el.scrollIntoView({block: "center", behavior: "smooth"});
 				el.classList.add("highlight");
 
 				if (highlightTimer !== null) {
@@ -266,7 +264,7 @@ export default defineComponent({
 						el.classList.remove("highlight");
 					}
 				}, 2000);
-			}
+			});
 		};
 
 		const resetSwipe = () => {
