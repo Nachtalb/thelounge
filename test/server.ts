@@ -34,6 +34,7 @@ describe("Server", function () {
 		});
 
 		checkForUpdatesStub = sinon.stub(changelog, "checkForUpdates");
+		Config.values.fileUpload.enable = true;
 		server = await (await import("../server/server")).default({} as any);
 	});
 
@@ -41,6 +42,7 @@ describe("Server", function () {
 		logInfoStub.restore();
 		logWarnStub.restore();
 		checkForUpdatesStub.restore();
+		Config.values.fileUpload.enable = false;
 		await server.stop(true);
 
 		await vi.dynamicImportSettled();
@@ -125,6 +127,39 @@ describe("Server", function () {
 			expect(response.statusCode).to.equal(200);
 			expect(body.name).to.equal("The Lounge");
 			expect(response.headers["content-type"]).to.equal("application/manifest+json");
+		});
+
+		it("should serve static files with validators, ranges and security headers", async () => {
+			const url = webURL + "thelounge.webmanifest";
+			const full = await fetch(url);
+			const body = await full.text();
+			const etag = full.headers.get("etag")!;
+
+			expect(full.headers.get("cache-control")).to.equal("public, max-age=86400");
+			expect(full.headers.get("last-modified")).to.be.a("string");
+			expect(full.headers.get("x-content-type-options")).to.equal("nosniff");
+			expect(full.headers.get("content-security-policy")).to.include("default-src 'none'");
+
+			const cached = await fetch(url, {headers: {"If-None-Match": etag}});
+			expect(cached.status).to.equal(304);
+
+			const range = await fetch(url, {headers: {Range: "bytes=2-5"}});
+			expect(range.status).to.equal(206);
+			expect(await range.text()).to.equal(body.slice(2, 6));
+		});
+
+		it("should not cache the service worker", async () => {
+			const response = await fetch(webURL + "service-worker.js");
+			expect(response.status).to.equal(200);
+			expect(response.headers.get("cache-control")).to.equal("no-cache, no-transform");
+		});
+
+		it("should 404 unknown paths and paths outside public/", async () => {
+			for (const p of ["nope.js", "%2e%2e/package.json", "..%2fpackage.json", ".hidden"]) {
+				const response = await fetch(webURL + p);
+				expect(response.status, p).to.equal(404);
+				expect(response.headers.get("content-security-policy")).to.include("default-src");
+			}
 		});
 	});
 
@@ -250,6 +285,61 @@ describe("Server", function () {
 					resolve();
 				});
 			}));
+
+		it("should stream uploads to disk and serve them with ranges", async () => {
+			const token = await new Promise<string>((resolve) => {
+				client.on("init", () => client.emit("upload:auth"));
+				client.on("upload:auth", resolve);
+			});
+			const form = new FormData();
+			form.append("file", new Blob(["0123456789"]), "digits.txt");
+
+			const upload = await fetch(`${webURL}uploads/new/${token}`, {
+				method: "POST",
+				body: form,
+			});
+			const {url} = (await upload.json()) as {url: string};
+			expect(url).to.match(/^uploads\/[0-9a-f]{16}\/digits\.txt$/);
+
+			const file = await fetch(webURL + url, {headers: {Range: "bytes=3-5"}});
+			expect(file.status).to.equal(206);
+			expect(file.headers.get("content-type")).to.match(/^text\/plain/);
+			expect(file.headers.get("content-disposition")).to.equal(
+				'inline; filename="digits.txt"'
+			);
+			expect(await file.text()).to.equal("345");
+			fs.rmSync(Config.getFileUploadPath(), {recursive: true});
+
+			// The token is single use
+			const again = await fetch(`${webURL}uploads/new/${token}`, {
+				method: "POST",
+				body: form,
+			});
+			expect(again.status).to.equal(400);
+		});
+
+		it("should reject uploads over the size limit while streaming", async () => {
+			const maxFileSize = Config.values.fileUpload.maxFileSize;
+			Config.values.fileUpload.maxFileSize = 1;
+
+			try {
+				const token = await new Promise<string>((resolve) => {
+					client.on("init", () => client.emit("upload:auth"));
+					client.on("upload:auth", resolve);
+				});
+				const form = new FormData();
+				form.append("file", new Blob([new Uint8Array(4096)]), "big.bin");
+
+				const upload = await fetch(`${webURL}uploads/new/${token}`, {
+					method: "POST",
+					body: form,
+				});
+				expect(upload.status).to.equal(400);
+				expect(await upload.json()).to.deep.equal({error: "File size limit reached"});
+			} finally {
+				Config.values.fileUpload.maxFileSize = maxFileSize;
+			}
+		});
 
 		it("should emit init message", () =>
 			new Promise<void>((resolve) => {
