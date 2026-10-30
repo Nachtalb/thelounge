@@ -17,16 +17,16 @@
     "build:server": "tsc -p server/tsconfig.json",
     "build": "run-p --aggregate-output build:client build:server",
     "coverage": "vitest run --coverage",
-    "dev": "cross-env NODE_ENV=development ts-node --project server/tsconfig.json server/index.ts start --dev",
+    "dev": "NODE_ENV=development bun server/index.ts start --dev",
     "format:prettier": "prettier --write \"**/*.*\"",
-    "generate:config:doc": "ts-node scripts/generate-config-doc.js",
+    "generate:config:doc": "bun scripts/generate-config-doc.js",
     "lint:check-eslint": "eslint-config-prettier .eslintrc.cjs",
     "lint:eslint": "eslint . --report-unused-disable-directives --color",
     "lint:prettier": "prettier --list-different \"**/*.*\"",
     "lint:stylelint": "stylelint --color \"client/**/*.css\"",
-    "lint": "run-p --aggregate-output --continue-on-error lint:*",
-    "start": "node index start",
-    "test": "run-p --aggregate-output --continue-on-error lint:* test:vitest",
+    "lint": "bun run --parallel --no-exit-on-error \"lint:*\"",
+    "start": "bun index start",
+    "test": "bun run --parallel --no-exit-on-error \"lint:*\" test:vitest",
     "test:vitest": "vitest run",
     "watch": "vite build --watch",
     "githooks-install": "git config core.hooksPath scripts/git-hooks"
@@ -42,13 +42,14 @@
     "thelounge"
   ],
   "license": "MIT",
+  "packageManager": "bun@1.4.2",
   "engines": {
-    "node": ">=22.0.0"
+    "bun": ">=1.4.0"
   },
   "files": [
     "./.thelounge_home",
     "./index.js",
-    "./yarn.lock",
+    "./bun.lock",
     "./dist/package.json",
     "./dist/**/*.js",
     "./public/**"
@@ -77,14 +78,14 @@
     "socks": "2.8.9",
     "tlds": "1.228.0",
     "ua-parser-js": "1.0.39",
-    "web-push-neo": "0.1.2",
-    "yarn": "1.22.22"
+    "web-push-neo": "0.1.2"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "5.15.4",
     "@textcomplete/core": "0.1.10",
     "@textcomplete/textarea": "0.1.10",
     "@types/bcryptjs": "2.4.6",
+    "@types/bun": "1.4.2",
     "@types/cheerio": "0.22.35",
     "@types/content-disposition": "0.5.8",
     "@types/express": "4.17.21",
@@ -105,7 +106,6 @@
     "@vitest/coverage-istanbul": "5.0.0",
     "@vue/runtime-dom": "3.5.42",
     "@vue/test-utils": "2.4.6",
-    "cross-env": "7.0.3",
     "cssnano": "5.0.17",
     "dayjs": "1.10.8",
     "emoji-datasource-google": "16.0.0",
@@ -131,7 +131,6 @@
     "sortablejs": "1.15.2",
     "stylelint": "14.3.0",
     "stylelint-config-standard": "24.0.0",
-    "ts-node": "10.9.2",
     "ts-sinon": "2.0.2",
     "tsx": "4.21.0",
     "typescript": "6.0.2",

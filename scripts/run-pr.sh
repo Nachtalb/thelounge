@@ -10,8 +10,8 @@ fi
 git fetch https://github.com/thelounge/thelounge.git refs/pull/${1}/head
 git checkout FETCH_HEAD
 git rebase master
-yarn install
-NODE_ENV=production yarn build
-yarn test || true
+bun install
+NODE_ENV=production bun run build
+bun run test || true
 shift
-yarn start "$@"
+bun start "$@"

@@ -373,7 +373,7 @@ async function download(
 	const file = path.join(ctx.work, "download");
 	const sha256 = crypto.createHash("sha256");
 	const sha512 = crypto.createHash("sha512");
-	const body = Readable.fromWeb(res.body as import("stream/web").ReadableStream);
+	const body = Readable.fromWeb(res.body as unknown as import("stream/web").ReadableStream);
 	body.on("data", (chunk: Buffer) => {
 		sha256.update(chunk);
 		sha512.update(chunk);

@@ -16,8 +16,9 @@ program
 
 		// Get paths to the location of packages directory
 		const packagesConfig = path.join(Config.getPackagesPath(), "package.json");
-		const packagesList = JSON.parse(fs.readFileSync(packagesConfig, "utf-8")).dependencies;
-		const argsList = ["upgrade", "--latest"];
+		const packagesList =
+			JSON.parse(fs.readFileSync(packagesConfig, "utf-8")).dependencies || {};
+		const argsList = ["update", "--latest"];
 
 		let count = 0;
 
@@ -55,7 +56,7 @@ program
 			return;
 		}
 
-		return Utils.executeYarnCommand(command, ...params)
+		return Utils.executeBunCommand(command, ...params)
 			.then(() => {
 				log.info("Package(s) have been successfully upgraded.");
 			})

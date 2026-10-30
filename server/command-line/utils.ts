@@ -98,19 +98,17 @@ class Utils {
 		return memo;
 	}
 
-	static executeYarnCommand(command: string, ...parameters: string[]) {
-		const yarn = require.resolve("yarn/bin/yarn.js");
+	static executeBunCommand(command: string, ...parameters: string[]): Promise<string> {
 		const packagesPath = Config.getPackagesPath();
 		const cachePath = path.join(packagesPath, "package_manager_cache");
 
 		const staticParameters = [
-			"--cache-folder",
+			"--cache-dir",
 			cachePath,
 			"--cwd",
 			packagesPath,
-			"--json",
 			"--ignore-scripts",
-			"--non-interactive",
+			"--no-progress",
 		];
 
 		const env = {
@@ -118,80 +116,35 @@ class Utils {
 			NODE_ENV: "production",
 
 			// If The Lounge runs from a user that does not have a home directory,
-			// yarn may fail when it tries to read certain folders,
+			// bun may fail when it tries to read certain folders,
 			// we give it an existing folder so the reads do not throw a permission error.
-			// Yarn uses os.homedir() to figure out the path, which internally reads
-			// from the $HOME env on unix. On Windows it uses $USERPROFILE, but
-			// the user folder should always exist on Windows, so we don't set it.
 			HOME: cachePath,
 		};
 
 		return new Promise((resolve, reject) => {
-			let success = false;
-			const add = spawn(
-				process.execPath,
-				[yarn, command, ...staticParameters, ...parameters],
-				{env: env}
-			);
-
-			add.stdout.on("data", (data) => {
-				data.toString()
-					.trim()
-					.split("\n")
-					.forEach((line: string) => {
-						try {
-							const json = JSON.parse(line);
-
-							if (json.type === "success") {
-								success = true;
-							}
-						} catch (e: any) {
-							// Stdout buffer has limitations and yarn may print
-							// big package trees, for example in the upgrade command
-							// See https://github.com/thelounge/thelounge/issues/3679
-						}
-					});
+			let stdout = "";
+			let stderr = "";
+			// The Lounge runs on bun, so execPath is the bun binary
+			const child = spawn(process.execPath, [command, ...staticParameters, ...parameters], {
+				env: env,
 			});
 
-			add.stderr.on("data", (data) => {
-				data.toString()
-					.trim()
-					.split("\n")
-					.forEach((line: string) => {
-						try {
-							const json = JSON.parse(line);
+			child.stdout.on("data", (data) => (stdout += String(data)));
+			child.stderr.on("data", (data) => (stderr += String(data)));
 
-							switch (json.type) {
-								case "error":
-									log.error(json.data);
-									break;
-								case "warning":
-									// this includes pointless things like "ignored scripts due to flag"
-									// so let's hide it
-									break;
-							}
-
-							return;
-						} catch (e: any) {
-							// we simply fall through and log at debug... chances are there's nothing the user can do about it
-							// as it includes things like deprecation warnings, but we might want to know as developers
-						}
-
-						log.debug(line);
-					});
-			});
-
-			add.on("error", (e) => {
+			child.on("error", (e) => {
 				log.error(`${e.message}:`, e.stack || "");
 				process.exit(1);
 			});
 
-			add.on("close", (code) => {
-				if (!success || code !== 0) {
+			child.on("close", (code) => {
+				if (code !== 0) {
+					log.error(stderr.trim());
 					return reject(code);
 				}
 
-				resolve(true);
+				log.debug(stdout.trim());
+				resolve(stdout);
 			});
 		});
 	}

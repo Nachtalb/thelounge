@@ -203,10 +203,10 @@ class ForwardAgent extends http.Agent {
 		};
 
 		return this.proxy.protocol === "https:"
-			? tls.connect({
+			? (tls.connect({
 					...connectOptions,
 					servername: net.isIP(connectOptions.host) ? undefined : connectOptions.host,
-			  })
+			  }) as tls.TLSSocket) // bun-types' tls.connect overload returns any
 			: net.connect(connectOptions);
 	}
 }

@@ -6,9 +6,8 @@
 !scripts
 !index.js
 !package.json
-!yarn.lock
-!.npmrc
-!.yarnrc
+!bun.lock
+!bunfig.toml
 !.browserslistrc
 !.thelounge_home
 !tsconfig.json

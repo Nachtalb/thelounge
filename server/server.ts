@@ -1,5 +1,4 @@
 import _ from "lodash";
-import ws from "ws";
 import express, {NextFunction, Request, Response} from "express";
 import fs from "fs";
 import path from "path";
@@ -79,9 +78,7 @@ export default async function (
 	}
 ) {
 	log.info(`The Lounge ${colors.green(Helper.getVersion())} \
-(Node.js ${colors.green(process.versions.node)} on ${colors.green(process.platform)} ${
-		process.arch
-	})`);
+(Bun ${colors.green(process.versions.bun)} on ${colors.green(process.platform)} ${process.arch})`);
 	log.info(`Configuration file: ${colors.green(Config.getConfigPath())}`);
 
 	const staticOptions = {
@@ -232,7 +229,6 @@ export default async function (
 		}
 
 		const sockets: Server = new ioServer(server, {
-			wsEngine: ws.Server,
 			cookie: false,
 			serveClient: false,
 

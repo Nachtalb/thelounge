@@ -99,7 +99,7 @@ function getPackage(name: string) {
 function getEnabledPackages(packageJson: string) {
 	try {
 		const json = JSON.parse(fs.readFileSync(packageJson, "utf-8"));
-		return Object.keys(json.dependencies);
+		return Object.keys(json.dependencies || {});
 	} catch (e: any) {
 		log.error(`Failed to read packages/package.json: ${colors.red(e)}`);
 	}
@@ -222,17 +222,7 @@ async function outdated(cacheTimeout = TIME_TO_LIVE) {
 	// Get paths to the location of packages directory
 	const packagesPath = Config.getPackagesPath();
 	const packagesConfig = path.join(packagesPath, "package.json");
-	const packagesList = JSON.parse(fs.readFileSync(packagesConfig, "utf-8")).dependencies;
-	const argsList = [
-		"outdated",
-		"--latest",
-		"--json",
-		"--production",
-		"--ignore-scripts",
-		"--non-interactive",
-		"--cwd",
-		packagesPath,
-	];
+	const packagesList = JSON.parse(fs.readFileSync(packagesConfig, "utf-8")).dependencies || {};
 
 	// Check if the configuration file exists
 	if (!Object.entries(packagesList).length) {
@@ -244,18 +234,10 @@ async function outdated(cacheTimeout = TIME_TO_LIVE) {
 		return false;
 	}
 
-	const command = argsList.shift();
-	const params = argsList;
-
-	if (!command) {
-		return;
-	}
-
-	// If we get an error from calling outdated and the code isn't 0, then there are no outdated packages
-	// TODO: was (...argsList), verify this works
-	await Utils.executeYarnCommand(command, ...params)
-		.then(() => updateOutdated(false))
-		.catch((code) => updateOutdated(code !== 0));
+	// bun outdated prints a table only when something is outdated
+	await Utils.executeBunCommand("outdated")
+		.then((stdout) => updateOutdated(stdout.includes("|")))
+		.catch(() => updateOutdated(false));
 
 	if (cacheTimeout > 0) {
 		setTimeout(() => {

@@ -12,7 +12,7 @@ import MessageStorage, {
 	necessaryMigrations,
 	rollbacks,
 } from "../../server/plugins/messageStorage/sqlite";
-import {DatabaseSync} from "node:sqlite";
+import {Database} from "bun:sqlite";
 import {DeletionRequest} from "../../server/plugins/messageStorage/types";
 
 const orig_schema = [
@@ -51,10 +51,10 @@ const v1_dummy_messages = [
 ];
 
 describe("SQLite migrations", function () {
-	let db: DatabaseSync;
+	let db: Database;
 
 	beforeAll(function () {
-		db = new DatabaseSync(":memory:");
+		db = new Database(":memory:");
 
 		for (const stmt of orig_schema) {
 			db.exec(stmt);
@@ -93,9 +93,11 @@ describe("SQLite migrations", function () {
 	});
 
 	it("migrated database serves getMessages from the index", function () {
-		const plan = db
-			.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`)
-			.all("8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 100) as {detail: string}[];
+		const stmt = db.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`);
+		const plan = stmt.all("8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 100) as {
+			detail: string;
+		}[];
+		stmt.finalize(); // bun:sqlite keeps EXPLAIN statements busy until finalized
 
 		const details = plan.map((row) => row.detail).join("\n");
 		expect(details).to.include("USING INDEX network_channel_time");
@@ -271,8 +273,8 @@ describe("SQLite Message Storage", function () {
 	it("should insert migrations", function () {
 		const row = store.database
 			.prepare("SELECT id, version FROM migrations WHERE version = ?")
-			.get(currentSchemaVersion) as {id: number; version: number} | undefined;
-		expect(row).to.not.be.undefined;
+			.get(currentSchemaVersion) as {id: number; version: number} | null;
+		expect(row).to.not.be.null;
 	});
 
 	it("should store a message", function () {
@@ -340,9 +342,11 @@ describe("SQLite Message Storage", function () {
 
 	it("getMessages uses the index instead of sorting the whole channel", function () {
 		// #5103
-		const plan = store.database
-			.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`)
-			.all("retrieval-order-test-network", "#channel", 10000) as {detail: string}[];
+		const stmt = store.database.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`);
+		const plan = stmt.all("retrieval-order-test-network", "#channel", 10000) as {
+			detail: string;
+		}[];
+		stmt.finalize(); // bun:sqlite keeps EXPLAIN statements busy until finalized
 
 		const details = plan.map((row) => row.detail).join("\n");
 		expect(details).to.include("USING INDEX network_channel_time");
