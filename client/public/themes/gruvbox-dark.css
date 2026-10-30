@@ -57,9 +57,6 @@
 	--reply-context-hover-bg-color: #3c3836;
 	--reply-bar-bg-color: #1d2021;
 	--reply-bar-border-color: var(--border-color);
-	--msg-actions-border-color: #1d2021;
-	--msg-actions-shadow-color: var(--shadow-color-subtle);
-	--msg-actions-hover-bg-color: #3c3836;
 	--channel-list-loading-color: #a89984;
 	--channel-list-truncated-color: #fb4934;
 

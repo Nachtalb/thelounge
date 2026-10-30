@@ -19,6 +19,7 @@
 		@touchend="onTouchEnd"
 		@touchmove.passive="onTouchMove"
 		@touchcancel="onTouchCancel"
+		@dblclick="onDblClick"
 	>
 		<span
 			aria-hidden="true"
@@ -109,11 +110,6 @@
 				/>
 			</span>
 		</template>
-		<div v-if="canReply && message.msgid" class="msg-actions">
-			<span class="tooltipped tooltipped-w tooltipped-no-touch" aria-label="Reply"
-				><button class="msg-action-reply" aria-label="Reply" @click.stop="startReply"
-			/></span>
-		</div>
 		<span v-if="swiping" class="msg-swipe-reply" aria-hidden="true" />
 	</div>
 </template>
@@ -133,6 +129,7 @@ import {
 	SwipeAxis,
 	SWIPE_REPLY_THRESHOLD,
 } from "../js/helpers/swipeToReply";
+import {isOverText, isReplyDblClick} from "../js/helpers/dblClickReply";
 import Username from "./Username.vue";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
@@ -238,6 +235,17 @@ export default defineComponent({
 				nick: props.message.from?.nick,
 				text: props.message.text,
 			});
+		};
+
+		const onDblClick = (e: MouseEvent) => {
+			if (
+				props.message.msgid &&
+				canReply.value &&
+				isReplyDblClick(e.target as Element, isOverText(e.clientX, e.clientY))
+			) {
+				window.getSelection()?.removeAllRanges();
+				startReply();
+			}
 		};
 
 		const scrollToParent = () => {
@@ -389,6 +397,7 @@ export default defineComponent({
 			parentInHistory,
 			isAction,
 			startReply,
+			onDblClick,
 			scrollToParent,
 			msgEl,
 			swiping,
