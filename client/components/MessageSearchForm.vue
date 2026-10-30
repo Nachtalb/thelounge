@@ -161,6 +161,7 @@ import {
 	watch,
 } from "vue";
 import eventbus from "../js/eventbus";
+import {enableSearchNickAutocomplete} from "../js/autocompletion";
 import {useStore} from "../js/store";
 import {
 	chatSearch,
@@ -211,8 +212,11 @@ export default defineComponent({
 			searchInputField.value?.focus();
 		};
 
+		// Enter/Escape pick or dismiss a nick completion first
+		let completing = false;
+
 		const close = () => {
-			if (!isOpen.value) {
+			if (!isOpen.value || completing) {
 				return;
 			}
 
@@ -239,7 +243,7 @@ export default defineComponent({
 		const onEnter = (e: KeyboardEvent) => {
 			const query = searchInput.value.trim();
 
-			if (e.isComposing) {
+			if (e.isComposing || completing) {
 				return;
 			}
 
@@ -269,9 +273,21 @@ export default defineComponent({
 			}
 		);
 
-		onMounted(() => eventbus.on("escapekey", close));
+		let textcomplete: ReturnType<typeof enableSearchNickAutocomplete> | undefined;
+
+		onMounted(() => {
+			eventbus.on("escapekey", close);
+
+			if (searchInputField.value) {
+				textcomplete = enableSearchNickAutocomplete(searchInputField.value);
+				textcomplete.on("show", () => (completing = true));
+				// After this key's other listeners ran
+				textcomplete.on("hidden", () => setTimeout(() => (completing = false)));
+			}
+		});
 		onUnmounted(() => {
 			eventbus.off("escapekey", close);
+			textcomplete?.destroy();
 			closeSearch();
 		});
 

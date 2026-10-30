@@ -4,6 +4,7 @@ import Mousetrap from "mousetrap";
 import {Textcomplete, StrategyProps} from "@textcomplete/core";
 import {RichInput} from "./richinput/RichInput";
 import {RichInputEditor} from "./richinput/textcompleteEditor";
+import {TextareaEditor} from "@textcomplete/textarea";
 
 import fuzzy from "fuzzy";
 
@@ -278,6 +279,28 @@ function enableAutocomplete(richInput: RichInput) {
 			store.commit("isAutoCompleting", false);
 		},
 	};
+}
+
+// Channel nicks for a leading "@nick" in the in-channel search field
+export function enableSearchNickAutocomplete(input: HTMLInputElement) {
+	const strategy: StrategyProps = {
+		id: "search-nicks",
+		match: /^@(\S*)$/,
+		search(term: string, callback: (matches: string[][]) => void) {
+			callback(completeNicks(term, true) as string[][]);
+		},
+		template([string]: [string, string]) {
+			return "@" + string;
+		},
+		replace([, original]: [string, string]) {
+			return "@" + original + " ";
+		},
+		index: 1,
+	};
+
+	// The textarea editor only needs value and selection, which inputs have too
+	const editor = new TextareaEditor(input as unknown as HTMLTextAreaElement);
+	return new Textcomplete(editor, [strategy], {dropdown: {className: "textcomplete-menu"}});
 }
 
 function replaceNick(original: string, position = 1) {
