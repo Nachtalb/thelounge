@@ -74,7 +74,10 @@ export default async function jumpToMessage(channel: ClientChan, target: Target)
 		return;
 	}
 
-	// Highlight once landed, re-adding the class so the animation restarts
+	// Highlight right away (the row gets it as soon as it renders), re-adding the class so
+	// the animation restarts
 	jumpTarget.value = -1;
-	eventbus.emit("scroll-to-message", message.id, () => (jumpTarget.value = message.id));
+	await nextTick();
+	jumpTarget.value = message.id;
+	eventbus.emit("scroll-to-message", message.id);
 }

@@ -1,10 +1,12 @@
 import Mousetrap from "mousetrap";
+import {nextTick} from "vue";
 
 import {store} from "./store";
 import {switchToChannel, router, navigate} from "./router";
 import {closeWindowOnEscape, focusInput} from "./closeWindow";
 import "./focusWindow";
 import isChannelCollapsed from "./helpers/isChannelCollapsed";
+import {focusSearch, openSearch} from "./helpers/chatSearch";
 import isIgnoredKeybind from "./helpers/isIgnoredKeybind";
 import listenForTwoFingerSwipes from "./helpers/listenForTwoFingerSwipes";
 import {ClientChan} from "./types";
@@ -152,6 +154,19 @@ Mousetrap.bind(["alt+/"], function (e) {
 
 	/* eslint-disable no-console */
 	navigate("Help").catch((err) => console.log(err));
+	return false;
+});
+
+// Open the in-channel search, or leave the browser's find alone outside chat windows
+Mousetrap.bind(["mod+f"], function () {
+	const channel = store.state.activeChannel?.channel;
+
+	if (!channel || !document.querySelector("#chat .message-search")) {
+		return true;
+	}
+
+	openSearch(channel);
+	void nextTick(focusSearch);
 	return false;
 });
 

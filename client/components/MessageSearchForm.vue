@@ -11,6 +11,8 @@
 				enterkeyhint="search"
 				@keydown.enter.prevent="onEnter"
 				@keydown.esc.prevent="close"
+				@keydown.ctrl.f.prevent="focusSearch"
+				@keydown.meta.f.prevent="focusSearch"
 			/>
 			<span class="search-counter" aria-live="polite">{{ counter }}</span>
 			<button
@@ -70,6 +72,10 @@ form.message-search input {
 	color: inherit;
 	background-color: var(--search-input-bg-color);
 	appearance: none;
+}
+
+form.message-search input::-webkit-search-cancel-button {
+	display: none;
 }
 
 form.message-search input::placeholder {
@@ -132,6 +138,15 @@ form.message-search .search-newer::before {
 form.message-search .search-list::before {
 	content: "\f03a"; /* list */
 }
+
+#chat form.message-search .close::before {
+	content: "";
+	width: 16px;
+	height: 16px;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+		center / contain no-repeat;
+}
 </style>
 
 <script lang="ts">
@@ -150,6 +165,7 @@ import {useStore} from "../js/store";
 import {
 	chatSearch,
 	closeSearch,
+	focusSearch,
 	openSearch,
 	search,
 	searchResults,
@@ -261,6 +277,7 @@ export default defineComponent({
 
 		return {
 			chatSearch,
+			focusSearch,
 			searchResults,
 			searchInput,
 			searchInputField,
