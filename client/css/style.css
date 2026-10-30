@@ -475,7 +475,7 @@ p {
 #help .container,
 #changelog .container,
 .header .title,
-.header .topic,
+.topic-bar .topic,
 #chat .messages {
 	user-select: text;
 	cursor: text;
@@ -1126,10 +1126,6 @@ background on hover (unless active) */
 	overflow: hidden;
 	white-space: nowrap;
 	margin-right: 5px;
-}
-
-.header .topic,
-.channel-list-item .name {
 	mask-image: linear-gradient(to left, transparent, black 20px);
 }
 
@@ -1368,34 +1364,116 @@ textarea.input {
 .header .title {
 	font-size: 15px;
 	padding-left: 6px;
+	margin-right: auto;
 	flex-shrink: 1;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
+/* Pinned topic bar under the header, styled like the reply bar */
+.topic-bar {
+	display: flex;
+	align-items: flex-start;
+	flex-shrink: 0;
+	margin: 4px 6px;
+	padding: 2px 4px 2px 8px;
+	border-left: 3px solid var(--link-color);
+	border-radius: 3px;
+	background: var(--reply-bar-bg-color);
+	font-size: 14px;
+	line-height: 1.4;
+}
+
 .topic-container {
 	position: relative;
 	flex-grow: 1;
-	padding-left: 10px;
 }
 
-.header .topic {
-	color: var(--body-color-muted);
-	margin-left: 8px;
-	word-break: break-all;
-	flex-grow: 1;
+.topic-bar .topic {
+	flex: 1;
+	width: 0; /* else a long topic widens the whole chat */
 	overflow: hidden;
-	font-size: 14px;
-	flex-shrink: 99999999;
-	min-width: 25px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	color: var(--body-color-muted);
+	cursor: pointer;
+	scrollbar-width: none;
 }
 
-.header .topic.empty {
-	min-width: 0;
+.topic-bar .topic.manual {
+	overflow-x: auto;
+	text-overflow: clip;
 }
 
-.header .topic-input {
+.topic-bar .topic-text {
+	display: inline-block;
+}
+
+@property --topic-phase {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0;
+}
+
+@keyframes topic-marquee {
+	to { --topic-phase: 1; }
+}
+
+/* Ping-pong: pause 2s, scroll to the end, pause 2s, scroll back. The animated phase goes 0..1
+   over the cycle; the offset follows a clamped triangle wave of it (all times in seconds). */
+.topic-bar .topic.overflowing:not(.manual) .topic-text {
+	--t: calc(var(--topic-phase) * var(--topic-cycle));
+	--h: calc(var(--topic-cycle) / 2);
+	--f: clamp(0, (var(--h) - max(var(--t) - var(--h), var(--h) - var(--t)) - 1) / var(--topic-travel), 1);
+
+	animation: topic-marquee calc(var(--topic-cycle) * 1s) linear calc(var(--topic-delay) * 1s) infinite;
+	transform: translateX(calc(var(--topic-shift) * -1 * var(--f)));
+}
+
+.topic-bar.expanded .topic {
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 40vh;
+	overflow-y: auto;
+}
+
+.topic-bar.expanded .topic .topic-text {
+	display: inline;
+	animation: none;
+	transform: none;
+}
+
+.topic-bar .topic-edit {
+	background: none;
+	border: none;
+	color: var(--body-color-muted);
+	cursor: pointer;
+	padding: 0 4px;
+	flex-shrink: 0;
+	line-height: inherit;
+}
+
+.topic-bar .topic-edit::before {
+	content: "\f303"; /* https://fontawesome.com/icons/pencil-alt?style=solid */
+	font: normal normal normal 12px/1 FontAwesome;
+}
+
+.topic-bar .topic-edit:hover {
+	color: var(--body-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.topic-bar .topic .topic-text {
+		display: inline;
+	}
+
+	.topic-bar .topic.overflowing:not(.manual) .topic-text {
+		animation: none;
+	}
+}
+
+.topic-bar .topic-input {
 	color: inherit;
 	background: transparent;
 	border: 1px solid var(--input-border-color);
@@ -1412,7 +1490,7 @@ textarea.input {
 
 .topic-container .save-topic {
 	position: absolute;
-	top: 6px;
+	top: 0;
 	right: 0;
 }
 
@@ -3308,7 +3386,7 @@ mark {
 	.channel-list-item,
 	#sidebar .empty,
 	.window label,
-	.header .topic,
+	.topic-bar,
 	#settings .error,
 	#help .help-item,
 	#loading,
@@ -3679,7 +3757,6 @@ mark {
 	white-space: pre-wrap;
 }
 
-#chat table.channel-list .topic,
-.header .topic {
+#chat table.channel-list .topic {
 	white-space: nowrap;
 }
