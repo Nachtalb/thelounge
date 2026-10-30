@@ -75,10 +75,6 @@
 	--reply-context-icon-color: #b0b0b0;
 	--reply-context-hover-bg-color: rgb(0 0 0 / 4%);
 	--reply-bar-bg-color: #f0f0f0;
-	--reply-bar-border-color: var(--border-color);
-	--msg-actions-border-color: #d0d0d0; /* Hover toolbar of a message */
-	--msg-actions-shadow-color: var(--shadow-color-subtle);
-	--msg-actions-hover-bg-color: rgb(0 0 0 / 6%);
 	--channel-list-loading-color: #999;
 	--channel-list-truncated-color: #f00;
 
@@ -561,8 +557,7 @@ p {
 .channel-list-item .parted-channel-icon::before,
 .jump-to-input::before,
 .password-container .reveal-password span,
-#sidebar .collapse-network-icon::before,
-#chat .msg .msg-actions button::before {
+#sidebar .collapse-network-icon::before {
 	font: normal normal normal 14px/1 FontAwesome;
 	font-size: inherit; /* Can't have font-size inherit on line above, so need to override */
 	-webkit-font-smoothing: antialiased;
@@ -1980,6 +1975,14 @@ textarea.input {
 	overflow: visible;
 }
 
+#chat .msg .reply-context-thumb {
+	width: 1.4em;
+	height: 1.4em;
+	border-radius: 2px;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
 #chat .msg .reply-context-nick {
 	font-weight: 700;
 	flex-shrink: 0;
@@ -2000,73 +2003,10 @@ textarea.input {
 	font-style: italic;
 }
 
-/* Message actions toolbar — floating overlay, top-right of message */
-#chat .msg .msg-actions {
-	display: flex;
-	gap: 1px;
-	position: absolute;
-	top: -8px;
-	right: 6px;
-	background: var(--window-bg-color);
-	border: 1px solid var(--msg-actions-border-color);
-	border-radius: 4px;
-	padding: 1px;
-	opacity: 0;
-	pointer-events: none;
-	z-index: 1;
-	box-shadow: 0 1px 3px var(--msg-actions-shadow-color);
-	transition: opacity 0.1s;
-}
-
-#chat .msg:hover .msg-actions,
-#chat .msg .msg-actions:focus-within {
-	opacity: 1;
-	pointer-events: auto;
-}
-
-#chat .msg .msg-actions button {
-	background: none;
-	border: none;
-	border-radius: 3px;
-	color: var(--body-color-muted);
-	cursor: pointer;
-	font-size: 14px;
-	width: 26px;
-	height: 24px;
-	padding: 0;
-	line-height: 1;
-}
-
-#chat .msg .msg-actions button:hover,
-#chat .msg .msg-actions button:focus-visible {
-	background: var(--msg-actions-hover-bg-color);
-	color: var(--body-color);
-}
-
-#chat .msg .msg-actions button:focus-visible {
-	outline: 2px solid var(--link-color);
-	outline-offset: -1px;
-}
-
-#chat .msg .msg-action-reply::before {
-	content: "\f3e5"; /* fa-reply */
-}
-
-/* When a reply-context is present, anchor the toolbar to the bottom row
-   (the actual message) instead of the reply preview above it. */
-#chat .msg:has(.reply-context) .msg-actions {
-	top: auto;
-	bottom: 0;
-}
-
 /* Swipe right-to-left to reply on touch devices: the message follows the
    finger and snaps back on release, revealing a reply icon behind it. */
 #chat .msg.swiping {
 	transition: none;
-}
-
-#chat .msg.swiping .msg-actions {
-	display: none;
 }
 
 #chat .msg .msg-swipe-reply {
@@ -2090,19 +2030,47 @@ textarea.input {
 #form .reply-bar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 4px 10px;
+	margin-bottom: 6px;
+	padding: 2px 4px 2px 8px;
+	border-left: 3px solid var(--link-color);
+	border-radius: 3px;
 	background: var(--reply-bar-bg-color);
-	border-bottom: 1px solid var(--reply-bar-border-color);
 	font-size: 0.85em;
-	color: var(--body-color-muted);
+	line-height: 1.35;
 	width: 100%;
+	cursor: pointer;
+}
+
+#form .reply-bar-thumb {
+	width: 36px;
+	height: 36px;
+	margin-right: 8px;
+	border-radius: 4px;
+	object-fit: cover;
+	flex-shrink: 0;
 }
 
 #form .reply-bar-text {
+	flex: 1;
+	min-width: 0;
+	width: 0; /* else the quote's max-content width widens the whole chat */
+}
+
+#form .reply-bar-nick,
+#form .reply-bar-msg {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+#form .reply-bar-nick {
+	color: var(--link-color);
+	font-weight: bold;
+}
+
+#form .reply-bar-msg {
+	color: var(--body-color-muted);
 }
 
 #form .reply-bar-close {
@@ -3418,17 +3386,6 @@ mark {
 	:is(#chat, #input-previews) .toggle-content .thumb {
 		max-height: 58px;
 		max-width: 104px;
-	}
-
-	/* The toolbar hangs over the line above on desktop, which on touch
-	   screens makes it look like it belongs to the previous message */
-	#chat .msg .msg-actions {
-		top: 50%;
-		transform: translateY(-50%);
-	}
-
-	#chat .msg:has(.reply-context) .msg-actions {
-		transform: none;
 	}
 }
 
