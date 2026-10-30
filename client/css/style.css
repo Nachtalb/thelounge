@@ -555,12 +555,6 @@ p {
 #help .website-link::before,
 #help .documentation-link::before,
 #help .report-issue-link::before,
-#image-viewer .previous-image-btn::before,
-#image-viewer .next-image-btn::before,
-#image-viewer .open-btn::before,
-#image-viewer .download-btn::before,
-#image-viewer .copy-btn::before,
-#image-viewer .gotomsg-btn::before,
 .channel-list-item .not-secure-icon::before,
 .channel-list-item .not-connected-icon::before,
 .channel-list-item .parted-channel-icon::before,
@@ -799,27 +793,57 @@ p {
 }
 
 #image-viewer .previous-image-btn::before {
-	content: "\f104"; /* http://fontawesome.io/icon/angle-left/ */
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 #image-viewer .next-image-btn::before {
-	content: "\f105"; /* http://fontawesome.io/icon/angle-right/ */
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 #image-viewer .open-btn::before {
-	content: "\f35d"; /* https://fontawesome.com/icons/external-link-alt?style=solid */
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 #image-viewer .download-btn::before {
-	content: "\f019"; /* https://fontawesome.com/icons/download?style=solid */
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 #image-viewer .copy-btn::before {
-	content: "\f0c5"; /* https://fontawesome.com/icons/copy?style=solid */
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='14' x='8' y='8' rx='2'/%3E%3Cpath d='M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 #image-viewer .gotomsg-btn::before {
-	content: "\f4ad"; /* https://fontawesome.com/icons/comment-dots?style=solid */
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.9 20A9 9 0 1 0 4 16.1L2 22ZM8 12h.01M12 12h.01M16 12h.01'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 /* End icons */
@@ -3555,6 +3579,12 @@ mark {
 	color: var(--image-viewer-button-color);
 	opacity: 0.6;
 	transition: 0.2s opacity;
+
+	/* On the button, not the masked icon: a mask would cut the shadow off. Keeps icons visible on white images */
+	filter:
+		drop-shadow(0 0 1px rgb(0 0 0 / 80%))
+		drop-shadow(0 0 1px rgb(0 0 0 / 80%))
+		drop-shadow(0 1px 3px rgb(0 0 0 / 50%));
 }
 
 #image-viewer .close-btn {
@@ -3564,30 +3594,36 @@ mark {
 }
 
 #image-viewer .close-btn::before {
-	content: "×";
+	content: "";
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 #image-viewer .open-btn,
 #image-viewer .download-btn,
 #image-viewer .copy-btn,
 #image-viewer .gotomsg-btn {
-	right: 0;
-	bottom: 0;
+	right: 0.25em;
+	bottom: 0.25em;
 	top: auto;
-	height: 2em;
+	width: 1.25em;
+	height: 1.5em;
 	z-index: 1002;
 }
 
 #image-viewer .download-btn {
-	bottom: 2em;
+	right: 1.5em;
 }
 
 #image-viewer .copy-btn {
-	bottom: 4em;
+	right: 2.75em;
 }
 
 #image-viewer .gotomsg-btn {
-	bottom: 6em;
+	right: 4em;
 }
 
 #image-viewer .copy-toast {
