@@ -50,6 +50,8 @@
 			<img
 				:key="original(link)"
 				ref="image"
+				v-cancel-load
+				fetchpriority="high"
 				:src="thumbSrc || original(link)"
 				:width="size.width || undefined"
 				:height="size.height || undefined"
@@ -92,9 +94,11 @@ import {ClientChan, ClientLinkPreview} from "../js/types";
 import {useStore} from "../js/store";
 import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import {browserEnv, copyImage, copyResultMessages} from "../js/helpers/copyImage";
+import cancelLoad from "../js/helpers/cancelLoad";
 
 export default defineComponent({
 	name: "ImageViewer",
+	directives: {cancelLoad},
 	setup() {
 		const store = useStore();
 		const viewer = ref<HTMLDivElement>();
@@ -163,6 +167,8 @@ export default defineComponent({
 		let fitToLoaded = false;
 		// Keeps neighbouring images loading
 		let preloads: HTMLImageElement[] = [];
+		// The full image being loaded for the shown thumbnail
+		let fullLoad: HTMLImageElement | undefined;
 		// Full images that are decoded and can be shown at once
 		const decoded = new Set<string>();
 
@@ -406,13 +412,15 @@ export default defineComponent({
 				fitToLoaded = !!thumbSrc.value;
 			}
 
-			if (!thumbSrc.value) {
+			// Runs twice for cached images (complete at once, then the load event)
+			if (!thumbSrc.value && !preloads.length) {
 				preloads = [previousImage.value, nextImage.value].flatMap((preview) => {
 					if (!preview) {
 						return [];
 					}
 
 					const img = new Image();
+					img.fetchPriority = "low";
 					img.src = original(preview);
 					void img
 						.decode()
@@ -423,8 +431,21 @@ export default defineComponent({
 			}
 		};
 
+		// Images that are not shown anymore must not hold up the one that is
+		const cancelLoads = () => {
+			for (const img of [...preloads, fullLoad]) {
+				if (img && !img.complete) {
+					img.src = "";
+				}
+			}
+
+			preloads = [];
+			fullLoad = undefined;
+		};
+
 		// Shows the cached thumbnail at once and swaps in the full image once it is decoded
 		const show = (preview: ClientLinkPreview) => {
+			cancelLoads();
 			const full = original(preview);
 			// Already decoded (preloaded neighbour, shown before): no thumbnail step
 			thumbSrc.value = full === preview.thumb || decoded.has(full) ? "" : preview.thumb;
@@ -439,7 +460,9 @@ export default defineComponent({
 
 			if (thumbSrc.value) {
 				const img = new Image();
+				img.fetchPriority = "high";
 				img.src = full;
+				fullLoad = img;
 				void img
 					.decode()
 					.then(() => decoded.add(full))
@@ -753,6 +776,7 @@ export default defineComponent({
 		watch(link, (newLink, oldLink) => {
 			// TODO: history.pushState
 			if (newLink === null) {
+				cancelLoads();
 				document.removeEventListener("focusin", blurInput);
 				eventbus.off("escapekey", closeViewer);
 				eventbus.off("resize", correctPosition);
