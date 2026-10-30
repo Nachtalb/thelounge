@@ -11,8 +11,7 @@ import link, {backfillPreviews, routeCachedImage} from "../../server/plugins/irc
 describe("Link plugin with preview cache", function () {
 	const testImagePath = path.resolve("client/public/img/logo-grey-bg-120x120px.png");
 
-	let app: any;
-	let connection: any;
+	let app: ReturnType<typeof util.createWebserver>;
 	let _makeUrl: (_path: string) => string;
 	let requests: Record<string, number>;
 	let irc: any;
@@ -35,42 +34,24 @@ describe("Link plugin with preview cache", function () {
 			.gif()
 			.toBuffer();
 
-		app = util.createWebserver();
-		app.use((req: any, _res: any, next: () => void) => {
-			requests[req.path] = (requests[req.path] || 0) + 1;
-			next();
+		app = util.createWebserver((req) => {
+			const urlPath = new URL(req.url).pathname;
+			requests[urlPath] = (requests[urlPath] || 0) + 1;
 		});
-		app.get("/page", function (_req: any, res: any) {
-			res.send("<title>cached title</title><meta property='og:image' content='/image.png'>");
-		});
-		app.get("/image.png", function (_req: any, res: any) {
-			res.sendFile(testImagePath);
-		});
-		app.get("/photo.jpg", (_req: any, res: any) => void res.type("image/jpeg").send(photo));
-		app.get("/anim.gif", (_req: any, res: any) => void res.type("image/gif").send(animation));
-		app.get(
-			"/broken.jpg",
-			(_req: any, res: any) => void res.type("image/jpeg").send("not a jpeg")
+		_makeUrl = app.url;
+		app.get("/page", () =>
+			util.send("<title>cached title</title><meta property='og:image' content='/image.png'>")
 		);
-		app.get(
-			"/preview-cache/:hash",
-			util.webRoute((req, params) => routeCachedImage(req, params.hash))
-		);
-
-		await new Promise<void>((resolve) => {
-			connection = app.listen(0, "127.0.0.1", () => {
-				const {address, port} = connection.address();
-				_makeUrl = (_path: string) => `http://${address}:${port}/${_path}`;
-				resolve();
-			});
-		});
+		app.get("/image.png", () => new Response(Bun.file(testImagePath)));
+		app.get("/photo.jpg", () => util.send(photo, "image/jpeg"));
+		app.get("/anim.gif", () => util.send(animation, "image/gif"));
+		app.get("/broken.jpg", () => util.send("not a jpeg", "image/jpeg"));
+		app.get("/preview-cache/:hash", (req, params) => routeCachedImage(req, params.hash));
 	}, 60000);
 
 	afterAll(function () {
 		fs.rmSync(Config.getPreviewCachePath(), {recursive: true, force: true});
-		return new Promise<void>((resolve) => {
-			connection.close(() => resolve());
-		});
+		return app.stop();
 	});
 
 	beforeEach(async function () {

@@ -6,7 +6,6 @@ import util from "../util";
 import Config from "../../server/config";
 import storage from "../../server/plugins/storage";
 import link from "../../server/plugins/irc-events/link";
-import {Request, Response} from "express";
 
 describe("Image storage", function () {
 	const testImagePath = path.resolve("client/public/img/logo-grey-bg-120x120px.png");
@@ -29,37 +28,20 @@ describe("Image storage", function () {
 		4
 	)}/${correctSvgHash.substring(4)}.svg`;
 
-	let app: any;
-	let connection: any;
-	let port: number;
-	let host: string;
+	let app: ReturnType<typeof util.createWebserver>;
 	let _makeUrl: (_path: string) => string;
 	let irc: any;
 	let network: any;
 
 	beforeAll(function () {
 		app = util.createWebserver();
-		app.get("/real-test-image.png", function (_req: any, res: any) {
-			res.sendFile(testImagePath);
-		});
-		app.get("/logo.svg", function (_req: any, res: any) {
-			res.sendFile(testSvgPath);
-		});
-
-		return new Promise<void>((resolve) => {
-			connection = app.listen(0, "127.0.0.1", () => {
-				port = (connection.address() as any).port;
-				host = (connection.address() as any).address;
-				resolve();
-			});
-			_makeUrl = (_path: string): string => `http://${host}:${port}/${_path}`;
-		});
+		_makeUrl = app.url;
+		app.get("/real-test-image.png", () => new Response(Bun.file(testImagePath)));
+		app.get("/logo.svg", () => new Response(Bun.file(testSvgPath)));
 	});
 
 	afterAll(function () {
-		return new Promise<void>((resolve) => {
-			connection.close(() => resolve());
-		});
+		return app.stop();
 	});
 
 	afterAll(function () {
@@ -93,11 +75,11 @@ describe("Image storage", function () {
 			link(irc, network.channels[0], message, message.text);
 
 			const real_test_img_url = _makeUrl("real-test-image.png");
-			app.get("/thumb", function (_req: any, res: any) {
-				res.send(
+			app.get("/thumb", () =>
+				util.send(
 					`<title>Google</title><meta property='og:image' content='${real_test_img_url}'>`
-				);
-			});
+				)
+			);
 
 			irc.once("msg:preview", function (data: any) {
 				expect(data.preview.head).to.equal("Google");
@@ -134,11 +116,11 @@ describe("Image storage", function () {
 			});
 
 			const logo_url = _makeUrl("logo.svg");
-			app.get("/svg-preview", function (_req: Request, res: Response) {
-				res.send(
+			app.get("/svg-preview", () =>
+				util.send(
 					`<title>test title</title><meta property='og:image' content='${logo_url}'>`
-				);
-			});
+				)
+			);
 
 			link(irc, network.channels[0], message, message.text);
 

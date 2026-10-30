@@ -20,39 +20,31 @@ congue ut elit eget congue. Nam pretium blandit nibh nec laoreet.\
 Suspendisse vehicula turpis urna, sit amet molestie diam dapibus in.\
 Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
-	let app;
-	let connection: any;
-	let port: number;
+	let app: ReturnType<typeof util.createWebserver>;
 	let host: string;
+	let port: string;
 	let _makeUrl: (path: string) => string;
 	let irc: any;
 	let network: any;
 
 	beforeEach(function () {
-		return new Promise<void>((resolve) => {
-			app = util.createWebserver();
-			app.get("/real-test-image.png", function (req, res) {
-				res.sendFile(path.resolve("client/public/img/logo-grey-bg-120x120px.png"));
-			});
-			connection = app.listen(0, "127.0.0.1", () => {
-				port = (connection.address() as any).port;
-				host = (connection.address() as any).address;
-				resolve();
-			});
+		app = util.createWebserver();
+		app.get(
+			"/real-test-image.png",
+			() =>
+				new Response(Bun.file(path.resolve("client/public/img/logo-grey-bg-120x120px.png")))
+		);
+		_makeUrl = app.url;
+		({hostname: host, port} = new URL(app.url("")));
 
-			_makeUrl = (_path: string): string => `http://${host}:${port}/${_path}`;
+		irc = util.createClient();
+		network = util.createNetwork();
 
-			irc = util.createClient();
-			network = util.createNetwork();
-
-			Config.values.prefetchStorage = false;
-		});
+		Config.values.prefetchStorage = false;
 	});
 
 	afterEach(function () {
-		return new Promise<void>((resolve) => {
-			connection.close(() => resolve());
-		});
+		return app.stop();
 	});
 
 	it("should be able to fetch basic information about URLs", function () {
@@ -76,11 +68,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				},
 			]);
 
-			app.get("/basic", function (req, res) {
-				res.send(
+			app.get("/basic", () =>
+				util.send(
 					"<title>test title</title><meta name='description' content='simple description'>"
-				);
-			});
+				)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.type).to.equal("link");
@@ -115,9 +107,7 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				},
 			]);
 
-			app.get("/basic-text", function (req, res) {
-				res.type("text").send(loremIpsum);
-			});
+			app.get("/basic-text", () => util.send(loremIpsum, "text/plain; charset=utf-8"));
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.type).to.equal("link");
@@ -141,11 +131,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/truncate", function (req, res) {
-				res.send(
+			app.get("/truncate", () =>
+				util.send(
 					`<title>${loremIpsum}</title><meta name='description' content='${loremIpsum}'>`
-				);
-			});
+				)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.type).to.equal("link");
@@ -167,9 +157,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/basic-og", function (req, res) {
-				res.send("<title>test</title><meta property='og:title' content='opengraph test'>");
-			});
+			app.get("/basic-og", () =>
+				util.send("<title>test</title><meta property='og:title' content='opengraph test'>")
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.head).to.equal("opengraph test");
@@ -186,11 +176,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/duplicate-tags", function (req, res) {
-				res.send(
+			app.get("/duplicate-tags", () =>
+				util.send(
 					"<title>test</title><title>magnifying glass icon</title><meta name='description' content='desc1'><meta name='description' content='desc2'>"
-				);
-			});
+				)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.head).to.equal("test");
@@ -208,11 +198,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/description-og", function (req, res) {
-				res.send(
+			app.get("/description-og", () =>
+				util.send(
 					"<meta name='description' content='simple description'><meta property='og:description' content='opengraph description'>"
-				);
-			});
+				)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.body).to.equal("opengraph description");
@@ -230,9 +220,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			link(irc, network.channels[0], message, message.text);
 
 			const url = _makeUrl("real-test-image.png");
-			app.get("/thumb", function (req, res) {
-				res.send(`<title>Google</title><meta property='og:image' content='${url}'>`);
-			});
+			app.get("/thumb", () =>
+				util.send(`<title>Google</title><meta property='og:image' content='${url}'>`)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.head).to.equal("Google");
@@ -251,16 +241,16 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 		});
 		it("should ignore og:image if disableMediaPreview", function () {
 			return new Promise<void>((resolve) => {
-				app.get("/nonexistent-test-image.png", function () {
+				app.get("/nonexistent-test-image.png", () => {
 					throw "Should not fetch image";
 				});
 
 				const invalid_url = _makeUrl("nonexistent-test-image.png");
-				app.get("/thumb", function (req, res) {
-					res.send(
+				app.get("/thumb", () =>
+					util.send(
 						`<title>Google</title><meta property='og:image' content='${invalid_url}>`
-					);
-				});
+					)
+				);
 				const message = irc.createMessage({
 					text: _makeUrl("thumb"),
 				});
@@ -277,16 +267,16 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 		});
 		it("should ignore og:video if disableMediaPreview", function () {
 			return new Promise<void>((resolve) => {
-				app.get("/nonexistent-video.mp4", function () {
+				app.get("/nonexistent-video.mp4", () => {
 					throw "Should not fetch video";
 				});
 
 				const invalid_url = _makeUrl("nonexistent-video.mp4");
-				app.get("/thumb", function (req, res) {
-					res.send(
+				app.get("/thumb", () =>
+					util.send(
 						`<title>Google</title><meta property='og:video:type' content='video/mp4'><meta property='og:video' content='${invalid_url}'>`
-					);
-				});
+					)
+				);
 				const message = irc.createMessage({
 					text: _makeUrl("thumb"),
 				});
@@ -311,9 +301,7 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			link(irc, network.channels[0], message, message.text);
 
 			const url = _makeUrl("real-test-image.png");
-			app.get("/thumb-image-src", function (req, res) {
-				res.send(`<link rel='image_src' href='${url}'>`);
-			});
+			app.get("/thumb-image-src", () => util.send(`<link rel='image_src' href='${url}'>`));
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.thumb).to.equal(url);
@@ -331,9 +319,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			link(irc, network.channels[0], message, message.text);
 
 			const real_image_url = _makeUrl("real-test-image.png");
-			app.get("/thumb-image-src", function (req, res) {
-				res.send(`<link rel='image_src' href='${real_image_url}'>`);
-			});
+			app.get("/thumb-image-src", () =>
+				util.send(`<link rel='image_src' href='${real_image_url}'>`)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.thumb).to.equal(real_image_url);
@@ -351,11 +339,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/relative-thumb", function (req, res) {
-				res.send(
+			app.get("/relative-thumb", () =>
+				util.send(
 					"<title>test relative image</title><meta property='og:image' content='/real-test-image.png'>"
-				);
-			});
+				)
+			);
 			const real_image_url = _makeUrl("real-test-image.png");
 
 			irc.once("msg:preview", function (data) {
@@ -377,9 +365,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/thumb-no-title", function (req, res) {
-				res.send(`<meta property='og:image' content='${real_image_url}'>`);
-			});
+			app.get("/thumb-no-title", () =>
+				util.send(`<meta property='og:image' content='${real_image_url}'>`)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.head).to.equal("Untitled page");
@@ -399,9 +387,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/body-no-title", function (req, res) {
-				res.send("<meta name='description' content='hello world'>");
-			});
+			app.get("/body-no-title", () =>
+				util.send("<meta name='description' content='hello world'>")
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.head).to.equal("Untitled page");
@@ -423,11 +411,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			link(irc, network.channels[0], message, message.text);
 
 			const invalid_url = _makeUrl("this-image-does-not-exist.png");
-			app.get("/thumb-404", function (req, res) {
-				res.send(
+			app.get("/thumb-404", () =>
+				util.send(
 					`<title>404 image</title><meta property='og:image' content='${invalid_url}>`
-				);
-			});
+				)
+			);
 
 			irc.once("msg:preview", function (data) {
 				expect(data.preview.head).to.equal("404 image");
@@ -481,12 +469,16 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				text: url,
 			});
 
-			app.get("/image-with-disposition", function (req, res) {
-				res.setHeader(
-					"Content-Disposition",
-					"inline; filename=\"fallback.png\"; filename*=UTF-8''%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9.png"
+			app.get("/image-with-disposition", () => {
+				return new Response(
+					Bun.file(path.resolve("client/public/img/logo-grey-bg-120x120px.png")),
+					{
+						headers: {
+							"Content-Disposition":
+								"inline; filename=\"fallback.png\"; filename*=UTF-8''%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9.png",
+						},
+					}
 				);
-				res.sendFile(path.resolve("client/public/img/logo-grey-bg-120x120px.png"));
 			});
 
 			link(irc, network.channels[0], message, message.text);
@@ -506,9 +498,10 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				text: url,
 			});
 
-			app.get("/short-link", function (req, res) {
-				res.redirect("/real-test-image.png");
-			});
+			app.get(
+				"/short-link",
+				() => new Response(null, {status: 302, headers: {Location: "/real-test-image.png"}})
+			);
 
 			link(irc, network.channels[0], message, message.text);
 
@@ -527,9 +520,7 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				text: url,
 			});
 
-			app.get("/page.html", function (req, res) {
-				res.send("<title>test title</title>");
-			});
+			app.get("/page.html", () => util.send("<title>test title</title>"));
 
 			link(irc, network.channels[0], message, message.text);
 
@@ -605,13 +596,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				},
 			]);
 
-			app.get("/one", function (req, res) {
-				res.send("<title>first title</title>");
-			});
+			app.get("/one", () => util.send("<title>first title</title>"));
 
-			app.get("/two", function (req, res) {
-				res.send("<title>second title</title>");
-			});
+			app.get("/two", () => util.send("<title>second title</title>"));
 
 			const previews: LinkPreview[] = [];
 
@@ -637,10 +624,10 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			const language = "sv,en-GB;q=0.9,en;q=0.8";
 			irc.config.browser.language = language;
 
-			app.get("/language-check", function (req, res) {
-				expect(req.headers["accept-language"]).to.equal(language);
-				res.send();
+			app.get("/language-check", (req) => {
+				expect(req.headers.get("accept-language")).to.equal(language);
 				resolve();
+				return util.send();
 			});
 
 			const message = irc.createMessage({
@@ -653,12 +640,12 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 	it("should send accept text/html for initial request", function () {
 		return new Promise<void>((resolve) => {
-			app.get("/accept-header-html", function (req, res) {
-				expect(req.headers.accept).to.equal(
+			app.get("/accept-header-html", (req) => {
+				expect(req.headers.get("accept")).to.equal(
 					"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 				);
-				res.send();
 				resolve();
+				return util.send();
 			});
 
 			const message = irc.createMessage({
@@ -673,16 +660,16 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 		return new Promise<void>((resolve) => {
 			const msg_url = _makeUrl("msg");
 			const image_url = _makeUrl("image-url.png");
-			app.get("/msg", function (req, res) {
-				res.send(
+			app.get("/msg", () =>
+				util.send(
 					`<title>404 image</title><meta property='og:image' content='${image_url}'>`
-				);
-			});
+				)
+			);
 
-			app.get("/image-url.png", function (req, res) {
-				expect(req.headers.accept).to.equal("*/*");
-				res.send();
+			app.get("/image-url.png", (req) => {
+				expect(req.headers.get("accept")).to.equal("*/*");
 				resolve();
+				return util.send();
 			});
 
 			const message = irc.createMessage({
@@ -725,13 +712,11 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 			link(irc, network.channels[0], message, message.text);
 
-			app.get("/unicode/:q", function (req, res) {
-				res.send(`<title>${req.params.q}</title>`);
-			});
+			app.get("/unicode/:q", (_req, params) => util.send(`<title>${params.q}</title>`));
 
-			app.get("/unicodeq/", function (req, res) {
-				res.send(`<title>${req.query.q}</title>`);
-			});
+			app.get("/unicodeq/", (req) =>
+				util.send(`<title>${new URL(req.url).searchParams.get("q")}</title>`)
+			);
 
 			const previews: LinkPreview[] = [];
 
@@ -828,15 +813,15 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			link(irc, network.channels[0], message, message.text);
 			process.nextTick(() => link(irc, network.channels[0], message, message.text));
 
-			app.get("/basic-og-once", function (req, res) {
+			app.get("/basic-og-once", (req) => {
 				requests++;
 
-				expect(req.header("accept-language")).to.equal("very nice language");
+				expect(req.headers.get("accept-language")).to.equal("very nice language");
 
 				// delay the request so it doesn't resolve immediately
-				setTimeout(() => {
-					res.send("<title>test prefetch</title>");
-				}, 100);
+				return new Promise<Response>((done) =>
+					setTimeout(() => done(util.send("<title>test prefetch</title>")), 100)
+				);
 			});
 
 			const cb = (data) => {
@@ -872,13 +857,13 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 				link(irc, network.channels[0], message, message.text);
 			}, 100);
 
-			app.get("/basic-og-once-lang", function (req, res) {
-				requests.push(req.header("accept-language"));
+			app.get("/basic-og-once-lang", (req) => {
+				requests.push(req.headers.get("accept-language"));
 
 				// delay the request so it doesn't resolve immediately
-				setTimeout(() => {
-					res.send("<title>test prefetch</title>");
-				}, 100);
+				return new Promise<Response>((done) =>
+					setTimeout(() => done(util.send("<title>test prefetch</title>")), 100)
+				);
 			});
 
 			const cb = (data) => {
@@ -902,9 +887,7 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			return new Promise<void>((resolve) => {
 				const url = _makeUrl("input-preview");
 
-				app.get("/input-preview", function (req, res) {
-					res.send("<title>input title</title>");
-				});
+				app.get("/input-preview", () => util.send("<title>input title</title>"));
 
 				const onMsgPreview = () => {
 					throw new Error("msg:preview must not be emitted for input previews");
@@ -927,9 +910,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 		it("should only fetch valid links and report the others as blocked right away", function () {
 			const requests: string[] = [];
-			app.get("/input-preview-invalid", function (req, res) {
+			app.get("/input-preview-invalid", (req) => {
 				requests.push(req.url);
-				res.send("<title>should not be fetched</title>");
+				return util.send("<title>should not be fetched</title>");
 			});
 
 			const emitted: LinkPreview[] = [];
@@ -959,9 +942,9 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 
 		it("should not fetch anything when prefetch is disabled", function () {
 			const requests: string[] = [];
-			app.get("/input-preview-disabled", function (req, res) {
+			app.get("/input-preview-disabled", (req) => {
 				requests.push(req.url);
-				res.send("<title>should not be fetched</title>");
+				return util.send("<title>should not be fetched</title>");
 			});
 
 			const emitted: LinkPreview[] = [];
@@ -990,9 +973,7 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 			return new Promise<void>((resolve) => {
 				const url = _makeUrl("input-preview-empty");
 
-				app.get("/input-preview-empty", function (req, res) {
-					res.send("<p>no title here</p>");
-				});
+				app.get("/input-preview-empty", () => util.send("<p>no title here</p>"));
 
 				prefetchInputLinks(irc, [url], (preview, removed) => {
 					expect(removed).to.equal(true);

@@ -1,9 +1,13 @@
 import _ from "lodash";
-import express from "express";
 import Network from "../server/models/network";
 import Chan from "../server/models/chan";
 import {EventEmitter} from "events";
 import {Message} from "../server/models/msg";
+
+type WebRoute = (
+	req: Request,
+	params: Record<string, string>
+) => Response | null | Promise<Response | null>;
 
 class MockClient extends EventEmitter {
 	config: {
@@ -61,25 +65,46 @@ export default {
 			],
 		});
 	},
-	createWebserver() {
-		return express();
-	},
-	// Mounts a server route that answers with a fetch Response (404 for null) on express
-	webRoute(handler: (req: Request, params: Record<string, string>) => Promise<Response | null>) {
-		return (req: express.Request, res: express.Response) => {
-			const url = `http://${req.headers.host || "localhost"}${req.originalUrl}`;
+	// Fake web server on a free 127.0.0.1 port; routes ("/a/:b") can be added at any time
+	createWebserver(onRequest?: (req: Request) => void) {
+		const routes = new Map<string, WebRoute>();
+		const server = Bun.serve({
+			hostname: "127.0.0.1",
+			port: 0,
+			async fetch(req) {
+				onRequest?.(req);
+				const parts = new URL(req.url).pathname.split("/");
 
-			void handler(new Request(url), req.params).then(async (response) => {
-				if (!response) {
-					res.status(404).send("Not found");
-					return;
+				for (const [route, handler] of routes) {
+					const want = route.split("/");
+					const params: Record<string, string> = {};
+
+					if (
+						want.length === parts.length &&
+						want.every((w, i) =>
+							w.startsWith(":")
+								? (params[w.slice(1)] = decodeURIComponent(parts[i]))
+								: w === parts[i]
+						)
+					) {
+						return (
+							(await handler(req, params)) || new Response("Not found", {status: 404})
+						);
+					}
 				}
 
-				res.status(response.status);
-				response.headers.forEach((value, key) => res.setHeader(key, value));
-				res.send(Buffer.from(await response.arrayBuffer()));
-			});
+				return new Response("Not found", {status: 404});
+			},
+		});
+
+		return {
+			url: (urlPath: string) => `http://127.0.0.1:${server.port}/${urlPath}`,
+			get: (route: string, handler: WebRoute) => void routes.set(route, handler),
+			stop: () => server.stop(true),
 		};
+	},
+	send(body: BodyInit = "", type = "text/html; charset=utf-8") {
+		return new Response(body, {headers: {"Content-Type": type}});
 	},
 	sanitizeLog,
 	isRunningOnCI() {
