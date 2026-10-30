@@ -48,14 +48,35 @@
 			<a class="open-btn" :href="link.link" target="_blank" rel="noopener"></a>
 
 			<img
+				:key="original(link)"
 				ref="image"
-				:src="original(link)"
+				:src="thumbSrc || original(link)"
+				:width="size.width || undefined"
+				:height="size.height || undefined"
+				:class="{thumb: blur, loaded}"
 				alt=""
 				:style="computeImageStyles"
 				@load="onImageLoad"
 				@mousedown="onImageMouseDown"
 				@touchstart.passive="onImageTouchStart"
 			/>
+
+			<!-- Blurs the thumbnail only, keeping its edges opaque instead of fading them out -->
+			<svg width="0" height="0" aria-hidden="true">
+				<filter
+					id="thumb-blur"
+					x="0"
+					y="0"
+					width="1"
+					height="1"
+					color-interpolation-filters="sRGB"
+				>
+					<feGaussianBlur :stdDeviation="blur / transform.scale" />
+					<feComponentTransfer>
+						<feFuncA type="table" tableValues="1 1" />
+					</feComponentTransfer>
+				</filter>
+			</svg>
 
 			<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
 		</template>
@@ -64,7 +85,7 @@
 
 <script lang="ts">
 import Mousetrap from "mousetrap";
-import {computed, defineComponent, ref, watch} from "vue";
+import {computed, defineComponent, nextTick, ref, watch} from "vue";
 import eventbus from "../js/eventbus";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
@@ -133,6 +154,18 @@ export default defineComponent({
 			y: 0,
 		});
 
+		// The image is laid out at the full image's size, so the thumbnail shown until the full
+		// image is decoded takes the same space. Unknown for old previews: taken from the loaded image.
+		const size = ref({width: 0, height: 0});
+		const thumbSrc = ref("");
+		const blur = ref(0);
+		const loaded = ref(false);
+		let fitToLoaded = false;
+		// Keeps neighbouring images loading
+		let preloads: HTMLImageElement[] = [];
+		// Full images that are decoded and can be shown at once
+		const decoded = new Set<string>();
+
 		const computeImageStyles = computed(() => {
 			// Sub pixels may cause the image to blur in certain browsers
 			// round it down to prevent that
@@ -143,6 +176,12 @@ export default defineComponent({
 				left: `${position.value.x}px`,
 				top: `${position.value.y}px`,
 				transform: `translate3d(${transformX}px, ${transformY}px, 0) scale3d(${transform.value.scale}, ${transform.value.scale}, 1)`,
+				visibility: size.value.width ? undefined : ("hidden" as const),
+				// Shown blurred behind the thumbnail until it is loaded
+				backgroundImage:
+					blur.value && link.value?.placeholder
+						? `url("${link.value.placeholder}")`
+						: undefined,
 			};
 		});
 
@@ -336,25 +375,94 @@ export default defineComponent({
 
 		const prepareImage = () => {
 			const viewerEl = viewer.value;
-			const imageEl = image.value;
 
-			if (!viewerEl || !imageEl) {
+			if (!viewerEl || !size.value.width) {
 				return;
 			}
 
 			const width = viewerEl.offsetWidth;
 			const height = viewerEl.offsetHeight;
-			const scale = Math.min(1, width / imageEl.width, height / imageEl.height);
+			const scale = Math.min(1, width / size.value.width, height / size.value.height);
 
-			position.value.x = Math.floor(-image.value!.naturalWidth / 2);
-			position.value.y = Math.floor(-image.value!.naturalHeight / 2);
+			position.value.x = Math.floor(-size.value.width / 2);
+			position.value.y = Math.floor(-size.value.height / 2);
 			transform.value.scale = Math.max(scale, 0.1);
 			transform.value.x = width / 2;
 			transform.value.y = height / 2;
 		};
 
 		const onImageLoad = () => {
+			const imageEl = image.value;
+
+			if (!imageEl?.naturalWidth) {
+				return;
+			}
+
+			loaded.value = true;
+
+			if (fitToLoaded) {
+				size.value = {width: imageEl.naturalWidth, height: imageEl.naturalHeight};
+				prepareImage();
+				fitToLoaded = !!thumbSrc.value;
+			}
+
+			if (!thumbSrc.value) {
+				preloads = [previousImage.value, nextImage.value].flatMap((preview) => {
+					if (!preview) {
+						return [];
+					}
+
+					const img = new Image();
+					img.src = original(preview);
+					void img
+						.decode()
+						.then(() => decoded.add(original(preview)))
+						.catch(() => undefined);
+					return [img];
+				});
+			}
+		};
+
+		// Shows the cached thumbnail at once and swaps in the full image once it is decoded
+		const show = (preview: ClientLinkPreview) => {
+			const full = original(preview);
+			// Already decoded (preloaded neighbour, shown before): no thumbnail step
+			thumbSrc.value = full === preview.thumb || decoded.has(full) ? "" : preview.thumb;
+			blur.value = thumbSrc.value ? 8 : 0;
+			loaded.value = false;
+			size.value = {width: preview.width || 0, height: preview.height || 0};
+			fitToLoaded = !preview.width;
 			prepareImage();
+
+			// The src may not change (same image twice), or be loaded already
+			void nextTick(() => image.value?.complete && onImageLoad());
+
+			if (thumbSrc.value) {
+				const img = new Image();
+				img.src = full;
+				void img
+					.decode()
+					.then(() => decoded.add(full))
+					.catch(() => undefined)
+					.then(() => {
+						if (link.value !== preview) {
+							return;
+						}
+
+						thumbSrc.value = "";
+						const start = performance.now();
+
+						// Fades the blur out over 200ms
+						const fade = (now: number) => {
+							if (link.value === preview && blur.value) {
+								blur.value = Math.max(0, 8 - ((now - start) / 200) * 8);
+								requestAnimationFrame(fade);
+							}
+						};
+
+						requestAnimationFrame(fade);
+					});
+			}
 		};
 
 		const calculateZoomShift = (newScale: number, x: number, y: number, oldScale: number) => {
@@ -652,6 +760,8 @@ export default defineComponent({
 				return;
 			}
 
+			show(newLink);
+
 			if (!oldLink) {
 				blurInput();
 				document.addEventListener("focusin", blurInput);
@@ -671,6 +781,10 @@ export default defineComponent({
 			channel,
 			image,
 			original,
+			size,
+			thumbSrc,
+			blur,
+			loaded,
 			downloadImage,
 			copyCurrentImage,
 			toast,

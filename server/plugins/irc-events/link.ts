@@ -15,7 +15,7 @@ import {blocksLink} from "../../../shared/previewFilters";
 import {cleanIrcMessage} from "../../../shared/irc";
 import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
-import previewCache, {thumbFormat} from "../previewCache";
+import previewCache, {imageInfo, thumbFormat} from "../previewCache";
 import {getPrefetchAgents} from "../prefetchProxy";
 import {
 	assertUrlAllowed,
@@ -509,15 +509,18 @@ function handlePreview(previews: LinkPreview[], preview: LinkPreview, res, emit:
 	delete preview.thumbActualUrl;
 
 	if (thumb.length && previewCache.isEnabled() && res?.data) {
-		void previewCache
-			.setImage(normalizeURL(thumb) || thumb, res.type, res.data)
-			.then((hash) => {
-				const format = thumbFormat(res.type);
-				// The viewer, download and copy use the full image
-				preview.full = `preview-cache/${hash}`;
-				preview.thumb = format ? `${preview.full}.${format}` : preview.full;
-				emitPreview(previews, preview, emit);
-			});
+		void Promise.all([
+			previewCache.setImage(normalizeURL(thumb) || thumb, res.type, res.data),
+			imageInfo(res.data).catch(() => null),
+		]).then(([hash, info]) => {
+			const format = thumbFormat(res.type);
+			// Lets the viewer show the placeholder and thumbnail at the full image's size
+			Object.assign(preview, info);
+			// The viewer, download and copy use the full image
+			preview.full = `preview-cache/${hash}`;
+			preview.thumb = format ? `${preview.full}.${format}` : preview.full;
+			emitPreview(previews, preview, emit);
+		});
 		return;
 	}
 

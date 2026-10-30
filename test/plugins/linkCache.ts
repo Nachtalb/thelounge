@@ -1,7 +1,8 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import sharp from "sharp";
-import {expect} from "vitest";
+import {expect, vi} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
 import previewCache from "../../server/plugins/previewCache";
@@ -25,6 +26,9 @@ describe("Link plugin with preview cache", function () {
 		});
 
 	beforeAll(async function () {
+		// Own cache dir: other test files delete the shared one while these tests run
+		const dir = path.join(os.tmpdir(), `thelounge-linkcache-${process.pid}`);
+		vi.spyOn(Config, "getPreviewCachePath").mockReturnValue(dir);
 		photo = await noise(1000, 750).jpeg().toBuffer();
 		const frames = await Promise.all([1, 2].map(() => noise(700, 525).png().toBuffer()));
 		animation = await sharp(frames, {join: {animated: true}})
@@ -169,6 +173,9 @@ describe("Link plugin with preview cache", function () {
 		const result = await preview(_makeUrl("photo.jpg"));
 		const hash = previewCache.hash(_makeUrl("photo.jpg"));
 		expect(result.thumb).to.equal(`preview-cache/${hash}.avif`);
+		expect([result.width, result.height]).to.deep.equal([1000, 750]);
+		expect(result.placeholder).to.match(/^data:image\/webp;base64,/);
+		expect(result.placeholder.length).to.be.below(300);
 
 		let res = await fetch(_makeUrl(result.thumb));
 		expect(res.headers.get("content-type")).to.equal("image/avif");
@@ -183,9 +190,25 @@ describe("Link plugin with preview cache", function () {
 		expect(requests["/photo.jpg"]).to.equal(1);
 	});
 
+	it("should add the full image size and placeholder to previews cached without them", async function () {
+		const url = _makeUrl("photo.jpg");
+		const result = await preview(url);
+		await previewCache.flush();
+		const {width, height, placeholder, ...old} = result;
+		await previewCache.update(url, {preview: old});
+
+		expect(await previewCache.getPreview(url)).to.include({width, height, placeholder});
+		await previewCache.flush();
+		// Stored: later hits don't read the image again
+		fs.unlinkSync(previewCache.getPath(result.full.split("/")[1], "img"));
+		const cached = await previewCache.getPreview(url);
+		expect(cached).to.include({width, height, placeholder});
+	});
+
 	it("should keep gifs animated in a webp thumbnail", async function () {
 		const result = await preview(_makeUrl("anim.gif"));
 		expect(result.thumb).to.equal(`${result.full}.webp`);
+		expect([result.width, result.height]).to.deep.equal([700, 525]);
 
 		const res = await fetch(_makeUrl(result.thumb));
 		expect(res.headers.get("content-type")).to.equal("image/webp");
