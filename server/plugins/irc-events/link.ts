@@ -165,9 +165,10 @@ function runQueued(job?: () => Promise<void>) {
 		backfillQueue.push(job);
 	}
 
+	// Newest request first: that's the history the user just scrolled to
 	while (backfillRunning < 4 && backfillQueue.length) {
 		backfillRunning++;
-		void backfillQueue.shift()!().finally(() => {
+		void backfillQueue.pop()!().finally(() => {
 			backfillRunning--;
 			runQueued();
 		});

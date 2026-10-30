@@ -284,6 +284,37 @@ describe("Link plugin with preview cache", function () {
 			expect(message.previews).to.deep.equal([]);
 		});
 
+		it("should fetch the most recently requested history first", async function () {
+			const started: string[] = [];
+			let release!: () => void;
+			const released = new Promise<void>((resolve) => (release = resolve));
+			app.get("/held/:n", async (req, params) => {
+				started.push(params.n);
+				await released;
+				return util.send(`<title>${params.n}</title>`);
+			});
+			const history: any[] = [];
+
+			for (const n of ["a", "b", "c", "d", "older", "oldest"]) {
+				history.push(irc.createMessage({type: "message", text: _makeUrl(`held/${n}`)}));
+			}
+
+			let emitted = 0;
+			const done = new Promise<void>((resolve) => {
+				irc.on("msg:preview", () => ++emitted === 6 && resolve());
+			});
+
+			// Four fetches run at once, the fifth waits; then older history is loaded
+			backfillPreviews(irc, network.channels[0], history.slice(0, 5));
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			backfillPreviews(irc, network.channels[0], history.slice(5));
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			release();
+			await done;
+
+			expect(started[4]).to.equal("oldest");
+		});
+
 		it("should do nothing when the cache is disabled", function () {
 			Config.values.prefetchCache = false;
 			const message = irc.createMessage({type: "message", text: _makeUrl("page")});
