@@ -13,6 +13,24 @@ import {MessageType} from "../../shared/types/msg";
 import {ChanType} from "../../shared/types/chan";
 import {SharedNetwork} from "../../shared/types/network";
 
+// Fields that only take effect on a new connection
+const connectionFields = [
+	"host",
+	"port",
+	"tls",
+	"rejectUnauthorized",
+	"password",
+	"username",
+	"sasl",
+	"saslAccount",
+	"saslPassword",
+	"proxyEnabled",
+	"proxyHost",
+	"proxyPort",
+	"proxyUsername",
+	"proxyPassword",
+] as const;
+
 // Replies to /ping after this long are no longer reported as round trip times
 const PING_TIMEOUT = 5 * 60 * 1000;
 
@@ -414,6 +432,7 @@ class Network {
 	}
 
 	edit(this: NetworkWithIrcFramework, client: Client, args: any) {
+		const oldConnection = _.pick(this, connectionFields);
 		const oldNetworkName = this.name;
 		const oldNick = this.nick;
 		const oldRealname = this.realname;
@@ -492,6 +511,24 @@ class Network {
 
 			if (this.irc.options?.gecos) {
 				this.irc.user.gecos = this.irc.options.gecos;
+			}
+
+			if (
+				!this.userDisconnected &&
+				!_.isEqual(oldConnection, _.pick(this, connectionFields))
+			) {
+				this.getLobby().pushMessage(
+					client,
+					new Msg({text: "Network settings changed, reconnecting..."}),
+					true
+				);
+
+				if (this.irc.connected) {
+					this.irc.once("close", () => this.irc.connect());
+					this.irc.quit("Reconnecting");
+				} else {
+					this.irc.connect();
+				}
 			}
 		}
 

@@ -415,6 +415,54 @@ describe("Network", function () {
 
 			expect(network.mediaPreviewBlocklist).to.deep.equal(["#nsfw"]);
 		});
+
+		const editConnected = (args: Record<string, unknown>) => {
+			const attr = {
+				nick: "nick",
+				host: "irc.example.com",
+				port: 6697,
+				tls: true,
+				rejectUnauthorized: true,
+				username: "u",
+				proxyPort: 1080,
+			};
+			const network = new Network(attr);
+			const irc = {
+				connected: true,
+				options: {},
+				user: {},
+				network: {cap: {isEnabled: () => false}},
+				changeNick: sinon.spy(),
+				raw: sinon.spy(),
+				connect: sinon.spy(),
+				quit: sinon.spy(),
+				once: sinon.spy((event: string, cb: () => void) => cb()),
+			};
+			network.irc = irc as any;
+			(network as any).edit(
+				{emit() {}, save() {}, config: {browser: {}}},
+				{...attr, ...args}
+			);
+			return irc;
+		};
+
+		it("should not reconnect when only cosmetic fields change", function () {
+			const irc = editConnected({name: "New", nick: "nick2", realname: "x", commands: "/a"});
+			expect(irc.connect.called).to.be.false;
+			expect(irc.quit.called).to.be.false;
+			expect(irc.changeNick.calledWith("nick2")).to.be.true;
+		});
+
+		it("should reconnect when the proxy changes", function () {
+			const irc = editConnected({
+				proxyEnabled: true,
+				proxyHost: "127.0.0.1",
+				proxyPort: "1080",
+			});
+			expect(irc.quit.calledOnce).to.be.true;
+			expect(irc.connect.calledOnce).to.be.true;
+			expect(irc.options).to.have.property("socks");
+		});
 	});
 
 	describe("#isMediaPreviewBlocked(...names)", function () {
