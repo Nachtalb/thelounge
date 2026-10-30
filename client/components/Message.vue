@@ -99,7 +99,7 @@
 					><span></span
 				></span>
 				<StatusmsgMarker :group="message.statusmsgGroup" />
-				<ParsedMessage :network="network" :message="message" />
+				<ParsedMessage :network="network" :message="message" :highlight="highlight" />
 				<LinkPreview
 					v-for="preview in previews"
 					:key="preview.link"
@@ -163,6 +163,7 @@ export default defineComponent({
 		keepScrollPosition: Function as PropType<() => void>,
 		isPreviousSource: Boolean,
 		focused: Boolean,
+		highlight: String,
 	},
 	setup(props) {
 		const store = useStore();

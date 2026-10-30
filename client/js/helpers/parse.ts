@@ -2,6 +2,7 @@
 // @ts-nocheck
 
 import {h as createElement, VNode} from "vue";
+import escapeRegExp from "lodash/escapeRegExp";
 import parseStyle from "./ircmessageparser/parseStyle";
 import findChannels from "./ircmessageparser/findChannels";
 import {findLinks} from "../../../shared/linkify";
@@ -34,6 +35,7 @@ type StyledFragment = Fragment & {
 	underline?: boolean;
 	monospace?: boolean;
 	strikethrough?: boolean;
+	mark?: boolean;
 };
 
 // Create an HTML `span` with styling information for a given fragment
@@ -94,12 +96,44 @@ function createFragment(fragment: StyledFragment): VNode | string | undefined {
 		}
 	}
 
-	return hasData ? createElement("span", data, fragment.text) : fragment.text;
+	const el = hasData ? createElement("span", data, fragment.text) : fragment.text;
+	return fragment.mark ? createElement("mark", [el]) : el;
+}
+
+// Split style fragments at case-insensitive matches of `query` and flag the matched pieces
+function markQuery<T extends {start: number; end: number; text: string}>(
+	fragments: T[],
+	cleanText: string,
+	query: string
+): (T & {mark?: boolean})[] {
+	const matches = [...cleanText.matchAll(new RegExp(escapeRegExp(query), "gi"))]
+		.map((m) => [m.index, m.index + m[0].length])
+		.filter(([s, e]) => e > s);
+
+	return fragments.flatMap((f) => {
+		const cuts = matches.flat().filter((c) => c > f.start && c < f.end);
+		const points = [...new Set([f.start, ...cuts, f.end])].sort((a, b) => a - b);
+
+		if (points.length < 2) {
+			return [f];
+		}
+
+		return points.slice(1).map((end, i) => {
+			const start = points[i];
+			return {
+				...f,
+				start,
+				end,
+				text: f.text.slice(start - f.start, end - f.start),
+				mark: matches.some(([s, e]) => start >= s && end <= e),
+			};
+		});
+	});
 }
 
 // Transform an IRC message potentially filled with styling control codes, URLs,
 // nicknames, and channels into a string of HTML elements to display on the client.
-function parse(text: string, message?: ClientMessage, network?: ClientNetwork) {
+function parse(text: string, message?: ClientMessage, network?: ClientNetwork, highlight?: string) {
 	// Each line of a draft/multiline message is its own PRIVMSG on the wire, so
 	// parse them separately and join them with a <br>, which keeps per-line
 	// styling and lets the text wrap as usual.
@@ -108,18 +142,27 @@ function parse(text: string, message?: ClientMessage, network?: ClientNetwork) {
 			.split("\n")
 			.flatMap((line, i) =>
 				i === 0
-					? parseLine(line, message, network)
-					: [createElement("br"), ...parseLine(line, message, network)]
+					? parseLine(line, message, network, highlight)
+					: [createElement("br"), ...parseLine(line, message, network, highlight)]
 			);
 	}
 
-	return parseLine(text, message, network);
+	return parseLine(text, message, network, highlight);
 }
 
-function parseLine(text: string, message?: ClientMessage, network?: ClientNetwork) {
+function parseLine(
+	text: string,
+	message?: ClientMessage,
+	network?: ClientNetwork,
+	highlight?: string
+) {
 	// Extract the styling information and get the plain text version from it
-	const styleFragments = parseStyle(text);
+	let styleFragments = parseStyle(text);
 	const cleanText = styleFragments.map((fragment) => fragment.text).join("");
+
+	if (highlight) {
+		styleFragments = markQuery(styleFragments, cleanText, highlight);
+	}
 
 	// On the plain text, find channels and URLs, returned as "parts". Parts are
 	// arrays of objects containing start and end markers, as well as metadata
