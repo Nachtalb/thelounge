@@ -49,6 +49,15 @@ export async function makeThumb(data: Buffer, type: string) {
 	return thumb.length < data.length ? thumb : null;
 }
 
+// Display size of an image (EXIF rotation applied, first frame of an animation) and a tiny
+// copy the viewer shows blurred until the thumbnail is loaded
+export async function imageInfo(data: Buffer | string) {
+	const image = sharp(data).rotate();
+	const {width, height} = (await image.metadata()).autoOrient;
+	const tiny = await image.resize(10, 10, {fit: "inside"}).webp().toBuffer();
+	return {width, height, placeholder: `data:image/webp;base64,${tiny.toString("base64")}`};
+}
+
 let salt = "";
 
 class PreviewCache {
@@ -115,7 +124,20 @@ class PreviewCache {
 	}
 
 	async getPreview(url: string) {
-		return (await this.read(this.hash(url)))?.preview || null;
+		const preview = (await this.read(this.hash(url)))?.preview || null;
+
+		// Cached before the full image size and placeholder were recorded: made once
+		if (preview?.full && !preview.placeholder) {
+			const file = this.getPath(preview.full.split("/")[1], "img");
+			const info = await imageInfo(file).catch(() => null);
+
+			if (info?.width) {
+				Object.assign(preview, info);
+				void this.update(url, {preview});
+			}
+		}
+
+		return preview;
 	}
 
 	setPreview(url: string, preview: LinkPreview) {
