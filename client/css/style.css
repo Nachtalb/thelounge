@@ -3234,6 +3234,11 @@ option::checkmark {
 .irc-bg97 { background-color: #e2e2e2; }
 .irc-bg98 { background-color: #fff; }
 
+mark {
+	background-color: color-mix(in srgb, var(--highlight-border-color) 40%, transparent);
+	color: inherit;
+}
+
 .irc-bold {
 	font-weight: bold;
 }

@@ -76,6 +76,7 @@
 									:network="network"
 									:message="message"
 									:data-id="message.id"
+									:highlight="String(route.query.q || '')"
 								/>
 							</div>
 						</div>
