@@ -6398,6 +6398,11 @@ verror@^1.8.1:
     core-util-is "1.0.2"
     extsprintf "^1.2.0"
 
+virtua@0.54.0:
+  version "0.54.0"
+  resolved "https://registry.yarnpkg.com/virtua/-/virtua-0.54.0.tgz#a12579ce77d7e3ad3b836eeb609521cb6caecb69"
+  integrity sha512-8nGGrDhX61MDVeqgyIaWrJqhRm9z2Nqa1WDqt0tk1m+ZWrvLesMP0iL0vL6xNsLCF2jE2ohwY+PqufdbVmRgEw==
+
 vite@8.3.0:
   version "8.3.0"
   resolved "https://registry.yarnpkg.com/vite/-/vite-8.3.0.tgz#f9565cfd4879d58d28fa64d3c7aff3b372d2ccc8"

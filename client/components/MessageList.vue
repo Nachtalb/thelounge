@@ -18,41 +18,48 @@
 			aria-relevant="additions"
 			@copy="onCopy"
 		>
-			<template v-for="(message, id) in condensedMessages">
-				<DateMarker
-					v-if="shouldDisplayDateMarker(message, id)"
-					:key="message.id + '-date'"
-					:message="message as any"
-					:focused="message.id === focused"
-				/>
-				<div
-					v-if="shouldDisplayUnreadMarker(Number(message.id))"
-					:key="message.id + '-unread'"
-					class="unread-marker"
-				>
-					<span class="unread-marker-text" />
-				</div>
+			<Virtualizer
+				v-if="chat"
+				:key="channel.id"
+				ref="virtualizer"
+				:data="condensedMessages"
+				:scroll-ref="chat"
+				:start-margin="startMargin"
+				:shift="shift"
+				:buffer-size="1000"
+				@resize="onResize"
+			>
+				<template v-slot:default="{item: message, index: id}">
+					<div :key="rowKey(message)">
+						<DateMarker
+							v-if="shouldDisplayDateMarker(message, id)"
+							:message="message as any"
+							:focused="message.id === focused"
+						/>
+						<div v-if="id === unreadMarkerIndex" class="unread-marker">
+							<span class="unread-marker-text" />
+						</div>
 
-				<MessageCondensed
-					v-if="message.type === 'condensed'"
-					:key="message.messages[0].id"
-					:network="network"
-					:keep-scroll-position="keepScrollPosition"
-					:messages="message.messages"
-					:focused="message.id === focused"
-				/>
-				<Message
-					v-else
-					:key="message.id"
-					:channel="channel"
-					:network="network"
-					:message="message"
-					:keep-scroll-position="keepScrollPosition"
-					:is-previous-source="isPreviousSource(message, id)"
-					:focused="message.id === focused"
-					@toggle-link-preview="onLinkPreviewToggle"
-				/>
-			</template>
+						<MessageCondensed
+							v-if="message.type === 'condensed'"
+							:network="network"
+							:keep-scroll-position="keepScrollPosition"
+							:messages="message.messages"
+							:focused="message.id === focused"
+						/>
+						<Message
+							v-else
+							:channel="channel"
+							:network="network"
+							:message="message"
+							:keep-scroll-position="keepScrollPosition"
+							:is-previous-source="isPreviousSource(message, id)"
+							:focused="message.id === focused"
+							@toggle-link-preview="onLinkPreviewToggle"
+						/>
+					</div>
+				</template>
+			</Virtualizer>
 		</div>
 	</div>
 </template>
@@ -68,12 +75,12 @@ import socket from "../js/socket";
 import Message from "./Message.vue";
 import MessageCondensed from "./MessageCondensed.vue";
 import DateMarker from "./DateMarker.vue";
+import {Virtualizer} from "virtua/vue";
 import {
 	computed,
 	defineComponent,
 	nextTick,
 	onBeforeUnmount,
-	onBeforeUpdate,
 	onMounted,
 	onUnmounted,
 	PropType,
@@ -90,15 +97,13 @@ type CondensedMessageContainer = {
 	id?: number;
 };
 
-// TODO; move into component
-let unreadMarkerShown = false;
-
 export default defineComponent({
 	name: "MessageList",
 	components: {
 		Message,
 		MessageCondensed,
 		DateMarker,
+		Virtualizer,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -111,12 +116,13 @@ export default defineComponent({
 		const chat = ref<HTMLDivElement | null>(null);
 		const loadMoreButton = ref<HTMLButtonElement | null>(null);
 		const historyObserver = ref<IntersectionObserver | null>(null);
-		const skipNextScrollEvent = ref(false);
+		const virtualizer = ref<InstanceType<typeof Virtualizer> | null>(null);
+		const startMargin = ref(0);
+		const shift = ref(false);
 
 		const isWaitingForNextTick = ref(false);
 
 		const jumpToBottom = () => {
-			skipNextScrollEvent.value = true;
 			props.channel.scrolledToBottom = true;
 
 			const el = chat.value;
@@ -242,14 +248,24 @@ export default defineComponent({
 			);
 		};
 
-		const shouldDisplayUnreadMarker = (id: number) => {
-			if (!unreadMarkerShown && id > props.channel.firstUnread) {
-				unreadMarkerShown = true;
-				return true;
-			}
+		const unreadMarkerIndex = computed(() =>
+			condensedMessages.value.findIndex((m) => Number(m.id) > props.channel.firstUnread)
+		);
 
-			return false;
-		};
+		const rowKey = (message: ClientMessage | CondensedMessageContainer) =>
+			message.type === "condensed" ? message.messages[0].id : message.id;
+
+		// Tell the virtualizer when older messages were prepended so it keeps the position
+		watch(
+			() => {
+				const m = condensedMessages.value;
+				return m.length ? [rowKey(m[0]), rowKey(m[m.length - 1])] : [];
+			},
+			(keys, old) => {
+				shift.value = !!old.length && keys[0] !== old[0] && keys[1] === old[1];
+			},
+			{flush: "pre"}
+		);
 
 		const isPreviousSource = (currentMessage: ClientMessage, id: number) => {
 			const previousMessage = condensedMessages.value[id - 1];
@@ -282,20 +298,8 @@ export default defineComponent({
 				return;
 			}
 
+			// Older messages are kept in place by the virtualizer (shift)
 			if (!props.channel.scrolledToBottom) {
-				if (props.channel.historyLoading) {
-					const heightOld = el.scrollHeight - el.scrollTop;
-
-					isWaitingForNextTick.value = true;
-
-					await nextTick();
-
-					isWaitingForNextTick.value = false;
-					skipNextScrollEvent.value = true;
-
-					el.scrollTop = el.scrollHeight - heightOld;
-				}
-
 				return;
 			}
 
@@ -318,21 +322,48 @@ export default defineComponent({
 			});
 		};
 
-		const handleScroll = () => {
-			// Setting scrollTop also triggers scroll event
-			// We don't want to perform calculations for that
-			if (skipNextScrollEvent.value) {
-				skipNextScrollEvent.value = false;
-				return;
-			}
+		let lastScrollTop = 0;
 
+		// Ask for older messages well before the top is reached (slow connections),
+		// one request at a time and again as soon as one lands
+		const loadOlderIfNear = () => {
+			const el = chat.value;
+
+			if (
+				el &&
+				!props.channel.scrolledToBottom &&
+				props.channel.moreHistoryAvailable &&
+				!props.channel.historyLoading &&
+				el.scrollTop < el.clientHeight * 3
+			) {
+				requestOlderMessages(props.channel);
+			}
+		};
+
+		watch(
+			() => props.channel.historyLoading,
+			(loading) => !loading && loadOlderIfNear()
+		);
+
+		const handleScroll = () => {
 			const el = chat.value;
 
 			if (!el) {
 				return;
 			}
 
+			// The virtualizer scrolls down when rows above the view grow (e.g. narrower window),
+			// only scrolling up leaves the bottom
+			const scrolledUp = el.scrollTop < lastScrollTop;
+			lastScrollTop = el.scrollTop;
+
+			if (props.channel.scrolledToBottom && !scrolledUp) {
+				jumpToBottom();
+				return;
+			}
+
 			props.channel.scrolledToBottom = el.scrollHeight - el.scrollTop - el.offsetHeight <= 30;
+			loadOlderIfNear();
 		};
 
 		const handleResize = () => {
@@ -342,10 +373,51 @@ export default defineComponent({
 			}
 		};
 
+		// Rows are measured once rendered (images, previews), so stick to the bottom again
+		const onResize = () => {
+			const list = virtualizer.value?.$el as HTMLElement | undefined;
+
+			if (list && chat.value) {
+				startMargin.value =
+					list.getBoundingClientRect().top -
+					chat.value.getBoundingClientRect().top +
+					chat.value.scrollTop;
+			}
+
+			void keepScrollPosition();
+		};
+
+		// Only rows near the viewport are rendered, so scroll the row into view
+		// first and then return the element (e.g. to highlight it)
+		const scrollToMessage = async (id: number) => {
+			const index = condensedMessages.value.findIndex(
+				(m) =>
+					m.id === id || (m.type === "condensed" && m.messages.some((c) => c.id === id))
+			);
+
+			if (index < 0 || !virtualizer.value) {
+				return null;
+			}
+
+			virtualizer.value.scrollToIndex(index, {align: "center"});
+			await new Promise((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(resolve))
+			);
+
+			const el = document.getElementById(`msg-${id}`);
+			el?.scrollIntoView({block: "center"});
+			return el;
+		};
+
+		const onScrollToMessage = (id: number, done?: (el: HTMLElement) => void) => {
+			void scrollToMessage(id).then((el) => el && done?.(el));
+		};
+
 		onMounted(() => {
 			chat.value?.addEventListener("scroll", handleScroll, {passive: true});
 
 			eventbus.on("resize", handleResize);
+			eventbus.on("scroll-to-message", onScrollToMessage);
 
 			void nextTick(() => {
 				if (historyObserver.value && loadMoreButton.value) {
@@ -383,12 +455,9 @@ export default defineComponent({
 			}
 		);
 
-		onBeforeUpdate(() => {
-			unreadMarkerShown = false;
-		});
-
 		onBeforeUnmount(() => {
 			eventbus.off("resize", handleResize);
+			eventbus.off("scroll-to-message", onScrollToMessage);
 			chat.value?.removeEventListener("scroll", handleScroll);
 		});
 
@@ -406,7 +475,13 @@ export default defineComponent({
 			onCopy,
 			condensedMessages,
 			shouldDisplayDateMarker,
-			shouldDisplayUnreadMarker,
+			unreadMarkerIndex,
+			rowKey,
+			virtualizer,
+			startMargin,
+			shift,
+			onResize,
+			scrollToMessage,
 			keepScrollPosition,
 			isPreviousSource,
 			jumpToBottom,

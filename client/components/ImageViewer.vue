@@ -219,7 +219,7 @@ export default defineComponent({
 
 			closeViewer();
 
-			document.getElementById(`msg-${message.id}`)?.scrollIntoView({block: "center"});
+			eventbus.emit("scroll-to-message", message.id);
 		};
 
 		const openLink = () => {
