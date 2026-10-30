@@ -611,6 +611,15 @@ class Client {
 		const chan = target.chan;
 		let messages: Msg[] = [];
 		let index = 0;
+		const until = typeof data.untilTime === "number" ? data.untilTime : undefined;
+		const first = chan.messages[0]?.time.getTime() ?? Date.now();
+
+		// Jumping to a message older than the in-memory history: load the gap from the database
+		if (until !== undefined && until < first && client.messageProvider) {
+			chan.messages = client.messageProvider
+				.getMessagesBetween(target.network, chan, until, first, 50, () => client.idMsg++)
+				.concat(chan.messages);
+		}
 
 		// If client requests -1, send last 100 messages
 		if (data.lastId < 0) {
@@ -643,6 +652,16 @@ class Client {
 				}
 			} else {
 				startIndex = Math.max(0, index - 100);
+			}
+
+			// Send everything back to the requested time, plus 50 messages of context
+			const untilIndex =
+				until === undefined
+					? -1
+					: chan.messages.findIndex((m) => m.time.getTime() >= until);
+
+			if (untilIndex >= 0) {
+				startIndex = Math.min(startIndex, Math.max(0, untilIndex - 50));
 			}
 
 			messages = chan.messages.slice(startIndex, index);

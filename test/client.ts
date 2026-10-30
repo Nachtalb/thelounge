@@ -5,6 +5,8 @@ import {ChanType} from "../shared/types/chan";
 import ClientManager from "../server/clientManager";
 import Client from "../server/client";
 import log from "../server/log";
+import Msg from "../server/models/msg";
+import MessageStorage from "../server/plugins/messageStorage/sqlite";
 
 import sinon from "ts-sinon";
 
@@ -127,5 +129,44 @@ describe("Client", function () {
 		expect(network.channels[1].type).to.equal(ChanType.QUERY);
 		expect(network.channels[2].name).to.equal("&foobar");
 		expect(network.channels[2].type).to.equal(ChanType.CHANNEL);
+	});
+
+	it("should load history back to a requested time, from the database if needed", function () {
+		const store = new MessageStorage("testUser");
+		store._enable(":memory:");
+		const network = {uuid: "net"} as any;
+		const chan = {id: 1, name: "#chan", messages: [] as Msg[]} as any;
+
+		for (let i = 0; i < 300; i++) {
+			const msg = new Msg({time: new Date(1000 + i), text: `msg ${i}`});
+			store.index(network, chan, msg);
+
+			// only the newest 200 are in memory
+			if (i >= 100) {
+				msg.id = i;
+				chan.messages.push(msg);
+			}
+		}
+
+		const fake = {find: () => ({network, chan}), messageProvider: store, idMsg: 1000};
+		const more = (data: any) =>
+			Client.prototype.more.call(fake as any, data)!.messages.map((m) => m.text);
+
+		// target in memory: everything from 50 messages before it up to lastId
+		let texts = more({target: 1, lastId: 290, untilTime: 1000 + 150});
+		expect(texts[0]).to.equal("msg 100");
+		expect(texts.at(-1)).to.equal("msg 289");
+
+		// target only in the database: loaded into memory with 50 messages of context
+		texts = more({target: 1, lastId: 100, untilTime: 1000 + 70});
+		expect(texts[0]).to.equal("msg 20");
+		expect(texts.at(-1)).to.equal("msg 99");
+		expect(chan.messages).to.have.lengthOf(280);
+
+		// scrolling up continues from the loaded messages
+		texts = more({target: 1, lastId: chan.messages[0].id});
+		expect(texts).to.have.lengthOf(0);
+
+		store.close();
 	});
 });

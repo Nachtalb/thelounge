@@ -118,6 +118,23 @@ export const rollbacks: Rollback[] = [
 	},
 ];
 
+type MessageRow = {msg: string; type: string; time: number; msgid: string | null};
+
+function rowToMsg(row: MessageRow, id: number) {
+	const msg = JSON.parse(row.msg);
+	msg.time = row.time;
+	msg.type = row.type;
+
+	if (row.msgid) {
+		msg.msgid = row.msgid;
+	}
+
+	const newMsg = new Msg(msg);
+	newMsg.id = id;
+
+	return newMsg;
+}
+
 // exported for tests
 export const getMessagesQuery =
 	"SELECT msg, type, time, msgid FROM messages WHERE network = ? AND channel = ? ORDER BY time DESC, id DESC LIMIT ?";
@@ -426,27 +443,42 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 		const rows = this.database
 			.prepare(getMessagesQuery)
-			.all(network.uuid, channel.name.toLowerCase(), limit) as {
-			msg: string;
-			type: string;
-			time: number;
-			msgid: string | null;
-		}[];
+			.all(network.uuid, channel.name.toLowerCase(), limit) as MessageRow[];
 
-		return rows.reverse().map((row): Message => {
-			const msg = JSON.parse(row.msg);
-			msg.time = row.time;
-			msg.type = row.type;
+		return rows.reverse().map((row) => rowToMsg(row, nextID()));
+	}
 
-			if (row.msgid) {
-				msg.msgid = row.msgid;
-			}
+	// Messages from `context` messages before `from` up to `to` (exclusive), oldest first
+	getMessagesBetween(
+		network: Network,
+		channel: Channel,
+		from: number,
+		to: number,
+		context: number,
+		nextID: () => number
+	): Message[] {
+		if (!this.isEnabled) {
+			return [];
+		}
 
-			const newMsg = new Msg(msg);
-			newMsg.id = nextID();
+		const where = "network = ? AND channel = ?";
+		const rows = this.database
+			.prepare(
+				`SELECT msg, type, time, msgid FROM messages WHERE ${where} AND time < ? AND time >= COALESCE(` +
+					`(SELECT time FROM messages WHERE ${where} AND time < ? ORDER BY time DESC LIMIT 1 OFFSET ?), 0` +
+					") ORDER BY time ASC, id ASC"
+			)
+			.all(
+				network.uuid,
+				channel.name.toLowerCase(),
+				to,
+				network.uuid,
+				channel.name.toLowerCase(),
+				from,
+				context - 1
+			) as MessageRow[];
 
-			return newMsg;
-		});
+		return rows.map((row) => rowToMsg(row, nextID()));
 	}
 
 	search(query: SearchQuery): SearchResponse {
