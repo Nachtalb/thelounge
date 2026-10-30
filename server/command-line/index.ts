@@ -65,7 +65,7 @@ function createPackagesFolder() {
 	const packagesPath = Config.getPackagesPath();
 	const packagesConfig = path.join(packagesPath, "package.json");
 
-	// Create node_modules folder, otherwise yarn will start walking upwards to find one
+	// Create node_modules folder, otherwise bun will start walking upwards to find one
 	fs.mkdirSync(path.join(packagesPath, "node_modules"), {recursive: true});
 
 	// Create package.json with private set to true, if it doesn't exist already

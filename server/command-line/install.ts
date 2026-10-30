@@ -40,8 +40,8 @@ program
 
 		if (packageName.startsWith("file:")) {
 			isLocalFile = true;
-			// our yarn invocation sets $HOME to the cachedir, so we must expand ~ now
-			// else the path will be invalid when npm expands it.
+			// our bun invocation sets $HOME to the cachedir, so we must expand ~ now
+			// else the path will be invalid when bun expands it.
 			packageName = expandTildeInLocalPath(packageName);
 			readFile = fspromises
 				.readFile(path.join(packageName.substring("file:".length), "package.json"), "utf-8")
@@ -96,19 +96,10 @@ program
 				}
 
 				log.info(`Installing ${colors.green(humanVersion)}...`);
-				const yarnVersion = isLocalFile ? packageName : `${json.name}@${json.version}`;
-				return Utils.executeYarnCommand("add", "--exact", yarnVersion)
+				const bunVersion = isLocalFile ? packageName : `${json.name}@${json.version}`;
+				return Utils.executeBunCommand("add", "--exact", bunVersion)
 					.then(() => {
 						log.info(`${colors.green(humanVersion)} has been successfully installed.`);
-
-						if (isLocalFile) {
-							// yarn v1 is buggy if a local filepath is used and doesn't update
-							// the lockfile properly. We need to run an install in that case
-							// even though that's supposed to be done by the add subcommand
-							return Utils.executeYarnCommand("install").catch((err) => {
-								throw `Failed to update lockfile after package install ${err}`;
-							});
-						}
 					})
 					.catch((code) => {
 						throw `Failed to install ${colors.red(humanVersion)}. Exit code: ${code}`;

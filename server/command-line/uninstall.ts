@@ -30,7 +30,7 @@ program
 		log.info(`Uninstalling ${colors.green(packageName)}...`);
 
 		try {
-			await Utils.executeYarnCommand("remove", packageName);
+			await Utils.executeBunCommand("remove", packageName);
 			log.info(`${colors.green(packageName)} has been successfully uninstalled.`);
 		} catch (code_1) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
