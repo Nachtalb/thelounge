@@ -689,7 +689,7 @@ class Network {
 		// https://ircv3.net/specs/extensions/sts#rescheduling-expiry-on-disconnect
 		STSPolicies.refreshExpiration(this.host);
 
-		this.irc.quit(quitMessage || this.leaveMessage || Config.values.leaveMessage);
+		this.irc.quit(quitMessage || Config.getLeaveMessage(this.leaveMessage));
 	}
 
 	exportForEdit() {

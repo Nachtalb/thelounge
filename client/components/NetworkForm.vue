@@ -247,7 +247,7 @@
 					autocomplete="off"
 					class="input"
 					name="leaveMessage"
-					placeholder="The Lounge - https://thelounge.chat"
+					placeholder="The Lounge, maintained out of spite - https://github.com/Nachtalb/thelounge"
 				/>
 			</div>
 			<template v-if="defaults.uuid && !store.state.serverConfiguration?.public">

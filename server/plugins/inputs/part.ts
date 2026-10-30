@@ -41,7 +41,7 @@ const input: PluginInputHandler = function (network, chan, cmd, args) {
 	) {
 		this.part(network, target);
 	} else {
-		const partMessage = args.join(" ") || network.leaveMessage || Config.values.leaveMessage;
+		const partMessage = args.join(" ") || Config.getLeaveMessage(network.leaveMessage);
 		network.irc.part(target.name, partMessage);
 	}
 
