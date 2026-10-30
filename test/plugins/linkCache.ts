@@ -52,7 +52,10 @@ describe("Link plugin with preview cache", function () {
 			"/broken.jpg",
 			(_req: any, res: any) => void res.type("image/jpeg").send("not a jpeg")
 		);
-		app.get("/preview-cache/:hash", (req: any, res: any) => void routeCachedImage(req, res));
+		app.get(
+			"/preview-cache/:hash",
+			util.webRoute((req, params) => routeCachedImage(req, params.hash))
+		);
 
 		await new Promise<void>((resolve) => {
 			connection = app.listen(0, "127.0.0.1", () => {
