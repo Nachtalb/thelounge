@@ -271,22 +271,17 @@ describe("prefetchProxy", function () {
 		const proxy = createHttpProxy(seen);
 		const proxyPort = await listen(proxy);
 		const app = util.createWebserver();
-		app.get("/page", (_req: any, res: any) => {
-			res.send("<title>cached</title><meta property='og:image' content='/image.png'>");
-		});
-		app.get("/image.png", (_req: any, res: any) => {
-			res.sendFile(path.resolve("client/public/img/logo-grey-bg-120x120px.png"));
-		});
-		app.get("/history", (_req: any, res: any) => {
-			res.send("<title>history</title>");
-		});
-		app.get(
-			"/preview-cache/:hash",
-			util.webRoute((req, params) => routeCachedImage(req, params.hash))
+		app.get("/page", () =>
+			util.send("<title>cached</title><meta property='og:image' content='/image.png'>")
 		);
-		const server = app.listen(0, "127.0.0.1");
-		await new Promise((resolve) => server.once("listening", resolve));
-		const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+		app.get(
+			"/image.png",
+			() =>
+				new Response(Bun.file(path.resolve("client/public/img/logo-grey-bg-120x120px.png")))
+		);
+		app.get("/history", () => util.send("<title>history</title>"));
+		app.get("/preview-cache/:hash", (req, params) => routeCachedImage(req, params.hash));
+		const base = app.url("").slice(0, -1);
 		Config.values.prefetchProxy = `http://127.0.0.1:${proxyPort}`;
 		Config.values.prefetchCache = true;
 
@@ -316,7 +311,7 @@ describe("prefetchProxy", function () {
 			Config.values.prefetchCache = false;
 			await previewCache.flush();
 			fs.rmSync(Config.getPreviewCachePath(), {recursive: true, force: true});
-			await Promise.all([close(proxy), close(server)]);
+			await Promise.all([close(proxy), app.stop()]);
 		}
 	});
 
