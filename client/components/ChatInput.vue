@@ -107,6 +107,7 @@ import {isInputPreviewShown} from "../js/helpers/inputPreviews";
 import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
+import jumpToMessage from "../js/helpers/jumpToMessage";
 import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
@@ -338,17 +339,7 @@ export default defineComponent({
 		});
 
 		const jumpToReply = () => {
-			const msgid = props.channel.replyingTo?.msgid;
-			const msg = props.channel.messages.find((m) => m.msgid === msgid);
-
-			if (msg) {
-				eventbus.emit("scroll-to-message", msg.id, (el: HTMLElement) => {
-					if (!el.classList.contains("highlight")) {
-						el.classList.add("highlight");
-						setTimeout(() => el.classList.remove("highlight"), 2000);
-					}
-				});
-			}
+			void jumpToMessage(props.channel, {msgid: props.channel.replyingTo?.msgid});
 		};
 
 		const onReplyStart = (data: {msgid: string; nick: string; text: string}) => {

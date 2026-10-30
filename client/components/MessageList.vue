@@ -417,7 +417,7 @@ export default defineComponent({
 		// Only rows near the viewport are rendered, so let the virtualizer scroll to the row.
 		// Eases the last bit (all of it within two screens, else half a screen) relative to
 		// the row, so rows loading or resizing on the way can't throw it off; instant with
-		// reduced motion. Returns the element once landed (e.g. to highlight it)
+		// reduced motion. Driven by jumpToMessage, which also highlights the row
 		const scrollToMessage = async (id: number) => {
 			const index = condensedMessages.value.findIndex(
 				(m) =>
@@ -426,7 +426,7 @@ export default defineComponent({
 			const v = virtualizer.value;
 
 			if (index < 0 || !v) {
-				return null;
+				return;
 			}
 
 			const jump = ++jumping;
@@ -461,18 +461,13 @@ export default defineComponent({
 			chat.value?.removeEventListener("wheel", stop);
 			chat.value?.removeEventListener("touchstart", stop);
 
-			if (jump !== jumping) {
-				return null;
+			if (jump === jumping) {
+				jumping = 0;
+				loadOlderIfNear();
 			}
-
-			jumping = 0;
-			loadOlderIfNear();
-			return document.getElementById(`msg-${id}`);
 		};
 
-		const onScrollToMessage = (id: number, done?: (el: HTMLElement) => void) => {
-			void scrollToMessage(id).then((el) => el && done?.(el));
-		};
+		const onScrollToMessage = (id: number) => void scrollToMessage(id);
 
 		onMounted(() => {
 			chat.value?.addEventListener("scroll", handleScroll, {passive: true});
