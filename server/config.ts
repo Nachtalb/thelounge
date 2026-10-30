@@ -289,7 +289,7 @@ class Config {
 		if (!manifestExists && process.env.NODE_ENV !== "test") {
 			log.error(
 				`The client application was not built. Run ${colors.bold(
-					"NODE_ENV=production yarn build"
+					"NODE_ENV=production bun run build"
 				)} to resolve this.`
 			);
 			process.exit(1);

@@ -78,9 +78,7 @@ export default async function (
 	}
 ) {
 	log.info(`The Lounge ${colors.green(Helper.getVersion())} \
-(Node.js ${colors.green(process.versions.node)} on ${colors.green(process.platform)} ${
-		process.arch
-	})`);
+(Bun ${colors.green(process.versions.bun)} on ${colors.green(process.platform)} ${process.arch})`);
 	log.info(`Configuration file: ${colors.green(Config.getConfigPath())}`);
 
 	const staticOptions = {

@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    name: Node on ${{ matrix.os }}
+    name: Bun on ${{ matrix.os }}
 
     strategy:
       matrix:
@@ -24,11 +24,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: ".node-version"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -60,11 +55,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: ".node-version"
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -85,7 +75,7 @@ jobs:
           NODE_ENV: production
 
       - name: Pack the npm package
-        run: npm pack
+        run: bun pm pack
 
       # #5114: ensure the packed tarball contains every file needed at runtime.
       - name: Smoke-test the packaged binary
@@ -93,6 +83,6 @@ jobs:
           mkdir -p /tmp/thelounge-pack
           tar xzf thelounge-*.tgz -C /tmp/thelounge-pack
           ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/thelounge-pack/package/node_modules
-          version="$(node /tmp/thelounge-pack/package/index.js --version)"
+          version="$(bun /tmp/thelounge-pack/package/index.js --version)"
           echo "thelounge --version => $version"
           echo "$version" | grep -Eq 'v?[0-9]+\.[0-9]+\.[0-9]+'

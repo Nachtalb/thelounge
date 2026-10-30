@@ -8,13 +8,10 @@
     "../defaults/config.js",
     "../package.json"
   ] /* If no 'files' or 'include' property is present in a tsconfig.json, the compiler defaults to including all files in the containing directory and subdirectories except those specified by 'exclude'. When a 'files' property is specified, only those files and those specified by 'include' are included. */,
-  "types": [
-    "node"
-  ] /* Specify type package names to be included without being referenced in a source file. */,
-  "ts-node": {
-    "files": true
-  },
   "compilerOptions": {
+    "types": [
+      "bun"
+    ] /* Specify type package names to be included without being referenced in a source file. */,
     "noEmit": false /* Disable emitting file from a compilation. See more: https://www.typescriptlang.org/tsconfig#noEmit */,
     // TODO: Remove eventually
     "noImplicitAny": false /*Enable error reporting for expressions and declarations with an implied any type. See more: https://www.typescriptlang.org/tsconfig#noImplicitAny */

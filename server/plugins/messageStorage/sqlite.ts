@@ -1,4 +1,4 @@
-import {DatabaseSync} from "node:sqlite";
+import {Database} from "bun:sqlite";
 
 import log from "../../log";
 import path from "path";
@@ -124,7 +124,7 @@ export const getMessagesQuery =
 
 class SqliteMessageStorage implements SearchableMessageStorage {
 	isEnabled: boolean;
-	database!: DatabaseSync;
+	database!: Database;
 	userName: string;
 
 	constructor(userName: string) {
@@ -133,7 +133,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 	}
 
 	_enable(connection_string: string) {
-		this.database = new DatabaseSync(connection_string);
+		this.database = new Database(connection_string);
 
 		try {
 			this.run_migrations();
@@ -173,9 +173,9 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 		const version = this.database
 			.prepare("SELECT value FROM options WHERE name = 'schema_version'")
-			.get() as {value: string} | undefined;
+			.get() as {value: string} | null;
 
-		if (version === undefined) {
+		if (!version) {
 			// technically shouldn't happen, means something created a schema but didn't populate it
 			// we'll try our best to recover
 			return 0;
@@ -244,7 +244,8 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		}
 
 		this.isEnabled = false;
-		this.database.close();
+		// true finalizes open statements, else Windows keeps the file locked until GC
+		this.database.close(true);
 	}
 
 	fetch_rollbacks(since_version: number): Rollback[] {

@@ -40,7 +40,7 @@
 
 - **Modern features brought to IRC.** Push notifications, link previews, new message markers, and more bring IRC to the 21st century.
 - **Always connected.** Remains connected to IRC servers while you are offline.
-- **Cross platform.** It doesn't matter what OS you use, it just works wherever Node.js runs.
+- **Cross platform.** It doesn't matter what OS you use, it just works wherever Bun runs.
 - **Responsive interface.** The client works smoothly on every desktop, smartphone and tablet.
 - **Synchronized experience.** Always resume where you left off no matter what device.
 
@@ -50,7 +50,7 @@ The Lounge is the official and community-managed fork of [Shout](https://github.
 
 ## Installation and usage
 
-The Lounge requires latest [Node.js](https://nodejs.org/) LTS version or more recent.
+The Lounge requires [Bun](https://bun.sh/) 1.4 or more recent.
 The [Yarn package manager](https://yarnpkg.com/) is also recommended.
 If you want to install with npm, `--unsafe-perm` is required for a correct install.
 
@@ -70,7 +70,7 @@ NODE_ENV=production bun run build
 bun start
 ```
 
-When installed like this, `thelounge` executable is not created. Use `node index <command>` to run commands.
+When installed like this, `thelounge` executable is not created. Use `bun index <command>` to run commands.
 
 ⚠️ While it is the most recent codebase, this is not production-ready! Run at
 your own risk. It is also not recommended to run this as root.
