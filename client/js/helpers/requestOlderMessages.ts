@@ -2,9 +2,9 @@ import socket from "../socket";
 import {store} from "../store";
 import {ClientChan} from "../types";
 
-// Ask the server for the messages before the oldest loaded one,
+// Ask the server for the messages before the oldest loaded one (back to untilTime if given),
 // returns false if no request was sent
-export default function requestOlderMessages(channel: ClientChan) {
+export default function requestOlderMessages(channel: ClientChan, untilTime?: number) {
 	if (!store.state.isConnected || channel.historyLoading) {
 		return false;
 	}
@@ -26,6 +26,7 @@ export default function requestOlderMessages(channel: ClientChan) {
 		target: channel.id,
 		lastId: lastMessage,
 		condensed: store.state.settings.statusMessages !== "shown",
+		untilTime,
 	});
 
 	return true;

@@ -1,25 +1,13 @@
 import {store} from "../store";
-import {router} from "../router";
+import {search} from "../helpers/chatSearch";
 
 export function input(args: string[]): boolean {
-	if (!store.state.settings.searchEnabled) {
+	const active = store.state.activeChannel;
+
+	if (!store.state.settings.searchEnabled || !active) {
 		return false;
 	}
 
-	router
-		.push({
-			name: "SearchResults",
-			params: {
-				id: store.state.activeChannel?.channel.id,
-			},
-			query: {
-				q: args.join(" "),
-			},
-		})
-		.catch((e: Error) => {
-			// eslint-disable-next-line no-console
-			console.error(`Failed to push SearchResults route: ${e.message}`);
-		});
-
+	void search(active.network, active.channel, args.join(" ").trim());
 	return true;
 }
