@@ -1958,6 +1958,14 @@ textarea.input {
 	overflow: visible;
 }
 
+#chat .msg .reply-context-thumb {
+	width: 1.4em;
+	height: 1.4em;
+	border-radius: 2px;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
 #chat .msg .reply-context-nick {
 	font-weight: 700;
 	flex-shrink: 0;
@@ -2014,6 +2022,15 @@ textarea.input {
 	line-height: 1.35;
 	width: 100%;
 	cursor: pointer;
+}
+
+#form .reply-bar-thumb {
+	width: 36px;
+	height: 36px;
+	margin-right: 8px;
+	border-radius: 4px;
+	object-fit: cover;
+	flex-shrink: 0;
 }
 
 #form .reply-bar-text {

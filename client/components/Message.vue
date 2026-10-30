@@ -46,6 +46,7 @@
 					v-if="message.replyTo"
 					:message="message"
 					:parent-in-history="parentInHistory"
+					:media="parentMedia"
 					@scroll-to-parent="scrollToParent"
 				/>
 				<StatusmsgMarker :group="message.statusmsgGroup" />
@@ -91,6 +92,7 @@
 					v-if="message.replyTo"
 					:message="message"
 					:parent-in-history="parentInHistory"
+					:media="parentMedia"
 					@scroll-to-parent="scrollToParent"
 				/>
 				<span
@@ -134,6 +136,7 @@ import Username from "./Username.vue";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import ReplyContext from "./ReplyContext.vue";
+import {replyMedia} from "../js/helpers/replyMedia";
 import MessageTypes from "./MessageTypes";
 import StatusmsgMarker from "./StatusmsgMarker.vue";
 
@@ -219,6 +222,13 @@ export default defineComponent({
 			}
 
 			return props.channel.messages.some((m) => m.msgid === props.message.replyTo);
+		});
+
+		const parentMedia = computed(() => {
+			const replyTo = props.message.replyTo;
+			return replyMedia(
+				replyTo ? props.channel?.messages.find((m) => m.msgid === replyTo) : undefined
+			);
 		});
 
 		const isAction = () => {
@@ -395,6 +405,7 @@ export default defineComponent({
 			messageComponent,
 			canReply,
 			parentInHistory,
+			parentMedia,
 			isAction,
 			startReply,
 			onDblClick,

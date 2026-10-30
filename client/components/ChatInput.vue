@@ -19,10 +19,16 @@
 			</template>
 		</div>
 		<div v-if="channel.replyingTo" class="reply-bar" @click="jumpToReply">
+			<img v-if="replyMedia" class="reply-bar-thumb" :src="replyMedia.thumb" alt="" />
 			<span class="reply-bar-text">
 				<span class="reply-bar-nick">Reply to {{ channel.replyingTo.nick }}</span>
-				<span class="reply-bar-msg"
-					><ParsedMessage :text="channel.replyingTo.text" :network="network"
+				<span v-if="replyMedia && !replyMedia.caption" class="reply-bar-msg">{{
+					replyMedia.kind
+				}}</span>
+				<span v-else class="reply-bar-msg"
+					><ParsedMessage
+						:text="replyMedia ? replyMedia.caption : channel.replyingTo.text"
+						:network="network"
 				/></span>
 			</span>
 			<button
@@ -101,6 +107,7 @@ import {isInputPreviewShown} from "../js/helpers/inputPreviews";
 import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
+import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
@@ -325,6 +332,11 @@ export default defineComponent({
 			props.channel.replyingTo = null;
 		};
 
+		const replyMedia = computed(() => {
+			const msgid = props.channel.replyingTo?.msgid;
+			return getReplyMedia(props.channel.messages.find((m) => m.msgid === msgid));
+		});
+
 		const jumpToReply = () => {
 			const msgid = props.channel.replyingTo?.msgid;
 			const msg = props.channel.messages.find((m) => m.msgid === msgid);
@@ -513,6 +525,7 @@ export default defineComponent({
 			onSubmit,
 			cancelReply,
 			jumpToReply,
+			replyMedia,
 		};
 	},
 });
