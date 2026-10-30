@@ -22,7 +22,7 @@
 					:channel="channel"
 					:network="network"
 					:message="message"
-					:highlight="chatSearch.query"
+					:highlight="searchHighlight"
 				/>
 			</div>
 		</template>
@@ -67,7 +67,13 @@ import DateMarker from "../DateMarker.vue";
 import {defineComponent, onMounted, PropType, ref} from "vue";
 import type {ClientChan, ClientNetwork} from "../../js/types";
 import {useStore} from "../../js/store";
-import {chatSearch, goTo, loadMore, searchResults} from "../../js/helpers/chatSearch";
+import {
+	chatSearch,
+	goTo,
+	loadMore,
+	searchHighlight,
+	searchResults,
+} from "../../js/helpers/chatSearch";
 
 // Popup listing every match of the in-channel search, newest first
 export default defineComponent({
@@ -114,6 +120,7 @@ export default defineComponent({
 			store,
 			list,
 			chatSearch,
+			searchHighlight,
 			searchResults,
 			shouldDisplayDateMarker,
 			onScroll,

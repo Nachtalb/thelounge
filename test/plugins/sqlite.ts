@@ -434,6 +434,38 @@ describe("SQLite Message Storage", function () {
 		}
 	});
 
+	it("should search messages by sender with @nick", function () {
+		const network = {uuid: "sender-search-network"} as any;
+		const channel = {name: "#channel"} as any;
+		const lines: [string, string][] = [
+			["Bob", "hello world"],
+			["bob", "bye world"],
+			["bobby", "hello there"],
+			["alice", "@bob hello"],
+		];
+
+		lines.forEach(([nick, text], i) =>
+			store.index(network, channel, new Msg({time: 223456789 + i, text, from: {nick}} as any))
+		);
+
+		const assertResults = (searchTerm: string, expected: string[]) => {
+			const search = store.search({
+				searchTerm,
+				networkUuid: network.uuid,
+				channelName: "#channel",
+				offset: 0,
+			});
+			expect(search.results.map((i) => i.text)).to.deep.equal(expected);
+		};
+
+		assertResults("@bob", ["hello world", "bye world"]);
+		assertResults("@BOB: hello", ["hello world"]);
+		assertResults("@bo", []);
+		assertResults("@b%", []);
+		assertResults("\\@bob", ["@bob hello"]);
+		assertResults('"@bob hello"', ["@bob hello"]);
+	});
+
 	it("should be able to downgrade", function () {
 		for (const rollback of rollbacks.slice().reverse()) {
 			if (rollback.rollback_forbidden) {

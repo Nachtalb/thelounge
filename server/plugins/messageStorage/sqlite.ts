@@ -10,6 +10,7 @@ import Helper from "../../helper";
 import type {SearchableMessageStorage, DeletionRequest} from "./types";
 import Network from "../../models/network";
 import {SearchQuery, SearchResponse} from "../../../shared/types/storage";
+import {parseSearchQuery} from "../../../shared/searchQuery";
 
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
@@ -490,12 +491,21 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 			);
 		}
 
-		// Using the '@' character to escape '%' and '_' in patterns.
-		const escapedSearchTerm = query.searchTerm.replace(/([%_@])/g, "@$1");
-
+		const {nick, text} = parseSearchQuery(query.searchTerm);
 		let select =
-			"SELECT msg, type, time, network, channel, msgid FROM messages WHERE type = 'message' AND json_extract(msg, '$.text') LIKE ? ESCAPE '@'";
-		const params: (string | number)[] = [`%${escapedSearchTerm}%`];
+			"SELECT msg, type, time, network, channel, msgid FROM messages WHERE type = 'message'";
+		const params: (string | number)[] = [];
+
+		if (nick) {
+			select += " AND json_extract(msg, '$.from.nick') = ? COLLATE NOCASE";
+			params.push(nick);
+		}
+
+		if (text) {
+			// Using the '@' character to escape '%' and '_' in patterns.
+			select += " AND json_extract(msg, '$.text') LIKE ? ESCAPE '@'";
+			params.push(`%${text.replace(/([%_@])/g, "@$1")}%`);
+		}
 
 		if (query.networkUuid) {
 			select += " AND network = ? ";
