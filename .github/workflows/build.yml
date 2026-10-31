@@ -43,8 +43,9 @@ jobs:
         env:
           NODE_ENV: production
 
+      # Lint results don't depend on the OS, so only Linux lints.
       - name: Test
-        run: bun run test
+        run: bun run ${{ runner.os == 'Linux' && 'test' || 'test:vitest' }}
 
   package:
     name: Packaged install smoke test
