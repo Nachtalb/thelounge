@@ -136,6 +136,7 @@ import Username from "./Username.vue";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import ReplyContext from "./ReplyContext.vue";
+import jumpToMessage from "../js/helpers/jumpToMessage";
 import {replyMedia} from "../js/helpers/replyMedia";
 import MessageTypes from "./MessageTypes";
 import StatusmsgMarker from "./StatusmsgMarker.vue";
@@ -168,7 +169,6 @@ export default defineComponent({
 	setup(props) {
 		const store = useStore();
 		let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-		let highlightTimer: ReturnType<typeof setTimeout> | null = null;
 		const msgEl = ref<HTMLElement | null>(null);
 		const swiping = ref(false);
 		let swipeStart: {x: number; y: number} | null = null;
@@ -259,31 +259,9 @@ export default defineComponent({
 		};
 
 		const scrollToParent = () => {
-			const replyTo = props.message.replyTo;
-			const parent = replyTo && props.channel?.messages.find((m) => m.msgid === replyTo);
-
-			if (!parent) {
-				return;
+			if (props.channel) {
+				void jumpToMessage(props.channel, {msgid: props.message.replyTo});
 			}
-
-			eventbus.emit("scroll-to-message", parent.id, (el: HTMLElement) => {
-				const wasHighlighted = el.classList.contains("highlight");
-
-				el.classList.add("highlight");
-
-				if (highlightTimer !== null) {
-					clearTimeout(highlightTimer);
-				}
-
-				highlightTimer = setTimeout(() => {
-					highlightTimer = null;
-
-					// We don't want to reset e.g. pings/keyword matches
-					if (!wasHighlighted) {
-						el.classList.remove("highlight");
-					}
-				}, 2000);
-			});
 		};
 
 		const resetSwipe = () => {
@@ -391,10 +369,6 @@ export default defineComponent({
 
 		onBeforeUnmount(() => {
 			clearLongPress();
-
-			if (highlightTimer !== null) {
-				clearTimeout(highlightTimer);
-			}
 		});
 
 		return {

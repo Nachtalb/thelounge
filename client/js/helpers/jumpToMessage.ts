@@ -4,14 +4,23 @@ import {store} from "../store";
 import requestOlderMessages from "./requestOlderMessages";
 import type {ClientChan} from "../types";
 
-type Target = {time: Date | string | number; text?: string};
+// A message by time (+ text), or by IRCv3 msgid (only if loaded, e.g. a reply's parent)
+type Target = {time?: Date | string | number; text?: string; msgid?: string};
 
-const timeOf = (m: {time: Date | string | number}) => new Date(m.time).getTime();
+const timeOf = (m: {time?: Date | string | number}) => new Date(m.time || 0).getTime();
 
 // Id of the message the last jump landed on, highlighted by the message list
 export const jumpTarget = ref(-1);
 
 export function findMessage<T extends Target>(messages: T[], target: Target) {
+	if (target.msgid) {
+		const message = messages.find((m) => m.msgid === target.msgid);
+
+		if (message || !target.time) {
+			return message;
+		}
+	}
+
 	const time = timeOf(target);
 	return (
 		messages.find((m) => timeOf(m) === time && m.text === target.text) ||
@@ -55,8 +64,20 @@ async function loadBackTo(channel: ClientChan, time: number) {
 	loadingBack.value = false;
 }
 
-// Open the channel, load history back to the message if needed and scroll to it
+// Open the channel, load history back to the message if needed, scroll to it and highlight it.
+// Every jump to a message goes through here
 export default async function jumpToMessage(channel: ClientChan, target: Target) {
+	// A msgid alone (a reply's parent) is only looked up in the loaded history
+	if (!target.time) {
+		const message = findMessage(channel.messages, target);
+
+		if (!message) {
+			return;
+		}
+
+		target = message;
+	}
+
 	if (store.state.activeChannel?.channel !== channel) {
 		// Imported here: the router imports the message list, which imports this file
 		const {navigate} = await import("../router");

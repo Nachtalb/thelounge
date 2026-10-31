@@ -96,6 +96,9 @@ import {
 import {useStore} from "../js/store";
 import {ClientChan, ClientMessage, ClientNetwork, ClientLinkPreview} from "../js/types";
 
+// Scrolling by the user (wheel, touch, keys, scrollbar) ends keeping a jump's row in place
+const userScrollEvents = ["wheel", "touchstart", "keydown", "mousedown"];
+
 type CondensedMessageContainer = {
 	type: "condensed";
 	time: Date;
@@ -128,7 +131,14 @@ export default defineComponent({
 
 		const isWaitingForNextTick = ref(false);
 
+		// The row a jump landed on stays put while rows around it load or resize (previews,
+		// history), until the user scrolls
+		let pinned: HTMLElement | null = null;
+		let pinnedTop = 0;
+		const unpin = () => (pinned = null);
+
 		const jumpToBottom = () => {
+			unpin();
 			props.channel.scrolledToBottom = true;
 
 			const el = chat.value;
@@ -331,6 +341,14 @@ export default defineComponent({
 		let lastScrollTop = 0;
 		let jumping = 0; // id of the running scrollToMessage, 0 = none
 
+		const keepPinned = async () => {
+			await nextTick(); // after the virtualizer moved the rows
+
+			if (pinned?.isConnected && chat.value) {
+				chat.value.scrollTop += pinned.getBoundingClientRect().top - pinnedTop;
+			}
+		};
+
 		// Ask for older messages well before the top is reached (slow connections),
 		// one request at a time and again as soon as one lands
 		const loadOlderIfNear = () => {
@@ -366,6 +384,11 @@ export default defineComponent({
 			const scrolledUp = el.scrollTop < lastScrollTop;
 			lastScrollTop = el.scrollTop;
 
+			if (pinned) {
+				loadOlderIfNear();
+				return;
+			}
+
 			if (props.channel.scrolledToBottom && !scrolledUp) {
 				jumpToBottom();
 				return;
@@ -394,6 +417,7 @@ export default defineComponent({
 			}
 
 			void keepScrollPosition();
+			void keepPinned();
 		};
 
 		// Resolves once the list stopped scrolling
@@ -417,7 +441,7 @@ export default defineComponent({
 		// Only rows near the viewport are rendered, so let the virtualizer scroll to the row.
 		// Eases the last bit (all of it within two screens, else half a screen) relative to
 		// the row, so rows loading or resizing on the way can't throw it off; instant with
-		// reduced motion. Returns the element once landed (e.g. to highlight it)
+		// reduced motion. Driven by jumpToMessage, which also highlights the row
 		const scrollToMessage = async (id: number) => {
 			const index = condensedMessages.value.findIndex(
 				(m) =>
@@ -426,11 +450,12 @@ export default defineComponent({
 			const v = virtualizer.value;
 
 			if (index < 0 || !v) {
-				return null;
+				return;
 			}
 
 			const jump = ++jumping;
 			const stop = () => (jumping = 0);
+			unpin();
 			props.channel.scrolledToBottom = false;
 			chat.value?.addEventListener("wheel", stop, {passive: true, once: true});
 			chat.value?.addEventListener("touchstart", stop, {passive: true, once: true});
@@ -457,25 +482,29 @@ export default defineComponent({
 				t = Math.min(1, (performance.now() - start) / 300);
 			}
 
+			if (jump === jumping) {
+				pinned = chat.value?.querySelector<HTMLElement>(`#msg-${id}`) || null;
+				pinnedTop = pinned?.getBoundingClientRect().top || 0;
+			}
+
 			await settled();
 			chat.value?.removeEventListener("wheel", stop);
 			chat.value?.removeEventListener("touchstart", stop);
 
-			if (jump !== jumping) {
-				return null;
+			if (jump === jumping) {
+				jumping = 0;
+				loadOlderIfNear();
 			}
-
-			jumping = 0;
-			loadOlderIfNear();
-			return document.getElementById(`msg-${id}`);
 		};
 
-		const onScrollToMessage = (id: number, done?: (el: HTMLElement) => void) => {
-			void scrollToMessage(id).then((el) => el && done?.(el));
-		};
+		const onScrollToMessage = (id: number) => void scrollToMessage(id);
 
 		onMounted(() => {
 			chat.value?.addEventListener("scroll", handleScroll, {passive: true});
+
+			for (const type of userScrollEvents) {
+				chat.value?.addEventListener(type, unpin, {passive: true});
+			}
 
 			eventbus.on("resize", handleResize);
 			eventbus.on("scroll-to-message", onScrollToMessage);
@@ -490,6 +519,7 @@ export default defineComponent({
 		watch(
 			() => props.channel.id,
 			() => {
+				unpin();
 				props.channel.scrolledToBottom = true;
 
 				// Re-add the intersection observer to trigger the check again on channel switch
@@ -520,6 +550,10 @@ export default defineComponent({
 			eventbus.off("resize", handleResize);
 			eventbus.off("scroll-to-message", onScrollToMessage);
 			chat.value?.removeEventListener("scroll", handleScroll);
+
+			for (const type of userScrollEvents) {
+				chat.value?.removeEventListener(type, unpin);
+			}
 		});
 
 		onUnmounted(() => {

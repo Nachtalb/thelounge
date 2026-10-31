@@ -89,6 +89,7 @@
 import Mousetrap from "mousetrap";
 import {computed, defineComponent, nextTick, ref, watch} from "vue";
 import eventbus from "../js/eventbus";
+import jumpToMessage from "../js/helpers/jumpToMessage";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
 import {useStore} from "../js/store";
@@ -257,14 +258,14 @@ export default defineComponent({
 
 		const gotoMessage = () => {
 			const message = images.value[currentIndex.value]?.message;
+			const chan = channel.value;
 
-			if (!message) {
+			if (!message || !chan) {
 				return;
 			}
 
 			closeViewer();
-
-			eventbus.emit("scroll-to-message", message.id);
+			void jumpToMessage(chan, message);
 		};
 
 		const openLink = () => {
