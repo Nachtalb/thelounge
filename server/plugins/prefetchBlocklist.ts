@@ -18,17 +18,14 @@ import {Matcher, compileFilters} from "../../shared/previewFilters";
 const refreshInterval = 24 * 60 * 60 * 1000;
 const maxListSize = 16 * 1024 * 1024;
 
-// A source is an http(s) url of a list, a file path (absolute, also C:\ or \\ on
-// Windows, or starting with ./, ../ or ~/, relative to THELOUNGE_HOME) or else an inline rule
+// A source is an http(s) url of a list, a file path (absolute, or starting with ./, ../ or ~/,
+// relative to THELOUNGE_HOME) or else an inline rule
 export function sourceKind(source: string): "url" | "file" | "rule" {
 	if (/^https?:\/\//i.test(source)) {
 		return "url";
 	}
 
-	if (
-		/^(\/|\.\.?[\\/]|~[\\/]|[a-z]:[\\/]|\\\\)/i.test(source) &&
-		!/^\/.+\/(\$.*)?$/.test(source)
-	) {
+	if (/^(\/|\.\.?\/|~\/)/.test(source) && !/^\/.+\/(\$.*)?$/.test(source)) {
 		return "file";
 	}
 
@@ -41,7 +38,7 @@ function sources() {
 }
 
 function filePath(source: string) {
-	if (/^~[\\/]/.test(source)) {
+	if (/^~\//.test(source)) {
 		return path.join(os.homedir(), source.slice(2));
 	}
 

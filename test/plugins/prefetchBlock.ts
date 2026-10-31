@@ -263,8 +263,6 @@ describe("prefetchBlock", function () {
 			expect(blocklist.sourceKind("./blocklist.txt")).to.equal("file");
 			expect(blocklist.sourceKind("../blocklist.txt")).to.equal("file");
 			expect(blocklist.sourceKind("~/blocklist.txt")).to.equal("file");
-			expect(blocklist.sourceKind("C:\\lists\\blocklist.txt")).to.equal("file");
-			expect(blocklist.sourceKind("\\\\nas\\lists\\blocklist.txt")).to.equal("file");
 			expect(blocklist.sourceKind("/regex/")).to.equal("rule");
 			expect(blocklist.sourceKind("||example.com^")).to.equal("rule");
 			expect(blocklist.sourceKind("|https://example.com/")).to.equal("rule");
