@@ -15,7 +15,7 @@ import {parseSearchQuery} from "../../../shared/searchQuery";
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
 
-export const currentSchemaVersion = 1784073600000; // use `new Date().getTime()`
+export const currentSchemaVersion = 1793404800000; // use `new Date().getTime()`
 
 // Desired schema, adapt to the newest version and add migrations to the array below
 const schema = [
@@ -33,7 +33,6 @@ const schema = [
 		statement TEXT NOT NULL
 	)`,
 	"CREATE INDEX time ON messages (time)",
-	"CREATE INDEX msg_type_idx on messages (type)", // needed for efficient storageCleaner queries
 	// needed for efficient getMessages queries
 	"CREATE INDEX network_channel_time ON messages (network, channel, time)",
 	"CREATE INDEX msgid_idx ON messages (msgid)",
@@ -89,6 +88,11 @@ export const migrations: Migration[] = [
 			"CREATE INDEX msgid_idx ON messages (msgid)",
 		],
 	},
+	{
+		// storageCleaner sorted every old row of the type by time; the time index needs no sort
+		version: 1793404800000,
+		stmts: ["DROP INDEX IF EXISTS msg_type_idx"],
+	},
 ];
 
 // down migrations need to restore the state of the prior version.
@@ -116,6 +120,10 @@ export const rollbacks: Rollback[] = [
 	{
 		version: 1784073600000,
 		stmts: ["DROP INDEX msgid_idx", "ALTER TABLE messages DROP COLUMN msgid"],
+	},
+	{
+		version: 1793404800000,
+		stmts: ["CREATE INDEX IF NOT EXISTS msg_type_idx on messages (type)"],
 	},
 ];
 

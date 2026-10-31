@@ -104,6 +104,19 @@ describe("SQLite migrations", function () {
 		expect(details).to.not.include("TEMP B-TREE");
 	});
 
+	it("migrated database cleans up old messages without sorting them", function () {
+		// same shape as deleteMessages() with a type list
+		const stmt = db.prepare(
+			"EXPLAIN QUERY PLAN delete from messages where id in (select id from messages where time <= ? and type in (?, ?) order by time asc limit ?)"
+		);
+		const plan = stmt.all(0, "join", "quit", 200) as {detail: string}[];
+		stmt.finalize();
+
+		const details = plan.map((row) => row.detail).join("\n");
+		expect(details).to.include("USING INDEX time");
+		expect(details).to.not.include("TEMP B-TREE");
+	});
+
 	it("has working down-migrations", function () {
 		db.exec("BEGIN EXCLUSIVE TRANSACTION");
 
