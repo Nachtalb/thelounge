@@ -50,6 +50,15 @@
 					Remove from Recent
 				</button>
 			</li>
+			<li v-if="data">
+				<button
+					type="button"
+					class="sticker-menu-item sticker-menu-download"
+					@click="download"
+				>
+					Download
+				</button>
+			</li>
 			<li v-if="showViewPack">
 				<button type="button" class="sticker-menu-item sticker-menu-set" @click="viewPack">
 					View Sticker Set
@@ -69,7 +78,8 @@ import {
 	removeRecent,
 	toggleFavorite,
 } from "../js/stickers";
-import type {StickerRef} from "../../shared/stickers";
+import {normalizeEmoji, type StickerRef} from "../../shared/stickers";
+import {loadStickerFile} from "../js/helpers/stickerFiles";
 import {emojiImageUrl, findEmojiMatches} from "../js/helpers/emoji";
 import StickerMedia from "./StickerMedia.vue";
 
@@ -125,6 +135,32 @@ export default defineComponent({
 			emit("close");
 		};
 
+		// The file (already loading for the preview), named after its pack and emoji
+		const download = () => {
+			const sticker = data.value;
+
+			if (!sticker) {
+				return;
+			}
+
+			const ext = sticker.format === "webm" ? "webm" : "webp";
+			const name = `${props.item.pack}-${
+				normalizeEmoji(sticker.emoji) || props.item.id
+			}.${ext}`;
+			const file = loadStickerFile(sticker.url, -1);
+			file.promise.then(
+				(href) => {
+					const link = document.createElement("a");
+					link.href = href;
+					link.download = name;
+					link.click();
+					file.release();
+				},
+				() => undefined
+			);
+			emit("close");
+		};
+
 		const viewPack = () => {
 			openPack(props.item.pack);
 			emit("close");
@@ -165,6 +201,7 @@ export default defineComponent({
 			send,
 			favorite,
 			unrecent,
+			download,
 			viewPack,
 			ignoreOpeningPress,
 		};
