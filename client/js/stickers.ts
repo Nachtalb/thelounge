@@ -1,7 +1,14 @@
 import {computed, reactive} from "vue";
 import {store} from "./store";
-import type {StickerRef} from "../../shared/stickers";
 import {cachedJson} from "./helpers/stickerFiles";
+import {
+	parsePackList,
+	parseStickerKey,
+	parseStickerList,
+	stickerKey,
+	toggleInList,
+	type StickerRef,
+} from "../../shared/stickers";
 
 export type Sticker = {
 	id: string;
@@ -103,4 +110,43 @@ export function loadKnownPacks(): Promise<KnownPack[]> {
 
 export function findSticker(ref: StickerRef): Sticker | null {
 	return loadedPack(ref.pack)?.stickers.find((s) => s.id === ref.id) || null;
+}
+
+// The user's packs, favorites and recent stickers live in synced settings
+export const addedPacks = computed(() => parsePackList(store.state.settings.stickerPacks));
+export const favorites = computed(() => parseStickerList(store.state.settings.stickerFavorites));
+export const recent = computed(() => parseStickerList(store.state.settings.stickerRecent));
+
+function save(name: "stickerPacks" | "stickerFavorites" | "stickerRecent", list: string[]) {
+	void store.dispatch("settings/update", {name, value: list.join(" "), sync: true});
+}
+
+export function togglePack(name: string) {
+	save("stickerPacks", toggleInList(addedPacks.value, name));
+}
+
+export function toggleFavorite(ref: StickerRef) {
+	save("stickerFavorites", toggleInList(favorites.value, stickerKey(ref)));
+}
+
+export function isFavorite(ref: StickerRef) {
+	return favorites.value.includes(stickerKey(ref));
+}
+
+export function refsOf(keys: string[]): StickerRef[] {
+	return keys.map(parseStickerKey).filter((ref): ref is StickerRef => ref !== null);
+}
+
+// Load the user's packs and the packs of favorites/recents not added (any more)
+export function loadUserPacks() {
+	const names = [
+		...addedPacks.value,
+		...[...favorites.value, ...recent.value].map((k) => k.split("/")[0]),
+	];
+
+	for (const name of new Set(names)) {
+		if (!packs[name]) {
+			void loadPack(name);
+		}
+	}
 }
