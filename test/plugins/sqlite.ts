@@ -117,6 +117,21 @@ describe("SQLite migrations", function () {
 		expect(details).to.not.include("TEMP B-TREE");
 	});
 
+	it("migrated database searches a channel through the message index", function () {
+		// same shape as search() with a channel
+		const stmt = db.prepare(
+			"EXPLAIN QUERY PLAN SELECT msg FROM messages WHERE type = 'message' AND json_extract(msg, '$.text') LIKE ? ESCAPE '@' AND network = ? AND channel = ? ORDER BY time DESC, id DESC LIMIT ? OFFSET ?"
+		);
+		const plan = stmt.all("%x%", "8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 100, 0) as {
+			detail: string;
+		}[];
+		stmt.finalize();
+
+		const details = plan.map((row) => row.detail).join("\n");
+		expect(details).to.include("USING INDEX msg_search_idx");
+		expect(details).to.not.include("TEMP B-TREE");
+	});
+
 	it("has working down-migrations", function () {
 		db.exec("BEGIN EXCLUSIVE TRANSACTION");
 
@@ -272,6 +287,18 @@ describe("SQLite Message Storage", function () {
 	it("should use the WAL journal", function () {
 		const mode = store.database.query("PRAGMA journal_mode").get() as {journal_mode: string};
 		expect(mode.journal_mode).to.equal("wal");
+	});
+
+	it("should create the search, history and cleanup indexes", function () {
+		const rows = store.database
+			.query("SELECT name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL")
+			.all() as {name: string}[];
+		expect(rows.map((r) => r.name).sort()).to.deep.equal([
+			"msg_search_idx",
+			"msgid_idx",
+			"network_channel_time",
+			"time",
+		]);
 	});
 
 	it("should resolve an empty array when disabled", function () {

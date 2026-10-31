@@ -15,7 +15,7 @@ import {parseSearchQuery} from "../../../shared/searchQuery";
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
 
-export const currentSchemaVersion = 1793404800000; // use `new Date().getTime()`
+export const currentSchemaVersion = 1793491200000; // use `new Date().getTime()`
 
 // Desired schema, adapt to the newest version and add migrations to the array below
 const schema = [
@@ -36,6 +36,8 @@ const schema = [
 	// needed for efficient getMessages queries
 	"CREATE INDEX network_channel_time ON messages (network, channel, time)",
 	"CREATE INDEX msgid_idx ON messages (msgid)",
+	// search only reads 'message' rows, this skips the other types without reading them
+	"CREATE INDEX msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
 ];
 
 // the migrations will be executed in an exclusive transaction as a whole
@@ -93,6 +95,12 @@ export const migrations: Migration[] = [
 		version: 1793404800000,
 		stmts: ["DROP INDEX IF EXISTS msg_type_idx"],
 	},
+	{
+		version: 1793491200000,
+		stmts: [
+			"CREATE INDEX IF NOT EXISTS msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
+		],
+	},
 ];
 
 // down migrations need to restore the state of the prior version.
@@ -124,6 +132,10 @@ export const rollbacks: Rollback[] = [
 	{
 		version: 1793404800000,
 		stmts: ["CREATE INDEX IF NOT EXISTS msg_type_idx on messages (type)"],
+	},
+	{
+		version: 1793491200000,
+		stmts: ["DROP INDEX IF EXISTS msg_search_idx"],
 	},
 ];
 
