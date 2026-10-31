@@ -1,8 +1,7 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
 import sharp from "sharp";
-import {expect, vi} from "vitest";
+import {expect} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
 import previewCache from "../../server/plugins/previewCache";
@@ -33,9 +32,6 @@ describe("Link plugin with preview cache", function () {
 		);
 
 	beforeAll(async function () {
-		// Own cache dir: other test files delete the shared one while these tests run
-		const dir = path.join(os.tmpdir(), `thelounge-linkcache-${process.pid}`);
-		vi.spyOn(Config, "getPreviewCachePath").mockReturnValue(dir);
 		photo = await picture(1000, 750).jpeg().toBuffer();
 		const frames = await Promise.all(
 			[0.3, 0.7].map((x) => picture(700, 525, x).png().toBuffer())
@@ -60,7 +56,6 @@ describe("Link plugin with preview cache", function () {
 	}, 60000);
 
 	afterAll(function () {
-		fs.rmSync(Config.getPreviewCachePath(), {recursive: true, force: true});
 		return app.stop();
 	});
 
