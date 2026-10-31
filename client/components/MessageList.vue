@@ -43,7 +43,7 @@
 						<MessageCondensed
 							v-if="message.type === 'condensed'"
 							:network="network"
-							:keep-scroll-position="keepScrollPosition"
+							:keep-in-place="keepInPlace"
 							:messages="message.messages"
 							:focused="message.id === focused"
 						/>
@@ -349,6 +349,15 @@ export default defineComponent({
 			}
 		};
 
+		// Expanding or collapsing a condensed row keeps its summary line where it was:
+		// jumping to the bottom of a long run scrolled the row out and remounted it collapsed
+		const keepInPlace = (row: HTMLElement) => {
+			props.channel.scrolledToBottom = false;
+			pinned = row;
+			pinnedTop = row.getBoundingClientRect().top;
+			void keepPinned();
+		};
+
 		// Ask for older messages well before the top is reached (slow connections),
 		// one request at a time and again as soon as one lands
 		const loadOlderIfNear = () => {
@@ -581,6 +590,7 @@ export default defineComponent({
 			onResize,
 			scrollToMessage,
 			keepScrollPosition,
+			keepInPlace,
 			isPreviousSource,
 			jumpToBottom,
 			onLinkPreviewToggle,
