@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {expect, vi} from "vitest";
-import {stepPos} from "../../../../client/js/helpers/chatSearch";
+import {counterText, stepPos} from "../../../../client/js/helpers/chatSearch";
 import {findMessage} from "../../../../client/js/helpers/jumpToMessage";
 
 vi.mock("../../../../client/js/socket", () => ({default: {on() {}, off() {}, emit() {}}}));
@@ -17,6 +17,14 @@ describe("in-channel search navigation", () => {
 	it("asks for older results past the last loaded one", () => {
 		expect(stepPos(99, 1, 100, true)).to.equal("load");
 		expect(stepPos(98, 1, 100, true)).to.equal(99);
+	});
+
+	it("shows the current match, no results or nothing without a query", () => {
+		expect(counterText("", -1, 0, false, false)).to.equal("");
+		expect(counterText("x", -1, 0, false, true)).to.equal("Searching…");
+		expect(counterText("x", -1, 0, false, false)).to.equal("No results");
+		expect(counterText("x", 0, 27, false, false)).to.equal("1 of 27");
+		expect(counterText("x", 4, 100, true, false)).to.equal("5 of 100+");
 	});
 
 	it("finds the loaded message by time and text", () => {

@@ -148,7 +148,8 @@
 			{{ store.state.currentUserVisibleError }}
 		</div>
 		<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
-		<ChatInput :network="network" :channel="channel" />
+		<SearchNav v-if="searching" :channel="channel" />
+		<ChatInput v-show="!searching" :network="network" :channel="channel" />
 		<TypingIndicator :channel="channel" />
 	</div>
 </template>
@@ -163,6 +164,7 @@ import ChatUserList from "./ChatUserList.vue";
 import TypingIndicator from "./TypingIndicator.vue";
 import SidebarToggle from "./SidebarToggle.vue";
 import MessageSearchForm from "./MessageSearchForm.vue";
+import SearchNav from "./SearchNav.vue";
 import ListBans from "./Special/ListBans.vue";
 import ListInvites from "./Special/ListInvites.vue";
 import ListChannels from "./Special/ListChannels.vue";
@@ -194,6 +196,7 @@ export default defineComponent({
 		TypingIndicator,
 		SidebarToggle,
 		MessageSearchForm,
+		SearchNav,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -352,6 +355,8 @@ export default defineComponent({
 			}
 		};
 
+		const searching = computed(() => chatSearch.chanId === props.channel.id);
+
 		const hideUserVisibleError = () => {
 			store.commit("currentUserVisibleError", null);
 		};
@@ -443,6 +448,7 @@ export default defineComponent({
 			saveTopic,
 			openContextMenu,
 			openMentions,
+			searching,
 		};
 	},
 });

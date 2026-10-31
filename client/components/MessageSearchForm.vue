@@ -14,31 +14,6 @@
 				@keydown.ctrl.f.prevent="focusSearch"
 				@keydown.meta.f.prevent="focusSearch"
 			/>
-			<span class="search-counter" aria-live="polite">{{ counter }}</span>
-			<button
-				class="search-older"
-				type="button"
-				aria-label="Older match (Enter)"
-				title="Older match (Enter)"
-				:disabled="!canStep(1)"
-				@click="step(1)"
-			/>
-			<button
-				class="search-newer"
-				type="button"
-				aria-label="Newer match (Ctrl+Enter)"
-				title="Newer match (Ctrl+Enter)"
-				:disabled="!canStep(-1)"
-				@click="step(-1)"
-			/>
-			<button
-				class="search-list"
-				type="button"
-				aria-label="Show all results"
-				title="Show all results"
-				:disabled="!searchResults.length"
-				@click="chatSearch.listOpen = !chatSearch.listOpen"
-			/>
 			<button
 				class="close"
 				type="button"
@@ -100,12 +75,6 @@ form.message-search.opened .input-wrapper {
 	border-bottom: 1px solid var(--border-color);
 }
 
-form.message-search .search-counter {
-	white-space: nowrap;
-	color: var(--body-color-muted);
-	padding: 0 6px;
-}
-
 #chat form.message-search button {
 	display: flex;
 	color: var(--icon-button-color);
@@ -117,26 +86,6 @@ form.message-search .search-counter {
 	flex-shrink: 0;
 	justify-content: center;
 	align-items: center;
-}
-
-#chat form.message-search .input-wrapper button:disabled {
-	opacity: 0.4;
-}
-
-form.message-search .input-wrapper button::before {
-	font: normal normal normal 14px/1 FontAwesome;
-}
-
-form.message-search .search-older::before {
-	content: "\f077"; /* chevron-up */
-}
-
-form.message-search .search-newer::before {
-	content: "\f078"; /* chevron-down */
-}
-
-form.message-search .search-list::before {
-	content: "\f03a"; /* list */
 }
 
 #chat form.message-search .close::before {
@@ -169,9 +118,7 @@ import {
 	focusSearch,
 	openSearch,
 	search,
-	searchResults,
 	step,
-	stepPos,
 } from "../js/helpers/chatSearch";
 import SearchResults from "./Windows/SearchResults.vue";
 import {ClientNetwork, ClientChan} from "../js/types";
@@ -188,24 +135,6 @@ export default defineComponent({
 		const searchInput = ref(chatSearch.query);
 		const searchInputField = ref<HTMLInputElement | null>(null);
 		const isOpen = computed(() => chatSearch.chanId === props.channel.id);
-
-		const counter = computed(() => {
-			const total = searchResults.value.length;
-
-			if (!chatSearch.query) {
-				return "";
-			}
-
-			if (!total) {
-				return store.state.messageSearchPendingQuery ? "Searching…" : "No results";
-			}
-
-			return `${Math.max(chatSearch.pos, 0) + 1} of ${total}${chatSearch.more ? "+" : ""}`;
-		});
-
-		const canStep = (dir: 1 | -1) =>
-			stepPos(chatSearch.pos, dir, searchResults.value.length, chatSearch.more) !==
-			chatSearch.pos;
 
 		const focusField = async () => {
 			await nextTick();
@@ -292,15 +221,12 @@ export default defineComponent({
 		});
 
 		return {
+			store,
 			chatSearch,
 			focusSearch,
-			searchResults,
 			searchInput,
 			searchInputField,
 			isOpen,
-			counter,
-			canStep,
-			step,
 			close,
 			toggleSearch,
 			onEnter,

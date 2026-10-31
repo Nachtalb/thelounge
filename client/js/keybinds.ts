@@ -264,7 +264,7 @@ document.addEventListener("keydown", (e) => {
 	}
 
 	// Let the confirm dialog's and the search bar's focused buttons handle Space/Enter themselves
-	if ((e.target as HTMLElement).closest("#confirm-dialog, .message-search")) {
+	if ((e.target as HTMLElement).closest("#confirm-dialog, .message-search, .search-nav")) {
 		return;
 	}
 

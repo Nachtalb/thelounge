@@ -40,6 +40,25 @@ export function stepPos(pos: number, dir: 1 | -1, loaded: number, more: boolean)
 	return next;
 }
 
+// "3 of 27" for the current match, empty while there's no query
+export function counterText(
+	query: string,
+	pos: number,
+	total: number,
+	more: boolean,
+	pending: boolean
+) {
+	if (!query) {
+		return "";
+	}
+
+	if (!total) {
+		return pending ? "Searching…" : "No results";
+	}
+
+	return `${Math.max(pos, 0) + 1} of ${total}${more ? "+" : ""}`;
+}
+
 function found() {
 	return store.getters.findChannel(chatSearch.chanId);
 }
