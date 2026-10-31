@@ -374,6 +374,23 @@ module.exports = {
 		rustypaste: null,
 	},
 
+	// ### `stickers`
+	//
+	// Telegram sticker packs in the message input, served by a
+	// [tg-sticker-proxy](https://github.com/Nachtalb/tg-sticker-proxy) worker.
+	//
+	// - `proxyUrl`: Base URL of the worker, for example `"https://s.naa.gg"`.
+	//   Users add packs by their t.me/addstickers link, a sent sticker is the
+	//   link to its share page (other clients get an image preview), and
+	//   messages that are only such a link are shown as the sticker. Packs and
+	//   stickers load in the browser straight from this URL. An empty string
+	//   turns stickers off.
+	//
+	// This value is set to `{proxyUrl: ""}` by default.
+	stickers: {
+		proxyUrl: "",
+	},
+
 	// ### `transports`
 	//
 	// Set `socket.io` transports.
