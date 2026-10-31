@@ -4312,6 +4312,15 @@ mark {
 	background-size: 100% 100%;
 }
 
+/* Keeps the side and bottom buttons off the video's controls */
+#image-viewer > video {
+	position: absolute;
+	inset: 72px;
+	margin: auto;
+	max-width: calc(100% - 144px);
+	max-height: calc(100% - 144px);
+}
+
 /* Dark checkered background for transparent images */
 #image-viewer > img.loaded:not(.thumb) {
 	background-position: 0 0, 10px 10px;
