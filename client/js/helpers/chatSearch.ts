@@ -4,6 +4,7 @@ import {store} from "../store";
 import jumpToMessage, {jumpTarget} from "./jumpToMessage";
 import type {ClientChan, ClientNetwork} from "../types";
 import type {SearchQuery} from "../../../shared/types/storage";
+import {parseSearchQuery} from "../../../shared/searchQuery";
 
 const pageSize = 100; // results per "search" request on the server
 
@@ -20,6 +21,9 @@ export const chatSearch = reactive({
 export const searchResults = computed(() =>
 	[...(store.state.messageSearchResults?.results || [])].reverse()
 );
+
+// Text to mark in matches (none for a user-only "@nick" search)
+export const searchHighlight = computed(() => parseSearchQuery(chatSearch.query).text);
 
 // Next match going older (+1) or newer (-1), "load" if older results must be fetched first
 export function stepPos(pos: number, dir: 1 | -1, loaded: number, more: boolean): number | "load" {

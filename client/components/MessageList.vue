@@ -56,7 +56,7 @@
 							:is-previous-source="isPreviousSource(message, id)"
 							:focused="message.id === focused"
 							:highlight="
-								channel.id === chatSearch.chanId ? chatSearch.query : undefined
+								channel.id === chatSearch.chanId ? searchHighlight : undefined
 							"
 							:class="{'jump-target': message.id === jumpTarget}"
 							@toggle-link-preview="onLinkPreviewToggle"
@@ -76,7 +76,7 @@ import eventbus from "../js/eventbus";
 import clipboard from "../js/clipboard";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {jumpTarget, loadingBack} from "../js/helpers/jumpToMessage";
-import {chatSearch} from "../js/helpers/chatSearch";
+import {chatSearch, searchHighlight} from "../js/helpers/chatSearch";
 import socket from "../js/socket";
 import Message from "./Message.vue";
 import MessageCondensed from "./MessageCondensed.vue";
@@ -566,6 +566,7 @@ export default defineComponent({
 			chat,
 			store,
 			chatSearch,
+			searchHighlight,
 			jumpTarget,
 			onShowMoreClick,
 			loadMoreButton,
