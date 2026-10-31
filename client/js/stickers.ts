@@ -3,7 +3,9 @@ import socket from "./socket";
 import eventbus from "./eventbus";
 import {store} from "./store";
 import type {ClientChan} from "./types";
+import {stickerMatches} from "./helpers/stickerSearch";
 import {
+	normalizeEmoji,
 	parsePackList,
 	parseStickerKey,
 	parseStickerList,
@@ -170,4 +172,26 @@ export function loadUserPacks() {
 			void loadPack(name);
 		}
 	}
+}
+
+// Quick select: the user's stickers for one emoji, favorites and recents first
+export function stickersForEmoji(emoji: string): StickerRef[] {
+	const wanted = [normalizeEmoji(emoji)];
+	const found = new Map<string, StickerRef>();
+
+	const add = (ref: StickerRef) => {
+		if (stickerMatches(findSticker(ref)?.emoji, wanted)) {
+			found.set(stickerKey(ref), ref);
+		}
+	};
+
+	refsOf([...favorites.value, ...recent.value]).forEach(add);
+
+	for (const name of addedPacks.value) {
+		for (const sticker of loadedPack(name)?.stickers || []) {
+			add({pack: name, id: sticker.id});
+		}
+	}
+
+	return [...found.values()];
 }
