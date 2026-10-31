@@ -79,9 +79,7 @@
 <script lang="ts">
 import {computed, defineComponent, nextTick, onMounted, onUnmounted, ref} from "vue";
 import eventbus from "../js/eventbus";
-import {useStore} from "../js/store";
-import {addedPacks, loadPack, loadedPack, packs, sendSticker, togglePack} from "../js/stickers";
-import {ChanType} from "../../shared/types/chan";
+import {addedPacks, loadPack, loadedPack, packs, sendStickerHere, togglePack} from "../js/stickers";
 import type {StickerRef} from "../../shared/stickers";
 import {tileSticker, useStickerPeek} from "../js/helpers/stickerPeek";
 import {copyText} from "../js/helpers/copyImage";
@@ -93,7 +91,6 @@ export default defineComponent({
 	name: "StickerPack",
 	components: {StickerItem, StickerMenu},
 	setup() {
-		const store = useStore();
 		const name = ref("");
 		const closeBtn = ref<HTMLButtonElement>();
 		const menuFor = ref<StickerRef | null>(null);
@@ -171,14 +168,7 @@ export default defineComponent({
 
 		const onEscape = () => (menuFor.value ? closeMenu() : close());
 
-		const send = (item: StickerRef) => {
-			const channel = store.state.activeChannel?.channel;
-
-			if (channel && (channel.type === ChanType.CHANNEL || channel.type === ChanType.QUERY)) {
-				sendSticker(channel, item);
-				close();
-			}
-		};
+		const send = (item: StickerRef) => sendStickerHere(item) && close();
 
 		// Keep Tab inside the dialog
 		const trapTab = (e: KeyboardEvent) => {

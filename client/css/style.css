@@ -2585,6 +2585,13 @@ textarea.input {
 	pointer-events: none;
 }
 
+/* Opened from a sticker in the chat: covers the window */
+.sticker-menu-window {
+	position: fixed;
+	z-index: 1000;
+	color: var(--body-color);
+}
+
 .sticker-menu-preview {
 	display: flex;
 	flex-direction: column;
@@ -2647,6 +2654,10 @@ textarea.input {
 
 .sticker-menu-download::before {
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5v12'/%3E%3Cpath d='m7 11 5 5 5-5'/%3E%3Cpath d='M4 16v2.5A2 2 0 0 0 6 20.5h12a2 2 0 0 0 2-2V16'/%3E%3C/svg%3E");
+}
+
+.sticker-menu-open::before {
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E");
 }
 
 .sticker-menu-set::before {
