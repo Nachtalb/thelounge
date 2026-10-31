@@ -1,5 +1,6 @@
 import {computed, reactive} from "vue";
 import socket from "./socket";
+import eventbus from "./eventbus";
 import {store} from "./store";
 import {cachedJson} from "./helpers/stickerFiles";
 import type {ClientChan} from "./types";
@@ -155,6 +156,10 @@ export function sendSticker(channel: ClientChan, ref: StickerRef) {
 		...(replyTo && {replyTo}),
 	});
 	save("stickerRecent", pushRecent(recent.value, stickerKey(ref)));
+}
+
+export function openPack(name: string) {
+	eventbus.emit("stickers:pack", name);
 }
 
 // Load the user's packs and the packs of favorites/recents not added (any more)
