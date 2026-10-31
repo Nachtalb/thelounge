@@ -25,8 +25,7 @@
 					@click="onThumbnailClick"
 				>
 					<img
-						v-cancel-load
-						:src="link.thumb"
+						v-load-in-view="link.thumb"
 						decoding="async"
 						fetchpriority="low"
 						alt=""
@@ -79,8 +78,7 @@
 				>
 					<img
 						v-show="link.sourceLoaded"
-						v-cancel-load
-						:src="link.thumb"
+						v-load-in-view="link.thumb"
 						decoding="async"
 						fetchpriority="low"
 						alt=""
@@ -168,7 +166,7 @@ import {
 } from "vue";
 import {onBeforeRouteUpdate} from "vue-router";
 import eventbus from "../js/eventbus";
-import cancelLoad from "../js/helpers/cancelLoad";
+import loadInView from "../js/helpers/loadInView";
 import friendlysize from "../js/helpers/friendlysize";
 import {useStore} from "../js/store";
 import type {ClientChan, ClientLinkPreview} from "../js/types";
@@ -176,7 +174,7 @@ import {imageViewerKey} from "./App.vue";
 
 export default defineComponent({
 	name: "LinkPreview",
-	directives: {cancelLoad},
+	directives: {loadInView},
 	props: {
 		link: {
 			type: Object as PropType<ClientLinkPreview>,
