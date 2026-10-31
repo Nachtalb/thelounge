@@ -68,6 +68,19 @@ const defaultConfig = {
 		default: "",
 		sync: "always",
 	},
+	// Space separated pack names, and `<pack>/<id>` sticker keys
+	stickerPacks: {
+		default: "",
+		sync: "always",
+	},
+	stickerFavorites: {
+		default: "",
+		sync: "always",
+	},
+	stickerRecent: {
+		default: "",
+		sync: "always",
+	},
 	typing: {
 		default: "receive",
 	},

@@ -110,6 +110,7 @@ export type ConfigType = {
 	prefetchBlockPrivate: boolean;
 	prefetchBlocklist: string[];
 	fileUpload: FileUpload;
+	stickers: {proxyUrl: string};
 	transports: string[];
 	leaveMessage: string;
 	defaults: Defaults;

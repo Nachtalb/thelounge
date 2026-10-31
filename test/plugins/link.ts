@@ -782,6 +782,22 @@ Vivamus bibendum vulputate tincidunt. Sed vitae ligula felis.`;
 		});
 	});
 
+	it("should not fetch previews for stickers of the sticker proxy", function () {
+		Config.values.stickers = {proxyUrl: `http://${host}:${port}/`};
+
+		try {
+			const sticker = _makeUrl("Animals/AgAD3gAD9HsZAAE");
+			const message = irc.createMessage({text: sticker});
+			link(irc, network.channels[0], message, message.text);
+			expect(message.previews).to.be.empty;
+			expect(prefetchInputLinks(irc, [sticker], () => undefined).blocked).to.deep.equal([
+				sticker,
+			]);
+		} finally {
+			Config.values.stickers = {proxyUrl: ""};
+		}
+	});
+
 	it("should not try to fetch links with wrong protocol", function () {
 		const message = irc.createMessage({
 			text: "ssh://example.com ftp://example.com irc://example.com http:////////example.com",

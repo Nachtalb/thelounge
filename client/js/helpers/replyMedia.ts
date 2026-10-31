@@ -1,8 +1,20 @@
 import type {LinkPreview} from "../../../shared/types/msg";
+import {cleanIrcMessage} from "../../../shared/irc";
+import {parseStickerUrl} from "../../../shared/stickers";
 
 // Telegram-style media summary of a replied-to message: first thumbnail plus
-// the caption (text without the image links), or "Photo"/"GIF"/"Video" if empty
-export function replyMedia(message?: {text: string; previews?: LinkPreview[]}) {
+// the caption (text without the image links), or "Photo"/"GIF"/"Video"/"Sticker" if empty
+export function replyMedia(
+	message?: {text: string; previews?: LinkPreview[]},
+	stickerProxyUrl = ""
+) {
+	const sticker = message && parseStickerUrl(cleanIrcMessage(message.text), stickerProxyUrl);
+
+	if (sticker) {
+		const thumb = `${stickerProxyUrl.replace(/\/+$/, "")}/${sticker.pack}/${sticker.id}/thumb`;
+		return {thumb, caption: "", kind: "Sticker"};
+	}
+
 	const images = (message?.previews || []).filter((p) => p.thumb && p.type !== "error");
 
 	if (!images.length) {

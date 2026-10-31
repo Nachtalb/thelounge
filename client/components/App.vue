@@ -12,6 +12,7 @@
 		<ImageViewer ref="imageViewer" />
 		<ContextMenu ref="contextMenu" />
 		<ConfirmDialog ref="confirmDialog" />
+		<StickerPack v-if="store.state.serverConfiguration?.stickerProxyUrl" />
 		<div id="upload-overlay"></div>
 	</div>
 </template>
@@ -28,6 +29,7 @@ import Sidebar from "./Sidebar.vue";
 import ImageViewer from "./ImageViewer.vue";
 import ContextMenu from "./ContextMenu.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
+import StickerPack from "./StickerPack.vue";
 import Mentions from "./Mentions.vue";
 import {
 	computed,
@@ -54,6 +56,7 @@ export default defineComponent({
 		ContextMenu,
 		ConfirmDialog,
 		Mentions,
+		StickerPack,
 	},
 	setup() {
 		const store = useStore();
