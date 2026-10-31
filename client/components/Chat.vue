@@ -137,6 +137,13 @@
 						:channel="channel"
 						:focused="focused"
 					/>
+					<Transition name="search-scrim">
+						<div
+							v-if="searching && chatSearch.listOpen"
+							class="search-scrim"
+							@click="chatSearch.listOpen = false"
+						/>
+					</Transition>
 				</div>
 			</div>
 		</div>
@@ -449,6 +456,7 @@ export default defineComponent({
 			openContextMenu,
 			openMentions,
 			searching,
+			chatSearch,
 		};
 	},
 });
