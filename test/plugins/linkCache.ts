@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
-import {expect} from "vitest";
+import {expect, vi} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
 import previewCache from "../../server/plugins/previewCache";
@@ -309,11 +309,16 @@ describe("Link plugin with preview cache", function () {
 				irc.on("msg:preview", () => ++emitted === 6 && resolve());
 			});
 
+			// Links are queued once their cache lookup missed
+			const lookups = vi.spyOn(previewCache, "getPreview");
+			const queued = () =>
+				Promise.all(lookups.mock.results.map((result) => result.value as Promise<unknown>));
+
 			// Four fetches run at once, the fifth waits; then older history is loaded
 			backfillPreviews(irc, network.channels[0], history.slice(0, 5));
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await queued();
 			backfillPreviews(irc, network.channels[0], history.slice(5));
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await queued();
 			release();
 			await done;
 
