@@ -3,6 +3,8 @@ import Network from "../server/models/network";
 import Chan from "../server/models/chan";
 import {EventEmitter} from "events";
 import {Message} from "../server/models/msg";
+import {pki} from "node-forge";
+import {vi} from "vitest";
 
 type WebRoute = (
 	req: Request,
@@ -36,6 +38,8 @@ class MockClient extends EventEmitter {
 		return message;
 	}
 }
+
+let rsaKeyPair: unknown;
 
 function sanitizeLog(callback: (log: string) => void) {
 	return function (...args: string[]) {
@@ -105,6 +109,15 @@ export default {
 	},
 	send(body: BodyInit = "", type = "text/html; charset=utf-8") {
 		return new Response(body, {headers: {"Content-Type": type}});
+	},
+	// Every client certificate gets a fresh 2048-bit RSA key, which takes up to a second on CI:
+	// share one between the tests of a worker
+	reuseClientCertificateKey() {
+		const generate = pki.rsa.generateKeyPair;
+		vi.spyOn(pki.rsa, "generateKeyPair").mockImplementation(() => {
+			rsaKeyPair ??= generate(2048) as unknown;
+			return rsaKeyPair;
+		});
 	},
 	sanitizeLog,
 	isRunningOnCI() {
