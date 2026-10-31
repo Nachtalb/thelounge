@@ -1,5 +1,5 @@
 <template>
-	<div id="sticker-picker" :style="style" @keydown.esc.stop.prevent="onEscape">
+	<div id="sticker-picker" ref="root" :style="style" @keydown.esc.stop.prevent="onEscape">
 		<div class="sticker-picker-search">
 			<!-- Every input event searches: v-model would wait for the end of a composition (Android keyboards) -->
 			<input
@@ -150,6 +150,7 @@
 			v-if="menuFor"
 			:item="menuFor"
 			:in-recent="menuInRecent"
+			:peek="peeking"
 			@send="send"
 			@close="closeMenu"
 		/>
@@ -159,6 +160,7 @@
 <script lang="ts">
 import {computed, defineComponent, nextTick, onMounted, PropType, ref, watch} from "vue";
 import {emojiForQuery, stickerMatches} from "../js/helpers/stickerSearch";
+import {tileSticker, useStickerPeek} from "../js/helpers/stickerPeek";
 import StickerItem from "./StickerItem.vue";
 import StickerMenu from "./StickerMenu.vue";
 import StickerMedia from "./StickerMedia.vue";
@@ -211,6 +213,8 @@ export default defineComponent({
 		const known = ref<KnownPack[] | null>(null);
 		const menuFor = ref<StickerRef | null>(null);
 		const menuInRecent = ref(false);
+		const peeking = ref(false);
+		const root = ref<HTMLElement>();
 
 		const style = computed(() => ({"--sticker-anchor-right": props.anchorRight + "px"}));
 
@@ -376,11 +380,26 @@ export default defineComponent({
 		const openMenu = (item: StickerRef, inRecent: boolean) => {
 			menuFor.value = item;
 			menuInRecent.value = inRecent;
+			peeking.value = false;
 		};
+
+		const cancelPeek = useStickerPeek(root, {
+			peek(tile) {
+				openMenu(tileSticker(tile), !!tile.closest('[data-section="recent"]'));
+				peeking.value = true;
+			},
+			menu: () => (peeking.value = false),
+			close() {
+				menuFor.value = null;
+				peeking.value = false;
+			},
+		});
 
 		// Focusing the search on touch would open the keyboard and move the panel
 		const closeMenu = () => {
+			cancelPeek();
 			menuFor.value = null;
+			peeking.value = false;
 
 			if (navigator.maxTouchPoints === 0) {
 				search.value?.focus({preventScroll: true});
@@ -426,6 +445,8 @@ export default defineComponent({
 			known,
 			menuFor,
 			menuInRecent,
+			peeking,
+			root,
 			openMenu,
 			style,
 			sections,

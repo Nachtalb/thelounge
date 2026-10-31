@@ -1,3 +1,6 @@
+import {watch, type Ref} from "vue";
+import type {StickerRef} from "../../../shared/stickers";
+
 // Telegram's sticker peek: holding a sticker shows only its large preview, sliding over other
 // stickers switches the preview, letting go closes it without sending. On touch, holding still on
 // one sticker a little longer opens its menu, which stays open after letting go.
@@ -265,4 +268,38 @@ export function bindStickerPeek(root: HTMLElement, handlers: PeekHandlers) {
 			root.removeEventListener("dragstart", onDragStart);
 		},
 	};
+}
+
+// The sticker of a tile bound by bindStickerPeek
+export function tileSticker(tile: HTMLElement): StickerRef {
+	const key = tile.dataset.sticker || "";
+	const slash = key.indexOf("/");
+	return {pack: key.slice(0, slash), id: key.slice(slash + 1)};
+}
+
+// bindStickerPeek on a component's element, following it while it (un)mounts. Returns `cancel`.
+export function useStickerPeek(root: Ref<HTMLElement | undefined>, handlers: PeekHandlers) {
+	let bound: ReturnType<typeof bindStickerPeek> | null = null;
+
+	watch(
+		root,
+		(el, _old, onCleanup) => {
+			if (!el) {
+				return;
+			}
+
+			const current = bindStickerPeek(el, handlers);
+			bound = current;
+			onCleanup(() => {
+				current.unbind();
+
+				if (bound === current) {
+					bound = null;
+				}
+			});
+		},
+		{immediate: true}
+	);
+
+	return () => bound?.cancel();
 }

@@ -7,6 +7,7 @@
 	>
 		<div
 			id="sticker-pack"
+			ref="packDialog"
 			role="dialog"
 			aria-modal="true"
 			:aria-label="pack?.title || name"
@@ -34,7 +35,7 @@
 						:key="sticker.id"
 						:item="{pack: pack.name, id: sticker.id}"
 						@pick="send"
-						@menu="menuFor = $event"
+						@menu="openMenu"
 					/>
 				</div>
 			</div>
@@ -59,8 +60,9 @@
 				v-if="menuFor"
 				:item="menuFor"
 				:show-view-pack="false"
+				:peek="peeking"
 				@send="send"
-				@close="menuFor = null"
+				@close="closeMenu"
 			/>
 		</div>
 	</div>
@@ -73,6 +75,7 @@ import {useStore} from "../js/store";
 import {addedPacks, loadPack, loadedPack, packs, sendSticker, togglePack} from "../js/stickers";
 import {ChanType} from "../../shared/types/chan";
 import type {StickerRef} from "../../shared/stickers";
+import {tileSticker, useStickerPeek} from "../js/helpers/stickerPeek";
 import StickerItem from "./StickerItem.vue";
 import StickerMenu from "./StickerMenu.vue";
 
@@ -85,6 +88,8 @@ export default defineComponent({
 		const name = ref("");
 		const closeBtn = ref<HTMLButtonElement>();
 		const menuFor = ref<StickerRef | null>(null);
+		const peeking = ref(false);
+		const packDialog = ref<HTMLElement>();
 		const pack = computed(() => (name.value ? loadedPack(name.value) : null));
 		const added = computed(() => addedPacks.value.includes(name.value));
 
@@ -114,7 +119,30 @@ export default defineComponent({
 			document.getElementById("input")?.focus();
 		};
 
-		const onEscape = () => (menuFor.value ? (menuFor.value = null) : close());
+		const cancelPeek = useStickerPeek(packDialog, {
+			peek(tile) {
+				menuFor.value = tileSticker(tile);
+				peeking.value = true;
+			},
+			menu: () => (peeking.value = false),
+			close() {
+				menuFor.value = null;
+				peeking.value = false;
+			},
+		});
+
+		const openMenu = (item: StickerRef) => {
+			menuFor.value = item;
+			peeking.value = false;
+		};
+
+		const closeMenu = () => {
+			cancelPeek();
+			menuFor.value = null;
+			peeking.value = false;
+		};
+
+		const onEscape = () => (menuFor.value ? closeMenu() : close());
 
 		const send = (item: StickerRef) => {
 			const channel = store.state.activeChannel?.channel;
@@ -152,6 +180,10 @@ export default defineComponent({
 			name,
 			closeBtn,
 			menuFor,
+			peeking,
+			packDialog,
+			openMenu,
+			closeMenu,
 			pack,
 			added,
 			subtitle,
