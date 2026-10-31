@@ -27,6 +27,7 @@ jobs:
           - ubuntu-latest
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     # No bun package cache: restoring it took longer than a cold install on every OS.
     steps:
