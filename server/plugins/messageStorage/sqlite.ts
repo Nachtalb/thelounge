@@ -517,7 +517,16 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 			params.push(query.channelName.toLowerCase());
 		}
 
-		const maxResults = 100;
+		const maxResults = Math.min(Math.max(Math.floor(Number(query.limit)) || 100, 1), 50000);
+		// Times of all matches (newest first) for the date picker, sent with the first page
+		const timesQuery = `SELECT time${select.slice(
+			select.indexOf(" FROM ")
+		)} ORDER BY time DESC, id DESC LIMIT 50000`;
+		const times = query.offset
+			? undefined
+			: (this.database.prepare(timesQuery).all(...params) as {time: number}[]).map(
+					(r) => r.time
+			  );
 
 		select += " ORDER BY time DESC, id DESC LIMIT ? OFFSET ? ";
 		params.push(maxResults);
@@ -535,6 +544,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		return {
 			...query,
 			results: parseSearchRowsToMessages(query.offset, rows).reverse(),
+			times,
 		};
 	}
 

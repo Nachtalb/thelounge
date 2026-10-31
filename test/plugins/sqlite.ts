@@ -376,6 +376,28 @@ describe("SQLite Message Storage", function () {
 			}
 
 			expect(search.results.map((i_1) => i_1.text)).to.deep.equal(expectedMessages);
+			expect(search.times).to.have.lengthOf(200);
+			expect(search.times?.[0]).to.equal(123456789 + 199);
+			expect(search.times?.[199]).to.equal(123456789);
+
+			const page2 = store.search({
+				searchTerm: "msg",
+				networkUuid: "retrieval-order-test-network",
+				channelName: "",
+				offset: 100,
+			});
+			expect(page2.times).to.equal(undefined);
+
+			// A calendar jump loads every result up to the picked match at once
+			const upTo = store.search({
+				searchTerm: "msg",
+				networkUuid: "retrieval-order-test-network",
+				channelName: "",
+				offset: 100,
+				limit: 90,
+			});
+			expect(upTo.results).to.have.lengthOf(90);
+			expect(upTo.results[89].text).to.equal("msg 99");
 		} finally {
 			Config.values.maxHistory = originalMaxHistory;
 		}

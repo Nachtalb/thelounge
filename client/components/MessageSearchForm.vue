@@ -1,6 +1,13 @@
 <template>
 	<form :class="['message-search', {opened: isOpen}]" @submit.prevent>
 		<div class="input-wrapper">
+			<button
+				class="search-back"
+				type="button"
+				aria-label="Close search (Esc)"
+				title="Close search (Esc)"
+				@click="back"
+			/>
 			<input
 				ref="searchInputField"
 				v-model="searchInput"
@@ -14,37 +21,13 @@
 				@keydown.ctrl.f.prevent="focusSearch"
 				@keydown.meta.f.prevent="focusSearch"
 			/>
-			<span class="search-counter" aria-live="polite">{{ counter }}</span>
 			<button
-				class="search-older"
+				v-show="searchInput"
+				class="search-clear"
 				type="button"
-				aria-label="Older match (Enter)"
-				title="Older match (Enter)"
-				:disabled="!canStep(1)"
-				@click="step(1)"
-			/>
-			<button
-				class="search-newer"
-				type="button"
-				aria-label="Newer match (Ctrl+Enter)"
-				title="Newer match (Ctrl+Enter)"
-				:disabled="!canStep(-1)"
-				@click="step(-1)"
-			/>
-			<button
-				class="search-list"
-				type="button"
-				aria-label="Show all results"
-				title="Show all results"
-				:disabled="!searchResults.length"
-				@click="chatSearch.listOpen = !chatSearch.listOpen"
-			/>
-			<button
-				class="close"
-				type="button"
-				aria-label="Close search"
-				title="Close search"
-				@click="close"
+				aria-label="Clear search"
+				title="Clear search"
+				@click="clear"
 			/>
 		</div>
 		<SearchResults v-if="isOpen && chatSearch.listOpen" :network="network" :channel="channel" />
@@ -100,12 +83,6 @@ form.message-search.opened .input-wrapper {
 	border-bottom: 1px solid var(--border-color);
 }
 
-form.message-search .search-counter {
-	white-space: nowrap;
-	color: var(--body-color-muted);
-	padding: 0 6px;
-}
-
 #chat form.message-search button {
 	display: flex;
 	color: var(--icon-button-color);
@@ -119,33 +96,19 @@ form.message-search .search-counter {
 	align-items: center;
 }
 
-#chat form.message-search .input-wrapper button:disabled {
-	opacity: 0.4;
-}
-
-form.message-search .input-wrapper button::before {
-	font: normal normal normal 14px/1 FontAwesome;
-}
-
-form.message-search .search-older::before {
-	content: "\f077"; /* chevron-up */
-}
-
-form.message-search .search-newer::before {
-	content: "\f078"; /* chevron-down */
-}
-
-form.message-search .search-list::before {
-	content: "\f03a"; /* list */
-}
-
-#chat form.message-search .close::before {
+#chat form.message-search :is(.search-back, .search-clear)::before {
 	content: "";
 	width: 16px;
 	height: 16px;
 	background-color: currentcolor;
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
 		center / contain no-repeat;
+}
+
+#chat form.message-search .search-back::before {
+	width: 18px;
+	height: 18px;
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19-7-7 7-7M19 12H5'/%3E%3C/svg%3E");
 }
 </style>
 
@@ -169,9 +132,7 @@ import {
 	focusSearch,
 	openSearch,
 	search,
-	searchResults,
 	step,
-	stepPos,
 } from "../js/helpers/chatSearch";
 import SearchResults from "./Windows/SearchResults.vue";
 import {ClientNetwork, ClientChan} from "../js/types";
@@ -188,24 +149,6 @@ export default defineComponent({
 		const searchInput = ref(chatSearch.query);
 		const searchInputField = ref<HTMLInputElement | null>(null);
 		const isOpen = computed(() => chatSearch.chanId === props.channel.id);
-
-		const counter = computed(() => {
-			const total = searchResults.value.length;
-
-			if (!chatSearch.query) {
-				return "";
-			}
-
-			if (!total) {
-				return store.state.messageSearchPendingQuery ? "Searching…" : "No results";
-			}
-
-			return `${Math.max(chatSearch.pos, 0) + 1} of ${total}${chatSearch.more ? "+" : ""}`;
-		});
-
-		const canStep = (dir: 1 | -1) =>
-			stepPos(chatSearch.pos, dir, searchResults.value.length, chatSearch.more) !==
-			chatSearch.pos;
 
 		const focusField = async () => {
 			await nextTick();
@@ -228,6 +171,16 @@ export default defineComponent({
 			closeSearch();
 			// Imported here: closeWindow imports the router, which imports this component
 			void import("../js/closeWindow").then(({focusInput}) => focusInput());
+		};
+
+		const back = () => {
+			chatSearch.listOpen = false;
+			close();
+		};
+
+		const clear = () => {
+			void search(props.network, props.channel, "");
+			void focusField();
 		};
 
 		const toggleSearch = () => {
@@ -292,15 +245,14 @@ export default defineComponent({
 		});
 
 		return {
+			store,
 			chatSearch,
 			focusSearch,
-			searchResults,
 			searchInput,
 			searchInputField,
 			isOpen,
-			counter,
-			canStep,
-			step,
+			back,
+			clear,
 			close,
 			toggleSearch,
 			onEnter,

@@ -40,16 +40,59 @@ export function stepPos(pos: number, dir: 1 | -1, loaded: number, more: boolean)
 	return next;
 }
 
+// "3 of 27" for the current match, empty while there's no query
+export function counterText(
+	query: string,
+	pos: number,
+	total: number,
+	more: boolean,
+	pending: boolean
+) {
+	if (!query) {
+		return "";
+	}
+
+	if (!total) {
+		return pending ? "Searching…" : "No results";
+	}
+
+	return `${Math.max(pos, 0) + 1} of ${total}${more ? "+" : ""}`;
+}
+
+// Times of all matches, newest first, as sent with the first page
+export const matchTimes = computed(() => store.state.messageSearchResults?.times || []);
+export const total = computed(() => Math.max(searchResults.value.length, matchTimes.value.length));
+
+// Local day of a timestamp ("2026-10-31")
+export function dayKey(time: number | Date) {
+	const d = new Date(time);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Day => position of the oldest match on that day
+export function matchDays(times: number[]) {
+	const days = new Map<string, number>();
+	times.forEach((time, pos) => days.set(dayKey(time), pos));
+	return days;
+}
+
+// Nearest key after (dir 1) or before (dir -1) `key` in sorted `keys` ("2026", "2026-10", "2026-10-31")
+export function neighbour(keys: string[], key: string, dir: 1 | -1) {
+	return dir > 0 ? keys.find((k) => k > key) : keys.findLast((k) => k < key);
+}
+
 function found() {
 	return store.getters.findChannel(chatSearch.chanId);
 }
 
-function fetchResults(network: ClientNetwork, channel: ClientChan, offset: number) {
+function fetchResults(network: ClientNetwork, channel: ClientChan, offset: number, limit: number) {
 	const query: SearchQuery = {
 		networkUuid: network.uuid,
 		channelName: channel.name,
 		searchTerm: chatSearch.query,
 		offset,
+		limit,
 	};
 
 	store.commit("messageSearchPendingQuery", query);
@@ -96,7 +139,7 @@ export async function search(network: ClientNetwork, channel: ClientChan, query:
 		return;
 	}
 
-	await fetchResults(network, channel, 0);
+	await fetchResults(network, channel, 0, pageSize);
 
 	if (chatSearch.chanId === channel.id && chatSearch.query === query) {
 		chatSearch.more = searchResults.value.length === pageSize;
@@ -104,7 +147,8 @@ export async function search(network: ClientNetwork, channel: ClientChan, query:
 	}
 }
 
-export async function loadMore() {
+// Load the next page of older results, or all of them up to `pos`
+export async function loadMore(pos = 0) {
 	const target = found();
 
 	if (!target || !chatSearch.more || store.state.messageSearchPendingQuery) {
@@ -112,11 +156,17 @@ export async function loadMore() {
 	}
 
 	const before = searchResults.value.length;
-	await fetchResults(target.network, target.channel, before);
-	chatSearch.more = searchResults.value.length - before === pageSize;
+	const limit = Math.max(pageSize, pos + 1 - before);
+	await fetchResults(target.network, target.channel, before, limit);
+	chatSearch.more = searchResults.value.length - before === limit;
 }
 
 export async function goTo(pos: number) {
+	// Picked from the calendar: load the results up to that match first
+	if (pos >= searchResults.value.length) {
+		await loadMore(pos);
+	}
+
 	const target = found();
 	const message = searchResults.value[pos];
 
@@ -127,11 +177,11 @@ export async function goTo(pos: number) {
 }
 
 export async function step(dir: 1 | -1) {
-	let next = stepPos(chatSearch.pos, dir, searchResults.value.length, chatSearch.more);
+	let next = stepPos(chatSearch.pos, dir, total.value, chatSearch.more);
 
 	if (next === "load") {
 		await loadMore();
-		next = stepPos(chatSearch.pos, dir, searchResults.value.length, false);
+		next = stepPos(chatSearch.pos, dir, total.value, false);
 	}
 
 	if (next !== "load" && next !== chatSearch.pos) {
