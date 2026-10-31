@@ -152,6 +152,9 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 	_enable(connection_string: string) {
 		this.database = new Database(connection_string);
+		// every message is its own write: without WAL each one waits for journal fsyncs
+		this.database.exec("PRAGMA journal_mode = WAL");
+		this.database.exec("PRAGMA synchronous = NORMAL");
 
 		try {
 			this.run_migrations();
@@ -412,7 +415,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		}, {});
 
 		this.database
-			.prepare(
+			.query(
 				"INSERT INTO messages(network, channel, time, type, msg, msgid) VALUES(?, ?, ?, ?, ?, ?)"
 			)
 			.run(
@@ -431,7 +434,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		}
 
 		this.database
-			.prepare("DELETE FROM messages WHERE network = ? AND channel = ?")
+			.query("DELETE FROM messages WHERE network = ? AND channel = ?")
 			.run(network.uuid, channel.name.toLowerCase());
 	}
 
@@ -444,7 +447,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		const limit = Config.values.maxHistory < 0 ? 100000 : Config.values.maxHistory;
 
 		const rows = this.database
-			.prepare(getMessagesQuery)
+			.query(getMessagesQuery)
 			.all(network.uuid, channel.name.toLowerCase(), limit) as MessageRow[];
 
 		return rows.reverse().map((row) => rowToMsg(row, nextID()));
@@ -465,7 +468,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 		const where = "network = ? AND channel = ?";
 		const rows = this.database
-			.prepare(
+			.query(
 				`SELECT msg, type, time, msgid FROM messages WHERE ${where} AND time < ? AND time >= COALESCE(` +
 					`(SELECT time FROM messages WHERE ${where} AND time < ? ORDER BY time DESC LIMIT 1 OFFSET ?), 0` +
 					") ORDER BY time ASC, id ASC"
@@ -568,7 +571,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		params.push(req.limit);
 		sql += ")";
 
-		return this.database.prepare(sql).run(...params).changes as number;
+		return this.database.query(sql).run(...params).changes as number;
 	}
 
 	canProvideMessages() {
