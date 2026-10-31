@@ -9,4 +9,5 @@ export type SearchQuery = {
 
 export type SearchResponse = SearchQuery & {
 	results: SharedMsg[];
+	times?: number[]; // all matches, newest first (first page only)
 };

@@ -24,5 +24,5 @@ socket.on("search:results", (response) => {
 		return;
 	}
 
-	store.commit("messageSearchResults", {results: response.results});
+	store.commit("messageSearchResults", {results: response.results, times: response.times});
 });

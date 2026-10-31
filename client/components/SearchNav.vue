@@ -119,7 +119,15 @@
 <script lang="ts">
 import {computed, defineComponent, PropType} from "vue";
 import {useStore} from "../js/store";
-import {chatSearch, counterText, searchResults, step, stepPos} from "../js/helpers/chatSearch";
+import {
+	chatSearch,
+	counterText,
+	matchTimes,
+	searchResults,
+	step,
+	stepPos,
+	total,
+} from "../js/helpers/chatSearch";
 import type {ClientChan} from "../js/types";
 
 // Bottom bar replacing the message input while searching in a channel
@@ -135,8 +143,8 @@ export default defineComponent({
 			counterText(
 				chatSearch.query,
 				chatSearch.pos,
-				searchResults.value.length,
-				chatSearch.more,
+				total.value,
+				chatSearch.more && searchResults.value.length >= matchTimes.value.length,
 				!!store.state.messageSearchPendingQuery
 			)
 		);
@@ -148,6 +156,7 @@ export default defineComponent({
 		return {
 			chatSearch,
 			searchResults,
+			matchTimes,
 			counter,
 			canStep,
 			step,

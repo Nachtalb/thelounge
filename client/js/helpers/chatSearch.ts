@@ -59,6 +59,10 @@ export function counterText(
 	return `${Math.max(pos, 0) + 1} of ${total}${more ? "+" : ""}`;
 }
 
+// Times of all matches, newest first, as sent with the first page
+export const matchTimes = computed(() => store.state.messageSearchResults?.times || []);
+export const total = computed(() => Math.max(searchResults.value.length, matchTimes.value.length));
+
 function found() {
 	return store.getters.findChannel(chatSearch.chanId);
 }

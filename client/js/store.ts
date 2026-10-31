@@ -78,6 +78,7 @@ export type State = {
 	serverHasSettings: boolean;
 	messageSearchResults: {
 		results: ClientMessage[];
+		times?: number[];
 	} | null;
 	messageSearchPendingQuery: SearchQuery | null;
 	searchEnabled: boolean;
@@ -325,6 +326,7 @@ const mutations: Mutations = {
 
 		state.messageSearchResults = {
 			results,
+			times: state.messageSearchResults.times,
 		};
 	},
 };
