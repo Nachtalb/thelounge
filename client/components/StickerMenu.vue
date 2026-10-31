@@ -106,6 +106,8 @@ export default defineComponent({
 		inRecent: {type: Boolean, default: false},
 		// Only the preview, while a long press peeks at stickers
 		peek: {type: Boolean, default: false},
+		// Don't move the focus to the menu when a peek turns into it
+		keepFocus: {type: Boolean, default: false},
 	},
 	emits: ["close", "send"],
 	setup(props, {emit}) {
@@ -205,7 +207,10 @@ export default defineComponent({
 			() => props.peek,
 			async () => {
 				await nextTick();
-				first.value?.focus();
+
+				if (!props.keepFocus) {
+					first.value?.focus();
+				}
 			}
 		);
 

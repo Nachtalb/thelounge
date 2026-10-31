@@ -2449,6 +2449,11 @@ textarea.input {
 	background: color-mix(in srgb, currentcolor 20%, transparent);
 }
 
+/* The peek covers the window: the strip is too small for the large preview */
+.sticker-suggest .sticker-menu {
+	position: fixed;
+}
+
 .sticker-item .sticker-media {
 	position: absolute;
 	inset: 4px;

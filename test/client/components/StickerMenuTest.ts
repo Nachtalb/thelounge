@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {expect, vi} from "vitest";
+import {nextTick} from "vue";
 import {mount} from "@vue/test-utils";
 import StickerMenu from "../../../client/components/StickerMenu.vue";
 
@@ -38,5 +39,20 @@ describe("StickerMenu", () => {
 		);
 		expect(menu.emitted("send")).toHaveLength(1);
 		menu.unmount();
+	});
+
+	it("leaves the focus alone when a peek turns into it with keepFocus", async () => {
+		const input = document.createElement("input");
+		document.body.append(input);
+		input.focus();
+		const menu = mount(StickerMenu, {
+			props: {item: {pack: "p", id: "1"}, peek: true, keepFocus: true},
+			attachTo: document.body,
+		});
+		await menu.setProps({peek: false});
+		await nextTick();
+		expect(document.activeElement).toBe(input);
+		menu.unmount();
+		input.remove();
 	});
 });
