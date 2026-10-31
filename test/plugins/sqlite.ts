@@ -244,8 +244,8 @@ describe("SQLite Message Storage", function () {
 	afterAll(function () {
 		// After tests run, remove the logs folder
 		// so we return to the clean state
-		fs.unlinkSync(expectedPath);
-		fs.rmdirSync(path.join(Config.getHomePath(), "logs"));
+		// WAL leaves -wal/-shm files next to the database
+		fs.rmSync(path.join(Config.getHomePath(), "logs"), {recursive: true});
 	});
 
 	it("should create database file", function () {
@@ -254,6 +254,11 @@ describe("SQLite Message Storage", function () {
 
 		store.enable();
 		expect(store.isEnabled).to.be.true;
+	});
+
+	it("should use the WAL journal", function () {
+		const mode = store.database.query("PRAGMA journal_mode").get() as {journal_mode: string};
+		expect(mode.journal_mode).to.equal("wal");
 	});
 
 	it("should resolve an empty array when disabled", function () {
