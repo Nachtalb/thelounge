@@ -12,6 +12,7 @@ import log from "../../log";
 import Config from "../../config";
 import {findLinksWithSchema} from "../../../shared/linkify";
 import {blocksLink} from "../../../shared/previewFilters";
+import {parseStickerUrl} from "../../../shared/stickers";
 import {cleanIrcMessage} from "../../../shared/irc";
 import {LinkPreview, MessageType} from "../../../shared/types/msg";
 import storage from "../storage";
@@ -94,6 +95,11 @@ function fetchPreviews(client: Client, text: string, emit: PreviewEmitter, queue
 
 		// If the URL is invalid and cannot be normalized, don't fetch it
 		if (!url) {
+			return cleanLinks;
+		}
+
+		// Clients show stickers themselves
+		if (parseStickerUrl(link.link, Config.values.stickers?.proxyUrl)) {
 			return cleanLinks;
 		}
 
