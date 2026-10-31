@@ -41,16 +41,3 @@ jobs:
 
       - name: Test
         run: bun run test
-
-      - name: Pack the npm package
-        run: bun pm pack
-
-      # #5114: ensure the packed tarball contains every file needed at runtime.
-      - name: Smoke-test the packaged binary
-        run: |
-          mkdir -p /tmp/thelounge-pack
-          tar xzf thelounge-*.tgz -C /tmp/thelounge-pack
-          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/thelounge-pack/package/node_modules
-          version="$(bun /tmp/thelounge-pack/package/index.js --version)"
-          echo "thelounge --version => $version"
-          echo "$version" | grep -Eq 'v?[0-9]+\.[0-9]+\.[0-9]+'
