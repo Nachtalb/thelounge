@@ -2643,6 +2643,8 @@ textarea.input {
 	overflow: hidden;
 }
 
+/* The translucent backdrop over the stickers' video layers is composited, and text merged into a
+   translucent layer loses subpixel antialiasing: own opaque layers keep the text as crisp as elsewhere */
 .sticker-pack-header,
 .sticker-pack-footer {
 	display: flex;
@@ -2650,6 +2652,8 @@ textarea.input {
 	gap: 8px;
 	padding: 10px 12px;
 	flex: 0 0 auto;
+	background: var(--window-bg-color);
+	will-change: opacity;
 }
 
 .sticker-pack-header {
