@@ -82,7 +82,6 @@
 							ref="topicScroller"
 							:class="['topic', {overflowing: topicShift > 0, manual: topicManual}]"
 							:style="topicStyle"
-							@click="toggleTopic"
 							@dblclick="editTopic"
 							@pointerenter="holdTopic"
 							@pointerleave="releaseTopic"
@@ -91,6 +90,13 @@
 								><ParsedMessage :network="network" :text="channel.topic"
 							/></span>
 						</div>
+						<button
+							v-if="topicShift > 0 || topicExpanded"
+							class="topic-expand"
+							type="button"
+							:aria-label="topicExpanded ? 'Collapse topic' : 'Expand topic'"
+							@click="topicExpanded = !topicExpanded"
+						/>
 						<button
 							v-if="channel.type === 'channel'"
 							class="topic-edit"
@@ -272,14 +278,6 @@ export default defineComponent({
 			scroller.scrollLeft = 0;
 		};
 
-		const toggleTopic = (e: MouseEvent) => {
-			if ((e.target as HTMLElement).closest("a") || window.getSelection()?.toString()) {
-				return;
-			}
-
-			topicExpanded.value = !topicExpanded.value;
-		};
-
 		// Esc outside the topic input (the input handles its own), like the search bar.
 		// Registered before the search bar's listener, so an open search closes first
 		const onEscape = () => {
@@ -289,6 +287,8 @@ export default defineComponent({
 
 			if (props.channel.editTopic) {
 				props.channel.editTopic = false;
+			} else {
+				topicExpanded.value = false;
 			}
 		};
 
@@ -410,7 +410,6 @@ export default defineComponent({
 			topicStyle,
 			holdTopic,
 			releaseTopic,
-			toggleTopic,
 			specialComponent,
 			hideUserVisibleError,
 			editTopic,
