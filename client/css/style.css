@@ -2724,7 +2724,7 @@ textarea.input {
 		order: 1;
 		width: calc(100% + 12px);
 		height: min(360px, 45vh);
-		margin: 4px -6px -2px;
+		margin: 4px -6px -4px;
 		border: 0;
 		border-top: 1px solid var(--border-color);
 		border-radius: 0;
@@ -3401,7 +3401,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	border-top: 1px solid var(--border-color);
 	border-radius: 0;
 	margin: 0;
-	padding: 6px 6px 2px;
+	padding: 4px 6px;
 	background: var(--form-bg-color);
 	display: flex;
 	align-items: flex-end;
@@ -3484,6 +3484,13 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 
 #form #submit {
 	color: var(--icon-button-color);
+}
+
+/* FontAwesome draws these glyphs 1px above the middle of their em box */
+#form #upload::before,
+#form #submit::before {
+	position: relative;
+	top: 1px;
 }
 
 #form #upload[disabled],
