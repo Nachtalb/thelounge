@@ -8,12 +8,14 @@ import Network from "../../server/models/network";
 import Config from "../../server/config";
 import STSPolicies from "../../server/plugins/sts";
 import ClientCertificate from "../../server/plugins/clientCertificate";
+import TestUtil from "../util";
 
 describe("Network", function () {
 	let stsPoliciesRefreshStub: sinon.SinonStub<unknown[], void>;
 
 	beforeAll(function () {
 		stsPoliciesRefreshStub = sinon.stub(STSPolicies, "refresh");
+		TestUtil.reuseClientCertificateKey();
 	});
 
 	afterAll(function () {

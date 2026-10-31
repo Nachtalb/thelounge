@@ -3,8 +3,13 @@ import path from "path";
 import {expect} from "vitest";
 import ClientCertificate, {ClientCertificateType} from "../../server/plugins/clientCertificate";
 import Config from "../../server/config";
+import TestUtil from "../util";
 
 describe("ClientCertificate", function () {
+	beforeAll(function () {
+		TestUtil.reuseClientCertificateKey();
+	});
+
 	it("should not generate a client certificate in public mode", function () {
 		Config.values.public = true;
 

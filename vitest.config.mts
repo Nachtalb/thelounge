@@ -29,6 +29,8 @@ export default defineConfig({
 		exclude: ["test/fixtures/**", "test/public/**"],
 		environment: "node",
 		setupFiles: ["test/fixtures/env.ts"],
+		// Test files share each worker's module cache; env.ts resets the shared state per file
+		isolate: false,
 		globals: true,
 		testTimeout: 25000,
 	},

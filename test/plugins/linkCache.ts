@@ -1,5 +1,4 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
 import sharp from "sharp";
 import {expect, vi} from "vitest";
@@ -19,17 +18,24 @@ describe("Link plugin with preview cache", function () {
 	let photo: Buffer;
 	let animation: Buffer;
 
-	const noise = (width: number, height: number) =>
-		sharp({
-			create: {width, height, channels: 3, noise: {type: "gaussian", mean: 128, sigma: 20}},
-		});
+	// Smooth pictures: noise made encoding the fixtures and their thumbnails take seconds
+	const picture = (width: number, height: number, x = 0.5) =>
+		sharp(
+			Buffer.from(
+				`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+					`<linearGradient id="g"><stop stop-color="#f80"/><stop offset="1" stop-color="#08f"/></linearGradient>` +
+					`<rect width="100%" height="100%" fill="url(#g)"/>` +
+					`<circle cx="${width * x}" cy="${height / 2}" r="${
+						height / 3
+					}" fill="#3c3"/></svg>`
+			)
+		);
 
 	beforeAll(async function () {
-		// Own cache dir: other test files delete the shared one while these tests run
-		const dir = path.join(os.tmpdir(), `thelounge-linkcache-${process.pid}`);
-		vi.spyOn(Config, "getPreviewCachePath").mockReturnValue(dir);
-		photo = await noise(1000, 750).jpeg().toBuffer();
-		const frames = await Promise.all([1, 2].map(() => noise(700, 525).png().toBuffer()));
+		photo = await picture(1000, 750).jpeg().toBuffer();
+		const frames = await Promise.all(
+			[0.3, 0.7].map((x) => picture(700, 525, x).png().toBuffer())
+		);
 		animation = await sharp(frames, {join: {animated: true}})
 			.gif()
 			.toBuffer();
@@ -50,7 +56,6 @@ describe("Link plugin with preview cache", function () {
 	}, 60000);
 
 	afterAll(function () {
-		fs.rmSync(Config.getPreviewCachePath(), {recursive: true, force: true});
 		return app.stop();
 	});
 
@@ -304,11 +309,16 @@ describe("Link plugin with preview cache", function () {
 				irc.on("msg:preview", () => ++emitted === 6 && resolve());
 			});
 
+			// Links are queued once their cache lookup missed
+			const lookups = vi.spyOn(previewCache, "getPreview");
+			const queued = () =>
+				Promise.all(lookups.mock.results.map((result) => result.value as Promise<unknown>));
+
 			// Four fetches run at once, the fifth waits; then older history is loaded
 			backfillPreviews(irc, network.channels[0], history.slice(0, 5));
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await queued();
 			backfillPreviews(irc, network.channels[0], history.slice(5));
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await queued();
 			release();
 			await done;
 

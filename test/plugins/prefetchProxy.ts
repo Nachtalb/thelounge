@@ -50,12 +50,15 @@ function createHttpProxy(seen: string[]) {
 				path: target.pathname + target.search,
 				method: req.method,
 				headers: req.headers,
+				// A pooled socket may belong to a stopped server of an earlier test on the same port
+				agent: false,
 			},
 			(upstreamRes) => {
 				res.writeHead(upstreamRes.statusCode!, upstreamRes.headers);
 				upstreamRes.pipe(res);
 			}
 		);
+		upstream.on("error", () => res.destroy());
 		req.pipe(upstream);
 	});
 	proxy.on("connect", (req, socket: net.Socket, head) => {
