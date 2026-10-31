@@ -21,30 +21,6 @@
 					<span class="title" :aria-label="'Currently open ' + channel.type">{{
 						channel.name
 					}}</span>
-					<div v-if="channel.editTopic === true" class="topic-container">
-						<input
-							ref="topicInput"
-							:value="channel.topic"
-							class="topic-input"
-							placeholder="Set channel topic"
-							enterkeyhint="done"
-							@keyup.enter="saveTopic"
-							@keyup.esc="channel.editTopic = false"
-						/>
-						<span aria-label="Save topic" class="save-topic" @click="saveTopic">
-							<span type="button" aria-label="Save topic"></span>
-						</span>
-					</div>
-					<span
-						v-else
-						:title="plainTopic"
-						:class="{topic: true, empty: !channel.topic}"
-						@dblclick="editTopic"
-						><ParsedMessage
-							v-if="channel.topic"
-							:network="network"
-							:text="channel.topic"
-					/></span>
 					<MessageSearchForm
 						v-if="
 							store.state.settings.searchEnabled &&
@@ -74,6 +50,48 @@
 							@click="store.commit('toggleUserlist')"
 						/>
 					</span>
+				</div>
+				<div
+					v-if="channel.editTopic || channel.topic"
+					ref="topicBar"
+					:class="['topic-bar', {expanded: topicExpanded}]"
+				>
+					<div v-if="channel.editTopic" class="topic-container">
+						<input
+							ref="topicInput"
+							:value="channel.topic"
+							class="topic-input"
+							placeholder="Set channel topic"
+							enterkeyhint="done"
+							@keyup.enter="saveTopic"
+							@keyup.esc="channel.editTopic = false"
+						/>
+						<span aria-label="Save topic" class="save-topic" @click="saveTopic">
+							<span type="button" aria-label="Save topic"></span>
+						</span>
+					</div>
+					<template v-else>
+						<div
+							ref="topicScroller"
+							:class="['topic', {overflowing: topicShift > 0, manual: topicManual}]"
+							:style="topicStyle"
+							@click="toggleTopic"
+							@dblclick="editTopic"
+							@pointerenter="holdTopic"
+							@pointerleave="releaseTopic"
+						>
+							<span ref="topicText" class="topic-text"
+								><ParsedMessage :network="network" :text="channel.topic"
+							/></span>
+						</div>
+						<button
+							v-if="channel.type === 'channel'"
+							class="topic-edit"
+							type="button"
+							aria-label="Edit topic"
+							@click="editTopic"
+						/>
+					</template>
 				</div>
 				<div v-if="channel.type === 'special'" class="chat-content">
 					<div class="chat">
@@ -135,11 +153,20 @@ import ListBans from "./Special/ListBans.vue";
 import ListInvites from "./Special/ListInvites.vue";
 import ListChannels from "./Special/ListChannels.vue";
 import ListIgnored from "./Special/ListIgnored.vue";
-import {defineComponent, PropType, ref, computed, watch, nextTick, onMounted, Component} from "vue";
+import {
+	defineComponent,
+	PropType,
+	ref,
+	computed,
+	watch,
+	nextTick,
+	onMounted,
+	onBeforeUnmount,
+	Component,
+} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
 import {SpecialChanType, ChanType} from "../../shared/types/chan";
-import parseStyle from "../js/helpers/ircmessageparser/parseStyle";
 
 export default defineComponent({
 	name: "Chat",
@@ -164,17 +191,86 @@ export default defineComponent({
 		const messageList = ref<typeof MessageList>();
 		const topicInput = ref<HTMLInputElement | null>(null);
 
-		const plainTopic = computed(() => {
-			const topic = props.channel.topic;
+		const topicBar = ref<HTMLElement | null>(null);
+		const topicScroller = ref<HTMLElement | null>(null);
+		const topicText = ref<HTMLElement | null>(null);
+		const topicExpanded = ref(false);
+		const topicManual = ref(false);
+		const topicShift = ref(0); // px the topic overflows the bar
+		const topicDelay = ref(1); // s, start offset of the ping-pong animation
+		const topicTravel = computed(() => topicShift.value / 30); // 30 px/s
 
-			if (!topic) {
-				return "";
+		const topicStyle = computed(() => ({
+			"--topic-shift": `${topicShift.value}px`,
+			"--topic-travel": topicTravel.value,
+			"--topic-cycle": topicTravel.value * 2 + 4, // 2 s pause at each end
+			"--topic-delay": topicDelay.value,
+		}));
+
+		const measureTopic = () => {
+			const el = topicScroller.value;
+			const width = topicText.value?.offsetWidth ?? 0;
+			topicShift.value = el ? Math.max(0, width - el.clientWidth) : 0;
+			eventbus.emit("resize");
+		};
+
+		const topicObserver = new ResizeObserver(measureTopic);
+
+		watch(
+			[topicBar, topicText],
+			(els, oldEls) => {
+				oldEls.forEach((el) => el && topicObserver.unobserve(el));
+				els.forEach((el) => el && topicObserver.observe(el));
+			},
+			{flush: "post"}
+		);
+
+		onBeforeUnmount(() => topicObserver.disconnect());
+
+		// The topic element is replaced, so no pointerleave will end a hover
+		const resetTopic = () => {
+			topicExpanded.value = false;
+			topicManual.value = false;
+			topicDelay.value = 1;
+		};
+
+		watch(() => props.channel.id, resetTopic);
+
+		// Hovering/touching stops the marquee where it is and allows scrolling by hand
+		const holdTopic = () => {
+			const scroller = topicScroller.value;
+			const text = topicText.value;
+
+			if (!scroller || !text || !topicShift.value || topicManual.value) {
+				return;
 			}
 
-			return parseStyle(topic)
-				.map((fragment) => fragment.text)
-				.join("");
-		});
+			const x = -new DOMMatrix(getComputedStyle(text).transform).m41;
+			topicManual.value = true;
+			void nextTick(() => (scroller.scrollLeft = x));
+		};
+
+		// Resume the marquee from where the user left it
+		const releaseTopic = () => {
+			const scroller = topicScroller.value;
+
+			if (!scroller || !topicManual.value) {
+				return;
+			}
+
+			const progress = topicShift.value ? scroller.scrollLeft / topicShift.value : 0;
+			topicDelay.value = -(1 + progress * topicTravel.value);
+			topicManual.value = false;
+			scroller.scrollLeft = 0;
+		};
+
+		const toggleTopic = (e: MouseEvent) => {
+			if ((e.target as HTMLElement).closest("a") || window.getSelection()?.toString()) {
+				return;
+			}
+
+			topicExpanded.value = !topicExpanded.value;
+		};
 
 		const specialComponent = computed(() => {
 			switch (props.channel.special) {
@@ -256,6 +352,8 @@ export default defineComponent({
 		watch(
 			() => props.channel.editTopic,
 			(newTopic) => {
+				resetTopic();
+
 				if (newTopic) {
 					void nextTick(() => {
 						topicInput.value?.focus();
@@ -278,7 +376,16 @@ export default defineComponent({
 			store,
 			messageList,
 			topicInput,
-			plainTopic,
+			topicBar,
+			topicScroller,
+			topicText,
+			topicExpanded,
+			topicManual,
+			topicShift,
+			topicStyle,
+			holdTopic,
+			releaseTopic,
+			toggleTopic,
 			specialComponent,
 			hideUserVisibleError,
 			editTopic,
