@@ -58,6 +58,29 @@
 			@blur="onBlur"
 		/>
 		<span
+			v-if="stickerProxyUrl"
+			id="sticker-tooltip"
+			class="tooltipped tooltipped-w tooltipped-no-touch"
+			aria-label="Stickers"
+		>
+			<button
+				id="sticker"
+				ref="stickerButton"
+				type="button"
+				aria-label="Stickers"
+				:aria-expanded="stickerPickerOpen"
+				:class="{active: stickerPickerOpen}"
+				@click="toggleStickerPicker"
+			/>
+		</span>
+		<StickerPicker
+			v-if="stickerPickerOpen"
+			ref="stickerPicker"
+			:channel="channel"
+			:anchor-right="stickerAnchorRight"
+			@close="closeStickerPicker(true)"
+		/>
+		<span
 			v-if="store.state.serverConfiguration?.fileUpload"
 			id="upload-tooltip"
 			class="tooltipped tooltipped-w tooltipped-no-touch"
@@ -108,6 +131,7 @@ import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
+import StickerPicker from "./StickerPicker.vue";
 import {proxyUrl as stickerProxyUrl} from "../js/stickers";
 import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
@@ -139,6 +163,7 @@ export default defineComponent({
 	components: {
 		LinkPreview,
 		ParsedMessage,
+		StickerPicker,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -371,7 +396,57 @@ export default defineComponent({
 			input.value?.blur();
 		};
 
+		const stickerButton = ref<HTMLButtonElement>();
+		const stickerPicker = ref<{$el: HTMLElement}>();
+		const stickerPickerOpen = ref(false);
+		const stickerAnchorRight = ref(6);
+
+		function closeStickerPicker(focusInput = false) {
+			stickerPickerOpen.value = false;
+			document.removeEventListener("pointerdown", onDocumentPointerDown, true);
+
+			if (focusInput && navigator.maxTouchPoints === 0) {
+				richInput?.focus();
+			}
+		}
+
+		function onDocumentPointerDown(e: PointerEvent) {
+			const target = e.target as Element;
+
+			// The pack view and the picker's own menu are on top of it
+			if (
+				!stickerPicker.value?.$el.contains(target) &&
+				!stickerButton.value?.contains(target) &&
+				!target.closest?.("#sticker-pack-overlay")
+			) {
+				closeStickerPicker();
+			}
+		}
+
+		const toggleStickerPicker = () => {
+			if (stickerPickerOpen.value) {
+				closeStickerPicker(true);
+				return;
+			}
+
+			const form = input.value?.closest("form")?.getBoundingClientRect();
+			const button = stickerButton.value?.getBoundingClientRect();
+			stickerAnchorRight.value = form && button ? Math.max(6, form.right - button.right) : 6;
+			stickerPickerOpen.value = true;
+			document.addEventListener("pointerdown", onDocumentPointerDown, true);
+		};
+
+		watch(
+			() => props.channel.id,
+			() => closeStickerPicker()
+		);
+
 		const onEscape = () => {
+			if (stickerPickerOpen.value) {
+				closeStickerPicker(true);
+				return;
+			}
+
 			cancelReply();
 			blurInput();
 		};
@@ -500,6 +575,7 @@ export default defineComponent({
 
 			richInput?.destroy();
 			richInput = null;
+			closeStickerPicker();
 
 			upload.unmounted();
 			upload.abort();
@@ -521,6 +597,13 @@ export default defineComponent({
 			cancelReply,
 			jumpToReply,
 			replyMedia,
+			stickerProxyUrl,
+			stickerButton,
+			stickerPicker,
+			stickerPickerOpen,
+			stickerAnchorRight,
+			toggleStickerPicker,
+			closeStickerPicker,
 		};
 	},
 });

@@ -2180,6 +2180,12 @@ textarea.input {
 	flex: 0 0 auto;
 }
 
+#form #sticker[aria-expanded="true"] {
+	opacity: 1;
+	color: var(--link-color);
+}
+
+#form #sticker::before,
 .sticker-tab-favorites::before,
 .sticker-tab-recent::before,
 .sticker-tab-add::before {
