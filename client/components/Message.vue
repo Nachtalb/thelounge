@@ -241,7 +241,8 @@ export default defineComponent({
 		const parentMedia = computed(() => {
 			const replyTo = props.message.replyTo;
 			return replyMedia(
-				replyTo ? props.channel?.messages.find((m) => m.msgid === replyTo) : undefined
+				replyTo ? props.channel?.messages.find((m) => m.msgid === replyTo) : undefined,
+				proxyUrl.value
 			);
 		});
 

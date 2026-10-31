@@ -108,6 +108,7 @@ import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
+import {proxyUrl as stickerProxyUrl} from "../js/stickers";
 import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
@@ -335,7 +336,10 @@ export default defineComponent({
 
 		const replyMedia = computed(() => {
 			const msgid = props.channel.replyingTo?.msgid;
-			return getReplyMedia(props.channel.messages.find((m) => m.msgid === msgid));
+			return getReplyMedia(
+				props.channel.messages.find((m) => m.msgid === msgid),
+				stickerProxyUrl.value
+			);
 		});
 
 		const jumpToReply = () => {
