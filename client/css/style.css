@@ -2935,6 +2935,11 @@ textarea.input {
 	pointer-events: none;
 }
 
+:is(#chat, #input-previews) .toggle-type-video .media-filename a {
+	color: inherit;
+	pointer-events: auto;
+}
+
 :is(#chat, #input-previews) video {
 	max-width: 100%;
 	max-height: 128px; /* Same as image previews */
@@ -4316,6 +4321,15 @@ mark {
 	position: absolute;
 	transform-origin: 50% 50%;
 	background-size: 100% 100%;
+}
+
+/* Keeps the side and bottom buttons off the video's controls */
+#image-viewer > video {
+	position: absolute;
+	inset: 72px;
+	margin: auto;
+	max-width: calc(100% - 144px);
+	max-height: calc(100% - 144px);
 }
 
 /* Dark checkered background for transparent images */

@@ -40,6 +40,7 @@
 				@click.stop="downloadImage"
 			></a>
 			<button
+				v-if="!isVideo"
 				class="copy-btn"
 				aria-label="Copy image"
 				title="Copy image (Ctrl+C)"
@@ -47,7 +48,18 @@
 			></button>
 			<a class="open-btn" :href="link.link" target="_blank" rel="noopener"></a>
 
+			<video
+				v-if="isVideo"
+				:key="link.media"
+				v-cancel-load
+				:src="link.media"
+				controls
+				autoplay
+				playsinline
+				@click.stop
+			></video>
 			<img
+				v-else
 				:key="original(link)"
 				ref="image"
 				v-cancel-load
@@ -117,7 +129,7 @@ export default defineComponent({
 				(message.previews || [])
 					.filter(
 						(preview) =>
-							preview.thumb &&
+							(preview.thumb || (preview.type === "video" && preview.media)) &&
 							!isPreviewFiltered(store.state.settings.previewFilters, preview.link)
 					)
 					.map((preview) => ({message, preview}))
@@ -172,6 +184,7 @@ export default defineComponent({
 		let fullLoad: HTMLImageElement | undefined;
 		// Full images that are decoded and can be shown at once
 		const decoded = new Set<string>();
+		const isVideo = computed(() => link.value?.type === "video");
 
 		const computeImageStyles = computed(() => {
 			// Sub pixels may cause the image to blur in certain browsers
@@ -275,7 +288,8 @@ export default defineComponent({
 		};
 
 		// The inline preview may show a smaller thumbnail; the viewer uses the full image
-		const original = (preview: ClientLinkPreview) => preview.full || preview.thumb;
+		const original = (preview: ClientLinkPreview) =>
+			preview.type === "video" ? preview.media || "" : preview.full || preview.thumb;
 
 		const getFilename = (preview: ClientLinkPreview) => {
 			if (preview.filename) {
@@ -348,7 +362,7 @@ export default defineComponent({
 		const copyCurrentImage = () => {
 			const preview = link.value;
 
-			if (!preview) {
+			if (!preview || isVideo.value) {
 				return;
 			}
 
@@ -416,7 +430,7 @@ export default defineComponent({
 			// Runs twice for cached images (complete at once, then the load event)
 			if (!thumbSrc.value && !preloads.length) {
 				preloads = [previousImage.value, nextImage.value].flatMap((preview) => {
-					if (!preview) {
+					if (!preview || preview.type === "video") {
 						return [];
 					}
 
@@ -447,6 +461,11 @@ export default defineComponent({
 		// Shows the cached thumbnail at once and swaps in the full image once it is decoded
 		const show = (preview: ClientLinkPreview) => {
 			cancelLoads();
+
+			if (preview.type === "video") {
+				return;
+			}
+
 			const full = original(preview);
 			// Already decoded (preloaded neighbour, shown before): no thumbnail step
 			thumbSrc.value = full === preview.thumb || decoded.has(full) ? "" : preview.thumb;
@@ -741,6 +760,10 @@ export default defineComponent({
 
 			e.preventDefault(); // TODO: Can this be passive?
 
+			if (isVideo.value) {
+				return;
+			}
+
 			if (e.ctrlKey) {
 				transform.value.y += e.deltaY;
 			} else {
@@ -805,6 +828,7 @@ export default defineComponent({
 			link,
 			channel,
 			image,
+			isVideo,
 			original,
 			size,
 			thumbSrc,

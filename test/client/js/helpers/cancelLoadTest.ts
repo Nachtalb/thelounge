@@ -20,4 +20,16 @@ describe("cancelLoad directive", function () {
 	it("should leave loaded images alone", function () {
 		expect(unmount(true)).not.toHaveBeenCalled();
 	});
+
+	it("should drop the src of a video and free its player", function () {
+		const el = {removeAttribute: vi.fn(), load: vi.fn()};
+		cancelLoad.beforeUnmount?.(
+			el as unknown as HTMLVideoElement,
+			{} as never,
+			{} as never,
+			null
+		);
+		expect(el.removeAttribute).toHaveBeenCalledWith("src");
+		expect(el.load).toHaveBeenCalled();
+	});
 });
