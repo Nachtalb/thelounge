@@ -1,11 +1,15 @@
 import {computed, reactive} from "vue";
+import socket from "./socket";
 import {store} from "./store";
 import {cachedJson} from "./helpers/stickerFiles";
+import type {ClientChan} from "./types";
 import {
 	parsePackList,
 	parseStickerKey,
 	parseStickerList,
+	pushRecent,
 	stickerKey,
+	stickerShareUrl,
 	toggleInList,
 	type StickerRef,
 } from "../../shared/stickers";
@@ -135,6 +139,22 @@ export function isFavorite(ref: StickerRef) {
 
 export function refsOf(keys: string[]): StickerRef[] {
 	return keys.map(parseStickerKey).filter((ref): ref is StickerRef => ref !== null);
+}
+
+export function sendSticker(channel: ClientChan, ref: StickerRef) {
+	if (!store.state.isConnected) {
+		return;
+	}
+
+	const replyTo = channel.replyingTo?.msgid;
+	channel.replyingTo = null;
+
+	socket.emit("input", {
+		target: channel.id,
+		text: stickerShareUrl(proxyUrl.value, ref),
+		...(replyTo && {replyTo}),
+	});
+	save("stickerRecent", pushRecent(recent.value, stickerKey(ref)));
 }
 
 // Load the user's packs and the packs of favorites/recents not added (any more)
