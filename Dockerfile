@@ -19,10 +19,11 @@ FROM gcr.io/distroless/cc-debian13:nonroot
 COPY --from=build /usr/local/bin/bun /usr/local/bin/bun
 ENV NODE_ENV=production THELOUNGE_HOME=/var/opt/thelounge
 WORKDIR /app
+# dependencies first: their layer stays cached while the app layers change
+COPY --from=prod-deps /src/node_modules ./node_modules
 COPY --from=build /src/index.js /src/package.json /src/.thelounge_home ./
 COPY --from=build /src/dist ./dist
 COPY --from=build /src/public ./public
-COPY --from=prod-deps /src/node_modules ./node_modules
 EXPOSE 9000
 VOLUME /var/opt/thelounge
 ENTRYPOINT ["/usr/local/bin/bun"]
