@@ -4,6 +4,29 @@ import Chan, {Channel} from "../../models/chan";
 import Network, {NetworkWithIrcFramework} from "../../models/network";
 import {PackageInfo} from "../packages";
 import PublicClient from "../packages/publicClient";
+import action from "./action";
+import away from "./away";
+import ban from "./ban";
+import connect from "./connect";
+import ctcp from "./ctcp";
+import disconnect from "./disconnect";
+import ignore from "./ignore";
+import ignorelist from "./ignorelist";
+import invite from "./invite";
+import kick from "./kick";
+import kill from "./kill";
+import list from "./list";
+import mode from "./mode";
+import msg from "./msg";
+import nick from "./nick";
+import notice from "./notice";
+import part from "./part";
+import quit from "./quit";
+import raw from "./raw";
+import rejoin from "./rejoin";
+import topic from "./topic";
+import whois from "./whois";
+import mute from "./mute";
 
 export type InputExtras = {
 	replyTo?: string;
@@ -56,57 +79,36 @@ const passThroughCommands = [
 	"/rs",
 ];
 
-const userInputs = new Map<string, Plugin>();
+// Loaded statically: a dynamic import() finishes after startup, when commands may already arrive
 const builtInInputs = [
-	"action",
-	"away",
-	"ban",
-	"connect",
-	"ctcp",
-	"disconnect",
-	"ignore",
-	"ignorelist",
-	"invite",
-	"kick",
-	"kill",
-	"list",
-	"mode",
-	"msg",
-	"nick",
-	"notice",
-	"part",
-	"quit",
-	"raw",
-	"rejoin",
-	"topic",
-	"whois",
-	"mute",
-];
+	action,
+	away,
+	ban,
+	connect,
+	ctcp,
+	disconnect,
+	ignore,
+	ignorelist,
+	invite,
+	kick,
+	kill,
+	list,
+	mode,
+	msg,
+	nick,
+	notice,
+	part,
+	quit,
+	raw,
+	rejoin,
+	topic,
+	whois,
+	mute,
+] as Plugin[];
+const userInputs = new Map<string, Plugin>();
 
-for (const input of builtInInputs) {
-	import(`./${input}`)
-		.then(
-			(plugin: {
-				default: {
-					commands: string[];
-					input: (
-						network: Network,
-						chan: Chan,
-						cmd: string,
-						args: string[],
-						extras?: InputExtras
-					) => void;
-					allowDisconnected?: boolean;
-				};
-			}) => {
-				plugin.default.commands.forEach((command: string) =>
-					userInputs.set(command, plugin.default)
-				);
-			}
-		)
-		.catch((err) => {
-			log.error(err);
-		});
+for (const plugin of builtInInputs) {
+	plugin.commands.forEach((command) => userInputs.set(command, plugin));
 }
 
 const pluginCommands = new Map<string, ExternalPluginCommand>();
