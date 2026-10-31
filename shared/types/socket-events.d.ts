@@ -56,6 +56,7 @@ interface ServerToClientEvents {
 	"mute:changed": EventHandler<{target: number; status: boolean}>;
 
 	names: EventHandler<{id: number; users: SharedUser[]}>;
+	"last-seen": EventHandler<{chan: number; time: number | null}>;
 
 	network: EventHandler<{network: SharedNetwork}>;
 	"network:options": EventHandler<{network: string; serverOptions: SharedServerOptions}>;
@@ -142,6 +143,7 @@ interface ClientToServerEvents {
 	open: (channelId: number) => void;
 
 	names: EventHandler<{target: number}>;
+	"last-seen": EventHandler<{target: number}>;
 
 	input: EventHandler<{target: number; text: string; replyTo?: string}>;
 	"input:preview": (

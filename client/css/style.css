@@ -1362,14 +1362,29 @@ textarea.input {
 	border-bottom: 1px solid var(--border-color);
 }
 
-.header .title {
-	font-size: 15px;
+.header-title {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 	padding-left: 6px;
 	margin-right: auto;
-	flex-shrink: 1;
+	line-height: 1.25;
+}
+
+.header .title,
+.header-status {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.header .title {
+	font-size: 15px;
+}
+
+.header-status {
+	font-size: 12px;
+	color: var(--body-color-muted);
 }
 
 /* Pinned topic bar under the header, styled like the reply bar */
@@ -2730,7 +2745,7 @@ textarea.input {
 		order: 1;
 		width: calc(100% + 12px);
 		height: min(360px, 45vh);
-		margin: 4px -6px -2px;
+		margin: 4px -6px -6px;
 		border: 0;
 		border-top: 1px solid var(--border-color);
 		border-radius: 0;
@@ -3412,7 +3427,7 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	border-top: 1px solid var(--border-color);
 	border-radius: 0;
 	margin: 0;
-	padding: 6px 6px 2px;
+	padding: 6px;
 	background: var(--form-bg-color);
 	display: flex;
 	align-items: flex-end;
@@ -3495,6 +3510,13 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 
 #form #submit {
 	color: var(--icon-button-color);
+}
+
+/* FontAwesome draws these glyphs 1px above the middle of their em box */
+#form #upload::before,
+#form #submit::before {
+	position: relative;
+	top: 1px;
 }
 
 #form #upload[disabled],
@@ -4053,7 +4075,7 @@ mark {
 		transform: translateX(0);
 	}
 
-	#chat .header .title {
+	#chat .header-title {
 		padding-left: 6px;
 	}
 
@@ -4092,21 +4114,12 @@ mark {
 
 	#chat .messages {
 		display: block;
-		padding: 5px 0 18px;
+		padding: 5px 0;
 	}
 
 	#chat .msg {
 		display: block;
 		padding: 2px 10px;
-	}
-
-	#form {
-		padding-left: 6px;
-	}
-
-	.typing-indicator {
-		padding-left: 10px;
-		padding-right: 10px;
 	}
 
 	#chat .msg[data-type="condensed"] .msg {

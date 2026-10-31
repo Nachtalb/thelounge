@@ -8,6 +8,7 @@ import "./msg";
 import "./msg_preview";
 import "./msg_special";
 import "./names";
+import "./last_seen";
 import "./network";
 import "./nick";
 import "./open";

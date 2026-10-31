@@ -18,9 +18,12 @@
 			>
 				<div class="header">
 					<SidebarToggle />
-					<span class="title" :aria-label="'Currently open ' + channel.type">{{
-						channel.name
-					}}</span>
+					<div class="header-title">
+						<span class="title" :aria-label="'Currently open ' + channel.type">{{
+							channel.name
+						}}</span>
+						<span v-if="headerStatus" class="header-status">{{ headerStatus }}</span>
+					</div>
 					<MessageSearchForm
 						v-if="
 							store.state.settings.searchEnabled &&
@@ -157,7 +160,6 @@
 		<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
 		<SearchNav v-if="searching" :channel="channel" />
 		<ChatInput v-show="!searching" :network="network" :channel="channel" />
-		<TypingIndicator :channel="channel" />
 	</div>
 </template>
 
@@ -168,7 +170,6 @@ import ParsedMessage from "./ParsedMessage.vue";
 import MessageList from "./MessageList.vue";
 import ChatInput from "./ChatInput.vue";
 import ChatUserList from "./ChatUserList.vue";
-import TypingIndicator from "./TypingIndicator.vue";
 import SidebarToggle from "./SidebarToggle.vue";
 import MessageSearchForm from "./MessageSearchForm.vue";
 import SearchNav from "./SearchNav.vue";
@@ -189,9 +190,10 @@ import {
 } from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
-import {SpecialChanType, ChanType} from "../../shared/types/chan";
+import {SpecialChanType, ChanType, ChanState} from "../../shared/types/chan";
 import jumpToMessage, {topicTarget} from "../js/helpers/jumpToMessage";
 import {chatSearch} from "../js/helpers/chatSearch";
+import lastSeen from "../js/helpers/lastSeen";
 
 export default defineComponent({
 	name: "Chat",
@@ -200,7 +202,6 @@ export default defineComponent({
 		MessageList,
 		ChatInput,
 		ChatUserList,
-		TypingIndicator,
 		SidebarToggle,
 		MessageSearchForm,
 		SearchNav,
@@ -360,9 +361,46 @@ export default defineComponent({
 					target: props.channel.id,
 				});
 			}
+
+			if (props.channel.type === ChanType.QUERY) {
+				socket.emit("last-seen", {target: props.channel.id});
+			}
 		};
 
 		const searching = computed(() => chatSearch.chanId === props.channel.id);
+
+		// ticks the relative "last seen" time
+		const now = ref(Date.now());
+		const nowTimer = setInterval(() => (now.value = Date.now()), 30000);
+		onBeforeUnmount(() => clearInterval(nowTimer));
+
+		const headerStatus = computed(() => {
+			const chan = props.channel;
+			const typing = store.state.settings.typing === "off" ? [] : chan.typingNicks;
+
+			if (typing.length === 1) {
+				return `${typing[0]} is typing...`;
+			}
+
+			if (typing.length === 2) {
+				return `${typing[0]} and ${typing[1]} are typing...`;
+			}
+
+			if (typing.length > 2) {
+				return `${typing[0]} and ${typing.length - 1} others are typing...`;
+			}
+
+			if (chan.type === ChanType.CHANNEL && chan.state === ChanState.JOINED) {
+				const n = chan.users.length;
+				return n ? `${n} ${n === 1 ? "member" : "members"}` : "";
+			}
+
+			if (chan.type === ChanType.QUERY && chan.lastSeen) {
+				return lastSeen(chan.lastSeen, now.value, store.state.settings.use12hClock);
+			}
+
+			return "";
+		});
 
 		const hideUserVisibleError = () => {
 			store.commit("currentUserVisibleError", null);
@@ -457,6 +495,7 @@ export default defineComponent({
 			openMentions,
 			searching,
 			chatSearch,
+			headerStatus,
 		};
 	},
 });

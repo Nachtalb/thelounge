@@ -26,6 +26,8 @@ import {SharedChan, ChanType} from "../shared/types/chan";
 import {SharedNetwork} from "../shared/types/network";
 import {ServerToClientEvents} from "../shared/types/socket-events";
 
+const lastSeenTypes = [MessageType.MESSAGE, MessageType.ACTION, MessageType.NOTICE];
+
 const events = [
 	"away",
 	"cap",
@@ -783,6 +785,34 @@ class Client {
 		this.emit("sync_sort:networks", {
 			order: this.networks.map((obj) => obj.uuid),
 		});
+	}
+
+	lastSeen(data: {target: number}) {
+		const target = this.find(data.target);
+
+		if (!target || target.chan.type !== ChanType.QUERY) {
+			return;
+		}
+
+		const nick = target.chan.name.toLowerCase();
+		let time: number | null = null;
+
+		if (this.messageProvider?.isEnabled) {
+			time = this.messageProvider.lastSeen(target.network, nick);
+		} else {
+			for (const chan of target.network.channels) {
+				const msg = _.findLast(
+					chan.messages,
+					(m) => lastSeenTypes.includes(m.type) && m.from?.nick?.toLowerCase() === nick
+				);
+
+				if (msg) {
+					time = Math.max(time ?? 0, msg.time.getTime());
+				}
+			}
+		}
+
+		this.emit("last-seen", {chan: target.chan.id, time});
 	}
 
 	names(data: {target: number}) {
