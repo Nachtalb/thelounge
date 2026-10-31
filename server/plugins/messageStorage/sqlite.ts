@@ -152,6 +152,9 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 	_enable(connection_string: string) {
 		this.database = new Database(connection_string);
+		// every message is its own write: without WAL each one waits for journal fsyncs
+		this.database.exec("PRAGMA journal_mode = WAL");
+		this.database.exec("PRAGMA synchronous = NORMAL");
 
 		try {
 			this.run_migrations();
