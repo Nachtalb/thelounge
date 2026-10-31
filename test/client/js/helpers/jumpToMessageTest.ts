@@ -34,6 +34,11 @@ describe("jumpToMessage", () => {
 		expect(scrolled).to.deep.equal([1]);
 		expect(jumpTarget.value).to.equal(1);
 
+		// Older than the history reaches: not found instead of the oldest message
+		expect(await jumpToMessage(channel, {time: 500})).to.equal(false);
+		expect(await jumpToMessage(channel, {time: 1500})).to.equal(true);
+		expect(scrolled).to.deep.equal([1, 2]);
+
 		eventbus.off("scroll-to-message", onScroll);
 	});
 });
