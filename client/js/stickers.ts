@@ -3,6 +3,7 @@ import socket from "./socket";
 import eventbus from "./eventbus";
 import {store} from "./store";
 import type {ClientChan} from "./types";
+import {ChanType} from "../../shared/types/chan";
 import {stickerMatches} from "./helpers/stickerSearch";
 import {cachedJson} from "./helpers/stickerFiles";
 import {
@@ -165,6 +166,18 @@ export function sendSticker(channel: ClientChan, ref: StickerRef) {
 		...(replyTo && {replyTo}),
 	});
 	save("stickerRecent", pushRecent(recent.value, stickerKey(ref)));
+}
+
+// Into the open channel or query, like Telegram's Send Sticker
+export function sendStickerHere(ref: StickerRef): boolean {
+	const channel = store.state.activeChannel?.channel;
+
+	if (channel && (channel.type === ChanType.CHANNEL || channel.type === ChanType.QUERY)) {
+		sendSticker(channel, ref);
+		return true;
+	}
+
+	return false;
 }
 
 export function openPack(name: string) {

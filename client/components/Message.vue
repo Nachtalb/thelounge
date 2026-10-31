@@ -177,6 +177,7 @@ export default defineComponent({
 	setup(props) {
 		const store = useStore();
 		let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+		let onSticker = false;
 		const msgEl = ref<HTMLElement | null>(null);
 		const swiping = ref(false);
 		let swipeStart: {x: number; y: number} | null = null;
@@ -296,7 +297,10 @@ export default defineComponent({
 			const replyable = !!props.message.msgid && canReply.value;
 			resetSwipe();
 
-			if (replyable) {
+			// A long press on a sticker opens its menu instead, and a tap opens its pack
+			onSticker = !!(e.target as Element).closest?.(".sticker-message");
+
+			if (replyable && !onSticker) {
 				longPressTimer = setTimeout(() => {
 					longPressTimer = null;
 					startReply();
@@ -332,6 +336,11 @@ export default defineComponent({
 		const onTouchMove = (e: TouchEvent) => {
 			clearLongPress();
 
+			// Claimed by a sticker peek
+			if (e.defaultPrevented) {
+				return;
+			}
+
 			const touch = e.touches.item(0);
 
 			if (!swipeStart || !touch || e.touches.length !== 1 || swipeAxis === "vertical") {
@@ -364,7 +373,7 @@ export default defineComponent({
 		};
 
 		const onTouchEnd = (e: TouchEvent) => {
-			if (longPressTimer === null && props.message.msgid && canReply.value) {
+			if (longPressTimer === null && props.message.msgid && canReply.value && !onSticker) {
 				e.preventDefault();
 			}
 

@@ -216,6 +216,11 @@ export default defineComponent({
 		};
 
 		const onTouchStart = (e: TouchEvent) => {
+			// Holding a sticker in the chat peeks at it too (StickerMessage)
+			if ((e.target as Element).closest?.(".sticker-message, .sticker-menu")) {
+				return;
+			}
+
 			// Sliding across stickers peeks at them (helpers/stickerPeek), so it must not drag the sidebar
 			if (
 				!sidebar.value ||

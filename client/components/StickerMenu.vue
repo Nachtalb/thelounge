@@ -59,6 +59,11 @@
 					Download
 				</button>
 			</li>
+			<li v-if="openUrl">
+				<button type="button" class="sticker-menu-item sticker-menu-open" @click="open">
+					Open URL
+				</button>
+			</li>
 			<li v-if="showViewPack">
 				<button type="button" class="sticker-menu-item sticker-menu-set" @click="viewPack">
 					View Sticker Set
@@ -102,6 +107,8 @@ export default defineComponent({
 	props: {
 		item: {type: Object as PropType<StickerRef>, required: true},
 		showViewPack: {type: Boolean, default: true},
+		// Adds Open URL, opening this link in a new tab
+		openUrl: {type: String, default: ""},
 		// Opened from the Recently Used section
 		inRecent: {type: Boolean, default: false},
 		// Only the preview, while a long press peeks at stickers
@@ -174,6 +181,11 @@ export default defineComponent({
 			emit("close");
 		};
 
+		const open = () => {
+			window.open(props.openUrl, "_blank", "noopener");
+			emit("close");
+		};
+
 		const viewPack = () => {
 			openPack(props.item.pack);
 			emit("close");
@@ -227,6 +239,7 @@ export default defineComponent({
 			favorite,
 			unrecent,
 			download,
+			open,
 			viewPack,
 			ignoreOpeningPress,
 		};

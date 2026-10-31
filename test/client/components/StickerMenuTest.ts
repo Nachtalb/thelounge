@@ -23,6 +23,19 @@ describe("StickerMenu", () => {
 		menu.unmount();
 	});
 
+	it("opens its URL in a new tab", () => {
+		const windowOpen = vi.spyOn(window, "open").mockReturnValue(null);
+		const menu = mount(StickerMenu, {
+			props: {item: {pack: "p", id: "1"}, openUrl: "https://s.example/p/1"},
+		});
+		menu.find(".sticker-menu-open").element.dispatchEvent(
+			new MouseEvent("click", {bubbles: true, detail: 0})
+		);
+		expect(windowOpen).toHaveBeenCalledWith("https://s.example/p/1", "_blank", "noopener");
+		expect(menu.emitted("close")).toHaveLength(1);
+		menu.unmount();
+	});
+
 	it("closes on a press that starts after it opened", () => {
 		const menu = open();
 		const backdrop = menu.element as HTMLElement;

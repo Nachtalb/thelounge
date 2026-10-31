@@ -110,10 +110,10 @@ export type PeekHandlers = {
 	close: () => void;
 };
 
-const TILE = ".sticker-item[data-sticker]";
+const TILE = "[data-sticker]";
 
-// Binds the peek gesture to the sticker tiles inside `root`. Returns `cancel` (closing the
-// preview from elsewhere, e.g. Escape) and `unbind`.
+// Binds the peek gesture to the sticker tiles inside `root` (or `root` itself). Returns `cancel`
+// (closing the preview from elsewhere, e.g. Escape) and `unbind`.
 export function bindStickerPeek(root: HTMLElement, handlers: PeekHandlers) {
 	let state = idlePeek;
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -129,7 +129,9 @@ export function bindStickerPeek(root: HTMLElement, handlers: PeekHandlers) {
 
 	const tileFor = (item: string | null) =>
 		item
-			? [...root.querySelectorAll<HTMLElement>(TILE)].find((t) => t.dataset.sticker === item)
+			? [root, ...root.querySelectorAll<HTMLElement>(TILE)].find(
+					(t) => t.dataset.sticker === item
+			  )
 			: undefined;
 
 	const apply = (event: PeekEvent, tile?: HTMLElement | null) => {

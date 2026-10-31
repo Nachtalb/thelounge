@@ -2535,12 +2535,14 @@ textarea.input {
 	border-radius: 17px;
 }
 
-.sticker-pack-footer .sticker-pack-telegram {
+.sticker-pack-footer .sticker-pack-telegram,
+.sticker-pack-footer .sticker-pack-copy {
 	width: 34px;
 	padding: 0;
 }
 
 .sticker-pack-telegram::before,
+.sticker-pack-copy::before,
 .sticker-pack-remove::before {
 	/* The plane's weight sits right of its box: the viewBox shifts it ~1px left to look centred */
 	content: "";
@@ -2548,6 +2550,10 @@ textarea.input {
 	height: 18px;
 	background-color: currentcolor;
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='1.3 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.5 3.5 2.5 11l6.5 2.5 2.5 7 3.5-4.5 4.5 3.5z'/%3E%3Cpath d='m9 13.5 7.5-5.5-5 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.sticker-pack-copy::before {
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E");
 }
 
 .sticker-pack-remove::before {
@@ -2582,6 +2588,13 @@ textarea.input {
 /* Peeking: the stickers underneath keep receiving the sliding pointer */
 .sticker-menu-peek {
 	pointer-events: none;
+}
+
+/* Opened from a sticker in the chat: covers the window */
+.sticker-menu-window {
+	position: fixed;
+	z-index: 1000;
+	color: var(--body-color);
 }
 
 .sticker-menu-preview {
@@ -2646,6 +2659,10 @@ textarea.input {
 
 .sticker-menu-download::before {
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5v12'/%3E%3Cpath d='m7 11 5 5 5-5'/%3E%3Cpath d='M4 16v2.5A2 2 0 0 0 6 20.5h12a2 2 0 0 0 2-2V16'/%3E%3C/svg%3E");
+}
+
+.sticker-menu-open::before {
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E");
 }
 
 .sticker-menu-set::before {

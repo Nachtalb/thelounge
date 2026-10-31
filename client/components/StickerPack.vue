@@ -50,6 +50,13 @@
 				/>
 				<button
 					type="button"
+					class="btn sticker-pack-copy"
+					aria-label="Copy link"
+					title="Copy link"
+					@click="copyLink(pack.link)"
+				/>
+				<button
+					type="button"
 					:class="['btn', {'sticker-pack-remove': added}]"
 					@click="togglePack(pack.name)"
 				>
@@ -65,17 +72,17 @@
 				@close="closeMenu"
 			/>
 		</div>
+		<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
 	</div>
 </template>
 
 <script lang="ts">
 import {computed, defineComponent, nextTick, onMounted, onUnmounted, ref} from "vue";
 import eventbus from "../js/eventbus";
-import {useStore} from "../js/store";
-import {addedPacks, loadPack, loadedPack, packs, sendSticker, togglePack} from "../js/stickers";
-import {ChanType} from "../../shared/types/chan";
+import {addedPacks, loadPack, loadedPack, packs, sendStickerHere, togglePack} from "../js/stickers";
 import type {StickerRef} from "../../shared/stickers";
 import {tileSticker, useStickerPeek} from "../js/helpers/stickerPeek";
+import {copyText} from "../js/helpers/copyImage";
 import StickerItem from "./StickerItem.vue";
 import StickerMenu from "./StickerMenu.vue";
 
@@ -84,7 +91,6 @@ export default defineComponent({
 	name: "StickerPack",
 	components: {StickerItem, StickerMenu},
 	setup() {
-		const store = useStore();
 		const name = ref("");
 		const closeBtn = ref<HTMLButtonElement>();
 		const menuFor = ref<StickerRef | null>(null);
@@ -92,6 +98,24 @@ export default defineComponent({
 		const packDialog = ref<HTMLElement>();
 		const pack = computed(() => (name.value ? loadedPack(name.value) : null));
 		const added = computed(() => addedPacks.value.includes(name.value));
+
+		const toast = ref("");
+		let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const showToast = (message: string, ms: number) => {
+			clearTimeout(toastTimer);
+			toast.value = message;
+			toastTimer = setTimeout(() => (toast.value = ""), ms);
+		};
+
+		// The t.me link adds the pack in Telegram and in the "+" of the picker; if the browser
+		// refuses to copy, the link is shown instead
+		const copyLink = (link: string) => {
+			copyText(link).then(
+				() => showToast("Link copied", 2000),
+				() => showToast(link, 6000)
+			);
+		};
 
 		const subtitle = computed(() => {
 			const state = packs[name.value];
@@ -144,14 +168,7 @@ export default defineComponent({
 
 		const onEscape = () => (menuFor.value ? closeMenu() : close());
 
-		const send = (item: StickerRef) => {
-			const channel = store.state.activeChannel?.channel;
-
-			if (channel && (channel.type === ChanType.CHANNEL || channel.type === ChanType.QUERY)) {
-				sendSticker(channel, item);
-				close();
-			}
-		};
+		const send = (item: StickerRef) => sendStickerHere(item) && close();
 
 		// Keep Tab inside the dialog
 		const trapTab = (e: KeyboardEvent) => {
@@ -192,6 +209,8 @@ export default defineComponent({
 			send,
 			trapTab,
 			togglePack,
+			toast,
+			copyLink,
 		};
 	},
 });
