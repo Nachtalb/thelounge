@@ -15,7 +15,7 @@ import {parseSearchQuery} from "../../../shared/searchQuery";
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
 
-export const currentSchemaVersion = 1784073600000; // use `new Date().getTime()`
+export const currentSchemaVersion = 1793491200000; // use `new Date().getTime()`
 
 // Desired schema, adapt to the newest version and add migrations to the array below
 const schema = [
@@ -33,10 +33,11 @@ const schema = [
 		statement TEXT NOT NULL
 	)`,
 	"CREATE INDEX time ON messages (time)",
-	"CREATE INDEX msg_type_idx on messages (type)", // needed for efficient storageCleaner queries
 	// needed for efficient getMessages queries
 	"CREATE INDEX network_channel_time ON messages (network, channel, time)",
 	"CREATE INDEX msgid_idx ON messages (msgid)",
+	// search only reads 'message' rows, this skips the other types without reading them
+	"CREATE INDEX msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
 ];
 
 // the migrations will be executed in an exclusive transaction as a whole
@@ -89,6 +90,17 @@ export const migrations: Migration[] = [
 			"CREATE INDEX msgid_idx ON messages (msgid)",
 		],
 	},
+	{
+		// storageCleaner sorted every old row of the type by time; the time index needs no sort
+		version: 1793404800000,
+		stmts: ["DROP INDEX IF EXISTS msg_type_idx"],
+	},
+	{
+		version: 1793491200000,
+		stmts: [
+			"CREATE INDEX IF NOT EXISTS msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
+		],
+	},
 ];
 
 // down migrations need to restore the state of the prior version.
@@ -116,6 +128,14 @@ export const rollbacks: Rollback[] = [
 	{
 		version: 1784073600000,
 		stmts: ["DROP INDEX msgid_idx", "ALTER TABLE messages DROP COLUMN msgid"],
+	},
+	{
+		version: 1793404800000,
+		stmts: ["CREATE INDEX IF NOT EXISTS msg_type_idx on messages (type)"],
+	},
+	{
+		version: 1793491200000,
+		stmts: ["DROP INDEX IF EXISTS msg_search_idx"],
 	},
 ];
 
@@ -152,6 +172,9 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 	_enable(connection_string: string) {
 		this.database = new Database(connection_string);
+		// every message is its own write: without WAL each one waits for journal fsyncs
+		this.database.exec("PRAGMA journal_mode = WAL");
+		this.database.exec("PRAGMA synchronous = NORMAL");
 
 		try {
 			this.run_migrations();
@@ -412,7 +435,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		}, {});
 
 		this.database
-			.prepare(
+			.query(
 				"INSERT INTO messages(network, channel, time, type, msg, msgid) VALUES(?, ?, ?, ?, ?, ?)"
 			)
 			.run(
@@ -431,7 +454,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		}
 
 		this.database
-			.prepare("DELETE FROM messages WHERE network = ? AND channel = ?")
+			.query("DELETE FROM messages WHERE network = ? AND channel = ?")
 			.run(network.uuid, channel.name.toLowerCase());
 	}
 
@@ -444,7 +467,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		const limit = Config.values.maxHistory < 0 ? 100000 : Config.values.maxHistory;
 
 		const rows = this.database
-			.prepare(getMessagesQuery)
+			.query(getMessagesQuery)
 			.all(network.uuid, channel.name.toLowerCase(), limit) as MessageRow[];
 
 		return rows.reverse().map((row) => rowToMsg(row, nextID()));
@@ -465,7 +488,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 		const where = "network = ? AND channel = ?";
 		const rows = this.database
-			.prepare(
+			.query(
 				`SELECT msg, type, time, msgid FROM messages WHERE ${where} AND time < ? AND time >= COALESCE(` +
 					`(SELECT time FROM messages WHERE ${where} AND time < ? ORDER BY time DESC LIMIT 1 OFFSET ?), 0` +
 					") ORDER BY time ASC, id ASC"
@@ -568,7 +591,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		params.push(req.limit);
 		sql += ")";
 
-		return this.database.prepare(sql).run(...params).changes as number;
+		return this.database.query(sql).run(...params).changes as number;
 	}
 
 	canProvideMessages() {
