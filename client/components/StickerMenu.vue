@@ -41,6 +41,15 @@
 					{{ fav ? "Delete from Favorites" : "Add to Favorites" }}
 				</button>
 			</li>
+			<li v-if="inRecent">
+				<button
+					type="button"
+					class="sticker-menu-item sticker-menu-unrecent"
+					@click="unrecent"
+				>
+					Remove from Recent
+				</button>
+			</li>
 			<li v-if="showViewPack">
 				<button type="button" class="sticker-menu-item sticker-menu-set" @click="viewPack">
 					View Sticker Set
@@ -52,7 +61,14 @@
 
 <script lang="ts">
 import {computed, defineComponent, onMounted, onUnmounted, PropType, ref} from "vue";
-import {findSticker, isFavorite, openPack, proxyUrl, toggleFavorite} from "../js/stickers";
+import {
+	findSticker,
+	isFavorite,
+	openPack,
+	proxyUrl,
+	removeRecent,
+	toggleFavorite,
+} from "../js/stickers";
 import type {StickerRef} from "../../shared/stickers";
 import {emojiImageUrl, findEmojiMatches} from "../js/helpers/emoji";
 import StickerMedia from "./StickerMedia.vue";
@@ -67,6 +83,8 @@ export default defineComponent({
 	props: {
 		item: {type: Object as PropType<StickerRef>, required: true},
 		showViewPack: {type: Boolean, default: true},
+		// Opened from the Recently Used section
+		inRecent: {type: Boolean, default: false},
 	},
 	emits: ["close", "send"],
 	setup(props, {emit}) {
@@ -102,6 +120,11 @@ export default defineComponent({
 			emit("close");
 		};
 
+		const unrecent = () => {
+			removeRecent(props.item);
+			emit("close");
+		};
+
 		const viewPack = () => {
 			openPack(props.item.pack);
 			emit("close");
@@ -132,7 +155,19 @@ export default defineComponent({
 
 		onUnmounted(() => window.removeEventListener("pointerdown", onPointerDown, true));
 
-		return {first, data, thumb, fav, emoji, size, send, favorite, viewPack, ignoreOpeningPress};
+		return {
+			first,
+			data,
+			thumb,
+			fav,
+			emoji,
+			size,
+			send,
+			favorite,
+			unrecent,
+			viewPack,
+			ignoreOpeningPress,
+		};
 	},
 });
 </script>

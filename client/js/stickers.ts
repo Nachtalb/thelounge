@@ -136,6 +136,13 @@ export function toggleFavorite(ref: StickerRef) {
 	save("stickerFavorites", toggleInList(favorites.value, stickerKey(ref)));
 }
 
+export function removeRecent(ref: StickerRef) {
+	save(
+		"stickerRecent",
+		recent.value.filter((key) => key !== stickerKey(ref))
+	);
+}
+
 export function isFavorite(ref: StickerRef) {
 	return favorites.value.includes(stickerKey(ref));
 }

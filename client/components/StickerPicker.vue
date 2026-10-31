@@ -108,7 +108,7 @@
 						:key="item.pack + '/' + item.id"
 						:item="item"
 						@pick="send"
-						@menu="menuFor = $event"
+						@menu="openMenu($event, false)"
 					/>
 				</div>
 				<p v-else class="sticker-picker-note sticker-picker-empty">No stickers found</p>
@@ -140,13 +140,19 @@
 							:key="item.pack + '/' + item.id"
 							:item="item"
 							@pick="send"
-							@menu="menuFor = $event"
+							@menu="openMenu($event, section.kind === 'recent')"
 						/>
 					</div>
 				</section>
 			</template>
 		</div>
-		<StickerMenu v-if="menuFor" :item="menuFor" @send="send" @close="closeMenu" />
+		<StickerMenu
+			v-if="menuFor"
+			:item="menuFor"
+			:in-recent="menuInRecent"
+			@send="send"
+			@close="closeMenu"
+		/>
 	</div>
 </template>
 
@@ -204,6 +210,7 @@ export default defineComponent({
 		const addBusy = ref(false);
 		const known = ref<KnownPack[] | null>(null);
 		const menuFor = ref<StickerRef | null>(null);
+		const menuInRecent = ref(false);
 
 		const style = computed(() => ({"--sticker-anchor-right": props.anchorRight + "px"}));
 
@@ -366,6 +373,11 @@ export default defineComponent({
 			}
 		};
 
+		const openMenu = (item: StickerRef, inRecent: boolean) => {
+			menuFor.value = item;
+			menuInRecent.value = inRecent;
+		};
+
 		// Focusing the search on touch would open the keyboard and move the panel
 		const closeMenu = () => {
 			menuFor.value = null;
@@ -413,6 +425,8 @@ export default defineComponent({
 			addBusy,
 			known,
 			menuFor,
+			menuInRecent,
+			openMenu,
 			style,
 			sections,
 			results,
