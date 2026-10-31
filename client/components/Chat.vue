@@ -64,8 +64,15 @@
 							placeholder="Set channel topic"
 							enterkeyhint="done"
 							@keyup.enter="saveTopic"
-							@keyup.esc="channel.editTopic = false"
+							@keydown.esc.stop="channel.editTopic = false"
 						/>
+						<span
+							aria-label="Cancel"
+							class="cancel-topic"
+							@click="channel.editTopic = false"
+						>
+							<span type="button" aria-label="Cancel"></span>
+						</span>
 						<span aria-label="Save topic" class="save-topic" @click="saveTopic">
 							<span type="button" aria-label="Save topic"></span>
 						</span>
@@ -167,6 +174,7 @@ import {
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
 import {SpecialChanType, ChanType} from "../../shared/types/chan";
+import {chatSearch} from "../js/helpers/chatSearch";
 
 export default defineComponent({
 	name: "Chat",
@@ -271,6 +279,23 @@ export default defineComponent({
 
 			topicExpanded.value = !topicExpanded.value;
 		};
+
+		// Esc outside the topic input (the input handles its own), like the search bar.
+		// Registered before the search bar's listener, so an open search closes first
+		const onEscape = () => {
+			if (chatSearch.chanId === props.channel.id) {
+				return;
+			}
+
+			if (props.channel.editTopic) {
+				props.channel.editTopic = false;
+			}
+		};
+
+		eventbus.on("escapekey", onEscape);
+		onBeforeUnmount(() => {
+			eventbus.off("escapekey", onEscape);
+		});
 
 		const specialComponent = computed(() => {
 			switch (props.channel.special) {
