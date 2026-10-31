@@ -61,7 +61,7 @@ function expandHome(shortenedPath: string) {
 	}
 
 	const home = os.homedir().replace("$", "$$$$");
-	return path.resolve(shortenedPath.replace(/^~($|\/|\\)/, home + "$1"));
+	return path.resolve(shortenedPath.replace(/^~($|\/)/, home + "$1"));
 }
 
 function passwordRequiresUpdate(password: string) {

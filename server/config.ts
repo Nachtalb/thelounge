@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import path from "path";
 import fs, {Stats} from "fs";
-import os from "os";
 import _ from "lodash";
 import colors from "./colors";
 import {SearchOptions} from "ldapjs";
@@ -332,9 +331,7 @@ class Config {
 				"The log files may be exposed. Please fix the permissions."
 			);
 
-			if (os.platform() !== "win32") {
-				log.warn(`run \`chmod o-x "${userLogsPath}"\` to correct it.`);
-			}
+			log.warn(`run \`chmod o-x "${userLogsPath}"\` to correct it.`);
 		}
 	}
 }

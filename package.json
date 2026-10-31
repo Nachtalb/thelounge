@@ -1,9 +1,9 @@
 {
   "name": "thelounge",
+  "private": true,
   "description": "The self-hosted Web IRC client",
   "version": "4.6.0-pre.2",
   "type": "commonjs",
-  "preferGlobal": true,
   "bin": {
     "thelounge": "index.js"
   },
@@ -31,28 +31,13 @@
     "watch": "vite build --watch",
     "githooks-install": "git config core.hooksPath scripts/git-hooks"
   },
-  "keywords": [
-    "lounge",
-    "browser",
-    "web",
-    "chat",
-    "client",
-    "irc",
-    "server",
-    "thelounge"
-  ],
   "license": "MIT",
   "packageManager": "bun@1.4.2",
   "engines": {
     "bun": ">=1.4.0"
   },
-  "files": [
-    "./.thelounge_home",
-    "./index.js",
-    "./bun.lock",
-    "./dist/package.json",
-    "./dist/**/*.js",
-    "./public/**"
+  "os": [
+    "linux"
   ],
   "dependencies": {
     "@fastify/busboy": "1.0.0",
