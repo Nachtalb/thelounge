@@ -8,6 +8,7 @@ import Config from "../../server/config";
 import MessageStorage, {
 	currentSchemaVersion,
 	getMessagesQuery,
+	lastSeenQuery,
 	migrations,
 	necessaryMigrations,
 	rollbacks,
@@ -130,6 +131,18 @@ describe("SQLite migrations", function () {
 		const details = plan.map((row) => row.detail).join("\n");
 		expect(details).to.include("USING INDEX msg_search_idx");
 		expect(details).to.not.include("TEMP B-TREE");
+	});
+
+	it("migrated database finds a nick's last message through the sender index", function () {
+		const stmt = db.prepare(`EXPLAIN QUERY PLAN ${lastSeenQuery}`);
+		const plan = stmt.all("8f650427-79a2-4950-b8af-94088b61b37c", "rascul") as {
+			detail: string;
+		}[];
+		stmt.finalize();
+
+		const details = plan.map((row) => row.detail).join("\n");
+		expect(details).to.include("USING INDEX msg_from_idx (network=? AND <expr>=?)");
+		expect(details).to.not.include("SCAN");
 	});
 
 	it("has working down-migrations", function () {
@@ -294,6 +307,7 @@ describe("SQLite Message Storage", function () {
 			.query("SELECT name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL")
 			.all() as {name: string}[];
 		expect(rows.map((r) => r.name).sort()).to.deep.equal([
+			"msg_from_idx",
 			"msg_search_idx",
 			"msgid_idx",
 			"network_channel_time",
@@ -534,6 +548,30 @@ describe("SQLite Message Storage", function () {
 		assertResults("@b%", []);
 		assertResults("\\@bob", ["@bob hello"]);
 		assertResults('"@bob hello"', ["@bob hello"]);
+	});
+
+	it("should find when a nick last sent something on the network", function () {
+		const network = {uuid: "last-seen-network"} as any;
+		const other = {uuid: "other-network"} as any;
+		const lines: [any, string, string, MessageType, number][] = [
+			[network, "#a", "Bob", MessageType.MESSAGE, 1000],
+			[network, "bob", "bob", MessageType.ACTION, 2000],
+			[network, "#b", "bob", MessageType.JOIN, 3000],
+			[network, "#b", "alice", MessageType.MESSAGE, 4000],
+			[other, "#a", "bob", MessageType.MESSAGE, 5000],
+		];
+
+		for (const [net, chan, nick, type, time] of lines) {
+			store.index(
+				net,
+				{name: chan} as any,
+				new Msg({time, type, text: "x", from: {nick}} as any)
+			);
+		}
+
+		expect(store.lastSeen(network, "BOB")).to.equal(2000);
+		expect(store.lastSeen(network, "alice")).to.equal(4000);
+		expect(store.lastSeen(network, "carol")).to.be.null;
 	});
 
 	it("should be able to downgrade", function () {

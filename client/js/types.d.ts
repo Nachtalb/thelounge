@@ -34,6 +34,7 @@ type ClientChan = Omit<SharedChan, "messages"> & {
 	scrolledToBottom: boolean;
 	usersOutdated: boolean;
 	typingNicks: string[];
+	lastSeen?: number | null;
 	replyingTo: {msgid: string; nick: string; text: string} | null;
 	inputPreviews: ClientLinkPreview[];
 

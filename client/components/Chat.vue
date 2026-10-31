@@ -195,6 +195,7 @@ import {useStore} from "../js/store";
 import {SpecialChanType, ChanType, ChanState} from "../../shared/types/chan";
 import jumpToMessage, {topicTarget} from "../js/helpers/jumpToMessage";
 import {chatSearch} from "../js/helpers/chatSearch";
+import lastSeen from "../js/helpers/lastSeen";
 
 export default defineComponent({
 	name: "Chat",
@@ -363,9 +364,18 @@ export default defineComponent({
 					target: props.channel.id,
 				});
 			}
+
+			if (props.channel.type === ChanType.QUERY) {
+				socket.emit("last-seen", {target: props.channel.id});
+			}
 		};
 
 		const searching = computed(() => chatSearch.chanId === props.channel.id);
+
+		// ticks the relative "last seen" time
+		const now = ref(Date.now());
+		const nowTimer = setInterval(() => (now.value = Date.now()), 30000);
+		onBeforeUnmount(() => clearInterval(nowTimer));
 
 		const headerStatus = computed(() => {
 			const chan = props.channel;
@@ -373,6 +383,10 @@ export default defineComponent({
 			if (chan.type === ChanType.CHANNEL && chan.state === ChanState.JOINED) {
 				const n = chan.users.length;
 				return n ? `${n} ${n === 1 ? "member" : "members"}` : "";
+			}
+
+			if (chan.type === ChanType.QUERY && chan.lastSeen) {
+				return lastSeen(chan.lastSeen, now.value, store.state.settings.use12hClock);
 			}
 
 			return "";

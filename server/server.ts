@@ -753,6 +753,12 @@ function initializeClient(
 		}
 	});
 
+	socket.on("last-seen", (data) => {
+		if (_.isPlainObject(data)) {
+			client.lastSeen(data);
+		}
+	});
+
 	socket.on("changelog", () => {
 		Promise.all([changelog.fetch(), packages.outdated()])
 			.then(([changelogData, packageUpdate]) => {

@@ -15,7 +15,12 @@ import {parseSearchQuery} from "../../../shared/searchQuery";
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
 
-export const currentSchemaVersion = 1793491200000; // use `new Date().getTime()`
+export const currentSchemaVersion = 1793577600000; // use `new Date().getTime()`
+
+// "last seen" of a nick across a network's channels and queries
+const lastSeenTypes = "type IN ('message', 'action', 'notice')";
+const lastSeenIndex = `CREATE INDEX IF NOT EXISTS msg_from_idx ON messages (network, json_extract(msg, '$.from.nick') COLLATE NOCASE, time) WHERE ${lastSeenTypes}`;
+export const lastSeenQuery = `SELECT MAX(time) AS time FROM messages WHERE network = ? AND ${lastSeenTypes} AND json_extract(msg, '$.from.nick') = ? COLLATE NOCASE`;
 
 // Desired schema, adapt to the newest version and add migrations to the array below
 const schema = [
@@ -38,6 +43,7 @@ const schema = [
 	"CREATE INDEX msgid_idx ON messages (msgid)",
 	// search only reads 'message' rows, this skips the other types without reading them
 	"CREATE INDEX msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
+	lastSeenIndex,
 ];
 
 // the migrations will be executed in an exclusive transaction as a whole
@@ -101,6 +107,10 @@ export const migrations: Migration[] = [
 			"CREATE INDEX IF NOT EXISTS msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
 		],
 	},
+	{
+		version: 1793577600000,
+		stmts: [lastSeenIndex],
+	},
 ];
 
 // down migrations need to restore the state of the prior version.
@@ -136,6 +146,10 @@ export const rollbacks: Rollback[] = [
 	{
 		version: 1793491200000,
 		stmts: ["DROP INDEX IF EXISTS msg_search_idx"],
+	},
+	{
+		version: 1793577600000,
+		stmts: ["DROP INDEX IF EXISTS msg_from_idx"],
 	},
 ];
 
@@ -504,6 +518,18 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 			) as MessageRow[];
 
 		return rows.map((row) => rowToMsg(row, nextID()));
+	}
+
+	// Time of the newest message `nick` sent anywhere on the network
+	lastSeen(network: Network, nick: string): number | null {
+		if (!this.isEnabled) {
+			return null;
+		}
+
+		const row = this.database.query(lastSeenQuery).get(network.uuid, nick) as {
+			time: number | null;
+		} | null;
+		return row?.time ?? null;
 	}
 
 	search(query: SearchQuery): SearchResponse {
