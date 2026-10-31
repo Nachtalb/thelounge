@@ -1,22 +1,32 @@
 <template>
-	<div class="search-nav" role="toolbar" aria-label="Search navigation">
+	<div
+		:class="['search-nav', {'beside-userlist': channel.type === 'channel'}]"
+		role="toolbar"
+		aria-label="Search navigation"
+	>
+		<div v-if="chatSearch.query && !chatSearch.listOpen" class="search-steps">
+			<button
+				class="search-step search-older"
+				type="button"
+				aria-label="Older match (Enter)"
+				title="Older match (Enter)"
+				:disabled="!canStep(1)"
+				@click="step(1)"
+			>
+				<div class="scroll-down-arrow" />
+			</button>
+			<button
+				class="search-step search-newer"
+				type="button"
+				aria-label="Newer match (Ctrl+Enter)"
+				title="Newer match (Ctrl+Enter)"
+				:disabled="!canStep(-1)"
+				@click="step(-1)"
+			>
+				<div class="scroll-down-arrow" />
+			</button>
+		</div>
 		<span class="search-counter" aria-live="polite">{{ counter }}</span>
-		<button
-			class="search-step search-older"
-			type="button"
-			aria-label="Older match (Enter)"
-			title="Older match (Enter)"
-			:disabled="!canStep(1)"
-			@click="step(1)"
-		/>
-		<button
-			class="search-step search-newer"
-			type="button"
-			aria-label="Newer match (Ctrl+Enter)"
-			title="Newer match (Ctrl+Enter)"
-			:disabled="!canStep(-1)"
-			@click="step(-1)"
-		/>
 		<button
 			class="search-list-toggle"
 			type="button"
@@ -43,11 +53,13 @@
 	font-size: 14px;
 }
 
-.search-nav > button {
+.search-nav > button,
+.search-nav .search-step {
 	color: var(--icon-button-color);
 }
 
-.search-nav > button:disabled {
+.search-nav > button:disabled,
+.search-nav .search-step:disabled {
 	opacity: 0.4;
 	cursor: default;
 }
@@ -69,19 +81,38 @@
 	font-weight: bold;
 }
 
-.search-nav .search-step {
-	width: 32px;
-	height: 32px;
-	flex-shrink: 0;
+/* Telegram's up/down chevrons, looking like the jump to recent messages button */
+.search-nav .search-steps {
+	position: absolute;
+	bottom: calc(100% + 16px);
+	right: 16px;
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
-.search-nav .search-step::before {
+#viewport.userlist-open .search-nav.beside-userlist .search-steps {
+	right: 196px;
+}
+
+.search-nav .search-step:not(:disabled):hover .scroll-down-arrow {
+	background: var(--button-color);
+	color: var(--button-text-color-hover);
+}
+
+.search-nav .scroll-down-arrow::after {
 	font: normal normal normal 14px/1 FontAwesome;
-	content: "\f078"; /* chevron-down */
+	content: "\f107"; /* angle-down */
 }
 
-.search-nav .search-older::before {
-	content: "\f077"; /* chevron-up */
+.search-nav .search-older .scroll-down-arrow::after {
+	content: "\f106"; /* angle-up */
+}
+
+/* The chevrons sit where the jump to recent messages button would */
+#chat-container:has(.search-nav) .scroll-down {
+	display: none;
 }
 </style>
 
