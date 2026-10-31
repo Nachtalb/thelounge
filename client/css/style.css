@@ -2199,18 +2199,185 @@ textarea.input {
 	flex: 0 0 auto;
 }
 
-.sticker-item:hover,
+.sticker-tab-favorites::before,
+.sticker-tab-recent::before,
+.sticker-tab-add::before {
+	content: "";
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	vertical-align: middle;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3H7a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4V9z'/%3E%3Cpath d='M15 3v2a4 4 0 0 0 4 4h2'/%3E%3Ccircle cx='9' cy='11' r='1.75' fill='black' stroke='none'/%3E%3Ccircle cx='15' cy='11' r='1.75' fill='black' stroke='none'/%3E%3Cpath d='M8 15a5 5 0 0 0 8 0'/%3E%3Cpath d='M12.5 16.9v.6a1.5 1.5 0 0 0 3 0v-1.9'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.sticker-tab-favorites::before {
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z'/%3E%3C/svg%3E");
+}
+
+.sticker-tab-recent::before {
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 6v6l4 2'/%3E%3C/svg%3E");
+}
+
+.sticker-tab-add::before {
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='M12 5v14'/%3E%3C/svg%3E");
+}
+
+#sticker-picker {
+	position: absolute;
+	bottom: calc(100% + 4px);
+	right: var(--sticker-anchor-right, 6px);
+	width: 360px;
+	height: 420px;
+	max-height: calc(100vh - 120px);
+	display: flex;
+	flex-direction: column;
+	background: var(--window-bg-color);
+	color: var(--body-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	box-shadow: 0 3px 12px var(--shadow-color);
+	z-index: 100;
+	overflow: hidden;
+}
+
+.sticker-picker-search {
+	position: relative;
+	padding: 8px 8px 4px;
+}
+
+#sticker-picker .sticker-picker-search .input::-webkit-search-cancel-button {
+	display: none;
+}
+
+.sticker-picker-clear {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--body-color-muted);
+}
+
+.sticker-picker-clear::before {
+	content: "";
+	width: 16px;
+	height: 16px;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.sticker-picker-clear:hover {
+	color: var(--body-color);
+}
+
+#sticker-picker .sticker-picker-search .input,
+.sticker-picker-add .input {
+	width: 100%;
+	margin: 0;
+	height: 32px;
+	padding: 0 10px;
+	border-radius: 16px;
+	border: 1px solid var(--border-color);
+	background: color-mix(in srgb, currentcolor 6%, transparent);
+	color: inherit;
+}
+
+/* Room for the clear button */
+#sticker-picker .sticker-picker-search .input {
+	padding-right: 32px;
+}
+
+.sticker-picker-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 2px 6px 4px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	border-bottom: 1px solid var(--border-color);
+	flex: 0 0 auto;
+}
+
+.sticker-tab {
+	flex: 0 0 auto;
+	width: 36px;
+	height: 36px;
+	padding: 4px;
+	border-radius: 6px;
+	color: var(--body-color-muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.sticker-tab .sticker-media {
+	width: 28px;
+	height: 28px;
+}
+
+.sticker-tab.active,
 .sticker-item:focus-visible,
-.sticker-menu-item:hover,
 .sticker-menu-item:focus-visible {
 	background: color-mix(in srgb, currentcolor 12%, transparent);
 	outline: 0;
+}
+
+/* Touch screens keep :hover on the last tapped element */
+@media (hover: hover) {
+	.sticker-tab:hover,
+	.sticker-item:hover,
+	.sticker-menu-item:hover {
+		background: color-mix(in srgb, currentcolor 12%, transparent);
+	}
+}
+
+.sticker-picker-scroll {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	padding: 0 6px 6px;
+	overscroll-behavior: contain;
+	position: relative;
+}
+
+.sticker-section-title {
+	font-size: 13px;
+	font-weight: bold;
+	color: var(--body-color-muted);
+	margin: 8px 4px 4px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sticker-section-title button {
+	font: inherit;
+	color: inherit;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sticker-section-title button:hover {
+	color: var(--body-color);
 }
 
 .sticker-picker-note {
 	font-size: 12px;
 	color: var(--body-color-muted);
 	margin: 4px;
+}
+
+.sticker-picker-error {
+	color: var(--msg-error-color);
+}
+
+.sticker-picker-empty {
+	text-align: center;
+	margin-top: 40px;
 }
 
 .sticker-grid {
@@ -2251,6 +2418,50 @@ textarea.input {
 .sticker-media video {
 	opacity: 0;
 	pointer-events: none;
+}
+
+.sticker-picker-add-row {
+	display: flex;
+	gap: 6px;
+	margin: 8px 0 4px;
+}
+
+.sticker-picker-add .btn {
+	margin: 0;
+	padding: 0 12px;
+	flex: 0 0 auto;
+}
+
+.sticker-known-pack {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px;
+}
+
+.sticker-known-pack img,
+.sticker-known-pack video {
+	width: 36px;
+	height: 36px;
+	object-fit: contain;
+	flex: 0 0 auto;
+}
+
+.sticker-known-pack-text {
+	flex: 1;
+	width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.sticker-known-pack-title {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sticker-known-pack .btn {
+	margin: 0;
 }
 
 .sticker-pack-footer .btn {
@@ -2453,6 +2664,21 @@ textarea.input {
 #chat .sticker-message .sticker-media {
 	max-width: 160px;
 	max-height: 160px;
+}
+
+/* Below the input, like the on-screen keyboard it replaces: the chat shrinks instead of being covered */
+@media (max-width: 768px) {
+	#sticker-picker {
+		position: static;
+		order: 1;
+		width: calc(100% + 12px);
+		height: min(360px, 45vh);
+		margin: 4px -6px -2px;
+		border: 0;
+		border-top: 1px solid var(--border-color);
+		border-radius: 0;
+		box-shadow: none;
+	}
 }
 
 :is(#chat, #input-previews) .preview-size {
