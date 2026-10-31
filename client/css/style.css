@@ -2181,9 +2181,23 @@ textarea.input {
 }
 
 .sticker-item:hover,
-.sticker-item:focus-visible {
+.sticker-item:focus-visible,
+.sticker-menu-item:hover,
+.sticker-menu-item:focus-visible {
 	background: color-mix(in srgb, currentcolor 12%, transparent);
 	outline: 0;
+}
+
+.sticker-picker-note {
+	font-size: 12px;
+	color: var(--body-color-muted);
+	margin: 4px;
+}
+
+.sticker-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+	gap: 2px;
 }
 
 .sticker-item {
@@ -2218,6 +2232,128 @@ textarea.input {
 .sticker-media video {
 	opacity: 0;
 	pointer-events: none;
+}
+
+.sticker-pack-footer .btn {
+	margin: 0;
+}
+
+.sticker-menu {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	background: color-mix(in srgb, var(--window-bg-color) 92%, transparent);
+	z-index: 2;
+}
+
+.sticker-menu-preview {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+}
+
+.sticker-menu-emoji {
+	font-size: 24px;
+	line-height: 1;
+}
+
+.sticker-menu-actions {
+	list-style: none;
+	margin: 0;
+	padding: 4px;
+	min-width: 200px;
+	background: var(--window-bg-color);
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	box-shadow: 0 3px 12px var(--shadow-color);
+}
+
+.sticker-menu-item {
+	display: block;
+	width: 100%;
+	text-align: left;
+	padding: 6px 10px;
+	border-radius: 4px;
+	color: inherit;
+	font: inherit;
+}
+
+#sticker-pack-overlay {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--overlay-bg-color);
+	z-index: 999;
+}
+
+#sticker-pack {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: min(420px, calc(100vw - 20px));
+	height: min(560px, calc(100vh - 40px));
+	background: var(--window-bg-color);
+	color: var(--body-color);
+	border-radius: 8px;
+	box-shadow: 0 3px 12px var(--window-shadow-color);
+	overflow: hidden;
+}
+
+.sticker-pack-header,
+.sticker-pack-footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	flex: 0 0 auto;
+}
+
+.sticker-pack-header {
+	border-bottom: 1px solid var(--border-color);
+}
+
+.sticker-pack-footer {
+	border-top: 1px solid var(--border-color);
+	justify-content: flex-end;
+}
+
+.sticker-pack-heading {
+	flex: 1;
+	width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.sticker-pack-title {
+	font-weight: bold;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sticker-pack-close {
+	color: var(--body-color-muted);
+	font-size: 22px;
+	line-height: 1;
+	padding: 0 4px;
+}
+
+.sticker-pack-close:hover {
+	color: var(--body-color);
+}
+
+.sticker-pack-body {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	padding: 6px;
 }
 
 #chat .sticker-message {
