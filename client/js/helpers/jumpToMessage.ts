@@ -28,6 +28,26 @@ export function findMessage<T extends Target>(messages: T[], target: Target) {
 	);
 }
 
+// Where the channel's topic was set: the last topic change, else the time from the
+// topic info sent on join (RPL_TOPICWHOTIME), else nothing
+export function topicTarget(
+	messages: {type?: string; from?: {nick?: string}; when?: Date | string}[]
+): Target | undefined {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const m = messages[i];
+
+		if (m.type === "topic" && m.from?.nick) {
+			return m as Target;
+		}
+
+		if (m.type === "topic_set_by" && m.when) {
+			return {time: m.when};
+		}
+	}
+
+	return undefined;
+}
+
 // Set while a jump loads older history, so the message list doesn't prefetch in between
 export const loadingBack = ref(false);
 

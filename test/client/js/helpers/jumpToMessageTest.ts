@@ -2,7 +2,11 @@
 import {expect, vi} from "vitest";
 import eventbus from "../../../../client/js/eventbus";
 import {store} from "../../../../client/js/store";
-import jumpToMessage, {findMessage, jumpTarget} from "../../../../client/js/helpers/jumpToMessage";
+import jumpToMessage, {
+	findMessage,
+	jumpTarget,
+	topicTarget,
+} from "../../../../client/js/helpers/jumpToMessage";
 import type {ClientChan} from "../../../../client/js/types";
 
 vi.mock("../../../../client/js/socket", () => ({default: {on() {}, off() {}, emit() {}}}));
@@ -18,6 +22,17 @@ describe("jumpToMessage", () => {
 		expect(findMessage(messages, {msgid: "x2"})!.id).to.equal(2);
 		expect(findMessage(messages, {msgid: "nope"})).to.equal(undefined);
 		expect(findMessage(messages, {msgid: "nope", time: 1500})!.id).to.equal(2);
+	});
+
+	it("finds where the topic was set: last change, else the join info time, else nothing", () => {
+		const change = {type: "topic", from: {nick: "a"}, time: 5, text: "t"};
+		const join = {type: "topic", text: "t"};
+		const setBy = {type: "topic_set_by", when: "2026-01-01T00:00:00Z"};
+		const msg = {type: "message"};
+
+		expect(topicTarget([setBy, change, msg])).to.equal(change);
+		expect(topicTarget([change, join, setBy, msg])).to.deep.equal({time: setBy.when});
+		expect(topicTarget([join, msg])).to.equal(undefined);
 	});
 
 	it("scrolls to and highlights a reply's parent, and ignores unknown parents", async () => {

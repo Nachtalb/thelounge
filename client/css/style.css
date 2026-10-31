@@ -3707,7 +3707,7 @@ mark {
 	right: 4em;
 }
 
-#image-viewer .copy-toast {
+.copy-toast {
 	position: fixed;
 	left: 50%;
 	bottom: 24px;
@@ -3718,6 +3718,11 @@ mark {
 	background: rgb(0 0 0 / 70%);
 	color: #fff;
 	pointer-events: none;
+}
+
+/* Above the chat input */
+#chat-container > .copy-toast {
+	bottom: 64px;
 }
 
 #image-viewer .previous-image-btn,

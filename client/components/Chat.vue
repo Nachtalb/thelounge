@@ -82,7 +82,7 @@
 							ref="topicScroller"
 							:class="['topic', {overflowing: topicShift > 0, manual: topicManual}]"
 							:style="topicStyle"
-							@dblclick="editTopic"
+							@click="jumpToTopic"
 							@pointerenter="holdTopic"
 							@pointerleave="releaseTopic"
 						>
@@ -147,6 +147,7 @@
 		>
 			{{ store.state.currentUserVisibleError }}
 		</div>
+		<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
 		<ChatInput :network="network" :channel="channel" />
 		<TypingIndicator :channel="channel" />
 	</div>
@@ -180,6 +181,7 @@ import {
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
 import {SpecialChanType, ChanType} from "../../shared/types/chan";
+import jumpToMessage, {topicTarget} from "../js/helpers/jumpToMessage";
 import {chatSearch} from "../js/helpers/chatSearch";
 
 export default defineComponent({
@@ -278,6 +280,28 @@ export default defineComponent({
 			scroller.scrollLeft = 0;
 		};
 
+		const toast = ref("");
+		let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const showToast = (message: string) => {
+			clearTimeout(toastTimer);
+			toast.value = message;
+			toastTimer = setTimeout(() => (toast.value = ""), 2000);
+		};
+
+		// Like a pinned message: tapping the topic jumps to where it was set
+		const jumpToTopic = (e: MouseEvent) => {
+			if ((e.target as HTMLElement).closest("a") || window.getSelection()?.toString()) {
+				return;
+			}
+
+			const target = topicTarget(props.channel.messages);
+
+			void (target ? jumpToMessage(props.channel, target) : Promise.resolve(false)).then(
+				(found) => !found && showToast("Topic message is not available anymore")
+			);
+		};
+
 		// Esc outside the topic input (the input handles its own), like the search bar.
 		// Registered before the search bar's listener, so an open search closes first
 		const onEscape = () => {
@@ -295,6 +319,7 @@ export default defineComponent({
 		eventbus.on("escapekey", onEscape);
 		onBeforeUnmount(() => {
 			eventbus.off("escapekey", onEscape);
+			clearTimeout(toastTimer);
 		});
 
 		const specialComponent = computed(() => {
@@ -410,6 +435,8 @@ export default defineComponent({
 			topicStyle,
 			holdTopic,
 			releaseTopic,
+			jumpToTopic,
+			toast,
 			specialComponent,
 			hideUserVisibleError,
 			editTopic,
