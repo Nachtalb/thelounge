@@ -18,9 +18,12 @@
 			>
 				<div class="header">
 					<SidebarToggle />
-					<span class="title" :aria-label="'Currently open ' + channel.type">{{
-						channel.name
-					}}</span>
+					<div class="header-title">
+						<span class="title" :aria-label="'Currently open ' + channel.type">{{
+							channel.name
+						}}</span>
+						<span v-if="headerStatus" class="header-status">{{ headerStatus }}</span>
+					</div>
 					<MessageSearchForm
 						v-if="
 							store.state.settings.searchEnabled &&
@@ -189,7 +192,7 @@ import {
 } from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
-import {SpecialChanType, ChanType} from "../../shared/types/chan";
+import {SpecialChanType, ChanType, ChanState} from "../../shared/types/chan";
 import jumpToMessage, {topicTarget} from "../js/helpers/jumpToMessage";
 import {chatSearch} from "../js/helpers/chatSearch";
 
@@ -364,6 +367,17 @@ export default defineComponent({
 
 		const searching = computed(() => chatSearch.chanId === props.channel.id);
 
+		const headerStatus = computed(() => {
+			const chan = props.channel;
+
+			if (chan.type === ChanType.CHANNEL && chan.state === ChanState.JOINED) {
+				const n = chan.users.length;
+				return n ? `${n} ${n === 1 ? "member" : "members"}` : "";
+			}
+
+			return "";
+		});
+
 		const hideUserVisibleError = () => {
 			store.commit("currentUserVisibleError", null);
 		};
@@ -457,6 +471,7 @@ export default defineComponent({
 			openMentions,
 			searching,
 			chatSearch,
+			headerStatus,
 		};
 	},
 });

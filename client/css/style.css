@@ -1362,14 +1362,29 @@ textarea.input {
 	border-bottom: 1px solid var(--border-color);
 }
 
-.header .title {
-	font-size: 15px;
+.header-title {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 	padding-left: 6px;
 	margin-right: auto;
-	flex-shrink: 1;
+	line-height: 1.25;
+}
+
+.header .title,
+.header-status {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.header .title {
+	font-size: 15px;
+}
+
+.header-status {
+	font-size: 12px;
+	color: var(--body-color-muted);
 }
 
 /* Pinned topic bar under the header, styled like the reply bar */
@@ -4048,7 +4063,7 @@ mark {
 		transform: translateX(0);
 	}
 
-	#chat .header .title {
+	#chat .header-title {
 		padding-left: 6px;
 	}
 
