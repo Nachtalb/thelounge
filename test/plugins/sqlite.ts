@@ -316,16 +316,19 @@ describe("SQLite Message Storage", function () {
 		try {
 			Config.values.maxHistory = 2;
 
-			for (let i = 0; i < 200; ++i) {
-				store.index(
-					{uuid: "retrieval-order-test-network"} as any,
-					{name: "#channel"} as any,
-					new Msg({
-						time: 123456789 + i,
-						text: `msg ${i}`,
-					} as any)
-				);
-			}
+			// one transaction instead of 200 synced commits
+			store.database.transaction(() => {
+				for (let i = 0; i < 200; ++i) {
+					store.index(
+						{uuid: "retrieval-order-test-network"} as any,
+						{name: "#channel"} as any,
+						new Msg({
+							time: 123456789 + i,
+							text: `msg ${i}`,
+						} as any)
+					);
+				}
+			})();
 
 			let msgId = 0;
 			const messages = store.getMessages(
