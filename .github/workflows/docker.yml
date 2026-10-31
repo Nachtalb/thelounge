@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   image:
+    # No images for other branches (workflow_dispatch), only PRs and the integration branch.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/my-lounge-my-rules'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -39,9 +41,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/nachtalb/thelounge
+          # sha-* and latest are only ever merged code; PR images get pr-<N> alone.
           tags: |
-            type=sha,prefix=sha-
+            type=sha,prefix=sha-,enable=${{ github.ref == 'refs/heads/my-lounge-my-rules' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/my-lounge-my-rules' }}
+            type=ref,event=pr,prefix=pr-
 
       # Load the image first so a broken one never reaches the registry.
       - uses: docker/build-push-action@v6
