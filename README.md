@@ -17,16 +17,13 @@
 		•
 		<a href="https://demo.thelounge.chat/">Demo</a>
     •
-		<a href="https://github.com/thelounge/thelounge-docker">Docker</a>
+		<a href="#docker">Docker</a>
 	</strong>
 </p>
 <p align="center">
 	<a href="https://demo.thelounge.chat/"><img
 		alt="#thelounge IRC channel on Libera.Chat"
 		src="https://img.shields.io/badge/Libera.Chat-%23thelounge-415364.svg?colorA=ff9e18"></a>
-	<a href="https://yarn.pm/thelounge"><img
-		alt="npm version"
-		src="https://img.shields.io/npm/v/thelounge.svg?colorA=333a41&maxAge=3600"></a>
 	<a href="https://github.com/thelounge/thelounge/actions"><img
 		alt="Build Status"
 		src="https://github.com/thelounge/thelounge/actions/workflows/build.yml/badge.svg"></a>
@@ -40,7 +37,6 @@
 
 - **Modern features brought to IRC.** Push notifications, link previews, new message markers, and more bring IRC to the 21st century.
 - **Always connected.** Remains connected to IRC servers while you are offline.
-- **Cross platform.** It doesn't matter what OS you use, it just works wherever Bun runs.
 - **Responsive interface.** The client works smoothly on every desktop, smartphone and tablet.
 - **Synchronized experience.** Always resume where you left off no matter what device.
 
@@ -48,22 +44,60 @@ To learn more about configuration, usage and features of The Lounge, take a look
 
 The Lounge is the official and community-managed fork of [Shout](https://github.com/erming/shout), by [Mattias Erming](https://github.com/erming).
 
-## Installation and usage
+## Docker
 
-The Lounge requires [Bun](https://bun.sh/) 1.4 or more recent.
-The [Yarn package manager](https://yarnpkg.com/) is also recommended.
-If you want to install with npm, `--unsafe-perm` is required for a correct install.
-
-### Running stable releases
-
-Please refer to the [install and upgrade documentation on our website](https://thelounge.chat/docs/install-and-upgrade) for all available installation methods.
-
-### Running from source
-
-The following commands install and run the development version of The Lounge:
+The Lounge ships as a Linux container image, `ghcr.io/nachtalb/thelounge` (`latest` or `sha-<commit>`).
+It listens on port 9000 and keeps its config, users and logs in `/var/opt/thelounge`,
+which must be writable by the user it runs as.
 
 ```sh
-git clone https://github.com/thelounge/thelounge.git
+mkdir -p data && sudo chown 1000:1000 data
+docker run -d --name thelounge -u 1000:1000 -p 9000:9000 \
+	-v "$PWD/data:/var/opt/thelounge" ghcr.io/nachtalb/thelounge:latest
+docker exec -it thelounge /usr/local/bin/bun /app/index.js add <user>
+```
+
+docker-compose:
+
+```yaml
+services:
+  thelounge:
+    image: ghcr.io/nachtalb/thelounge:latest
+    user: "1000:1000"
+    ports: ["9000:9000"]
+    volumes: ["./data:/var/opt/thelounge"]
+    environment:
+      TZ: Europe/Zurich
+    restart: unless-stopped
+```
+
+Kubernetes pod:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: thelounge
+spec:
+  securityContext: {runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
+  containers:
+    - name: thelounge
+      image: ghcr.io/nachtalb/thelounge:latest
+      ports: [{containerPort: 9000}]
+      volumeMounts: [{name: data, mountPath: /var/opt/thelounge}]
+  volumes:
+    - name: data
+      persistentVolumeClaim: {claimName: thelounge-data}
+```
+
+Other commands (`reset`, `install <theme>`, `emoji install ...`) run the same way as `add` above.
+
+## Running from source
+
+The Lounge requires [Bun](https://bun.sh/) 1.4 or more recent. The following commands install and run it:
+
+```sh
+git clone https://github.com/Nachtalb/thelounge.git
 cd thelounge
 bun install
 NODE_ENV=production bun run build

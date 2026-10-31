@@ -5,13 +5,7 @@ import Helper from "../../server/helper";
 describe("Helper", function () {
 	describe("#expandHome", function () {
 		it("should correctly expand a Unix path", function () {
-			expect([`${os.homedir()}/tmp`, `${os.homedir()}\\tmp`]).to.include(
-				Helper.expandHome("~/tmp")
-			);
-		});
-
-		it("should correctly expand a Windows path", function () {
-			expect(Helper.expandHome("~\\tmp")).to.equal(`${os.homedir()}\\tmp`);
+			expect(Helper.expandHome("~/tmp")).to.equal(`${os.homedir()}/tmp`);
 		});
 
 		it("should correctly expand when not given a specific path", function () {
@@ -19,13 +13,11 @@ describe("Helper", function () {
 		});
 
 		it("should not expand paths not starting with tilde", function () {
-			expect(Helper.expandHome("/tmp")).to.match(/^\/tmp|[a-zA-Z]:\\{1,2}tmp$/);
+			expect(Helper.expandHome("/tmp")).to.equal("/tmp");
 		});
 
 		it("should not expand a tilde in the middle of a string", function () {
-			expect(Helper.expandHome("/tmp/~foo")).to.match(
-				/^\/tmp\/~foo|[a-zA-Z]:\\{1,2}?tmp\\{1,2}~foo$/
-			);
+			expect(Helper.expandHome("/tmp/~foo")).to.equal("/tmp/~foo");
 		});
 
 		it("should return an empty string when given an empty string", function () {

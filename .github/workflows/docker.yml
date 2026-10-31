@@ -43,11 +43,35 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/my-lounge-my-rules' }}
 
+      # Load the image first so a broken one never reaches the registry.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          # PR caches are only readable by the same PR, so only pushes write one.
+          cache-from: type=gha
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max' || '' }}
+
+      # The image needs a home owned by the user it runs as.
+      - name: Smoke-test the image
+        env:
+          IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/home"
+          docker run -d --name lounge -u "$(id -u):$(id -g)" -p 9000:9000 \
+            -v "$RUNNER_TEMP/home:/var/opt/thelounge" "$IMAGE"
+          trap 'docker logs lounge' EXIT
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null http://127.0.0.1:9000/
+          docker run --rm --network host --entrypoint /usr/local/bin/bun "$IMAGE" -e '
+            const ws = new WebSocket("ws://127.0.0.1:9000/socket.io/?EIO=4&transport=websocket");
+            setTimeout(() => process.exit(1), 10000);
+            ws.onmessage = ({data}) => data.startsWith("0") ? ws.send("40") : data.startsWith("40") && process.exit(0);
+          '
+
+      # Same builder, so this only pushes the layers built above.
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          # PR caches are only readable by the same PR, so only pushes write one.
-          cache-from: type=gha
-          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max' || '' }}

@@ -4,7 +4,6 @@ import fs from "fs";
 import path from "path";
 import Config from "../config";
 import Client from "../client";
-import * as os from "os";
 
 import type {PushSubscription, VapidDetails} from "web-push-neo";
 
@@ -55,9 +54,7 @@ class WebPush {
 					"The file contains secrets. Please fix the permissions."
 				);
 
-				if (os.platform() !== "win32") {
-					log.warn(`run \`chmod o= "${vapidPath}"\` to correct it.`);
-				}
+				log.warn(`run \`chmod o= "${vapidPath}"\` to correct it.`);
 			}
 
 			const data = fs.readFileSync(vapidPath, "utf-8");
