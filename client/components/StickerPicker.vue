@@ -295,7 +295,7 @@ export default defineComponent({
 			let current = sections.value[0]?.key || "";
 
 			for (const section of el.querySelectorAll<HTMLElement>("[data-section]")) {
-				if (section.offsetTop - el.offsetTop <= el.scrollTop + 8) {
+				if (section.offsetTop <= el.scrollTop + 8) {
 					current = section.dataset.section || current;
 				}
 			}
@@ -312,7 +312,7 @@ export default defineComponent({
 			const section = el?.querySelector<HTMLElement>(`[data-section="${CSS.escape(key)}"]`);
 
 			if (el && section) {
-				el.scrollTop = section.offsetTop - el.offsetTop;
+				el.scrollTop = section.offsetTop;
 			}
 
 			// Scrolling fires onScroll; the last section may not reach the top
