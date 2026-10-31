@@ -10,6 +10,9 @@
 		@touchmove.passive="cancelPress"
 		@touchend="onTouchEnd"
 		@touchcancel="cancelPress"
+		@pointerdown="onPointerDown"
+		@pointerup="cancelPress"
+		@pointerleave="cancelPress"
 	>
 		<StickerMedia :sticker="sticker" :thumb="thumb" />
 	</button>
@@ -22,9 +25,10 @@ import type {StickerRef} from "../../shared/stickers";
 import StickerMedia from "./StickerMedia.vue";
 
 const LONG_PRESS_MS = 450;
+const MOUSE_LONG_PRESS_MS = 500;
 
 // One sticker of a grid; video stickers play while on screen.
-// Click picks it, right-click or long-press opens its menu.
+// Click picks it, right-click or long-press (touch or mouse) opens its menu.
 export default defineComponent({
 	name: "StickerItem",
 	components: {StickerMedia},
@@ -43,14 +47,22 @@ export default defineComponent({
 			}
 		};
 
-		const onTouchStart = () => {
+		const startPress = (ms: number) => {
 			longPressed = false;
 			cancelPress();
 			pressTimer = setTimeout(() => {
 				pressTimer = null;
 				longPressed = true;
 				emit("menu", props.item);
-			}, LONG_PRESS_MS);
+			}, ms);
+		};
+
+		const onTouchStart = () => startPress(LONG_PRESS_MS);
+
+		const onPointerDown = (e: PointerEvent) => {
+			if (e.pointerType === "mouse" && e.button === 0) {
+				startPress(MOUSE_LONG_PRESS_MS);
+			}
 		};
 
 		const onTouchEnd = (e: TouchEvent) => {
@@ -79,7 +91,15 @@ export default defineComponent({
 				`${proxyUrl.value}/${props.item.pack}/${props.item.id}/thumb`
 		);
 
-		return {thumb, sticker: data, onClick, onTouchStart, onTouchEnd, cancelPress};
+		return {
+			thumb,
+			sticker: data,
+			onClick,
+			onTouchStart,
+			onTouchEnd,
+			onPointerDown,
+			cancelPress,
+		};
 	},
 });
 </script>
