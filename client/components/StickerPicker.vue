@@ -23,7 +23,7 @@
 				@click="query = ''"
 			/>
 		</div>
-		<div class="sticker-picker-tabs" role="tablist">
+		<div ref="tabs" class="sticker-picker-tabs" role="tablist">
 			<button
 				v-for="section in sections"
 				:key="section.key"
@@ -204,6 +204,7 @@ export default defineComponent({
 		const query = ref("");
 		const search = ref<HTMLInputElement>();
 		const scroller = ref<HTMLDivElement>();
+		const tabs = ref<HTMLDivElement>();
 		const packInput = ref<HTMLInputElement>();
 		const activeTab = ref("");
 		const adding = ref(false);
@@ -295,7 +296,7 @@ export default defineComponent({
 			let current = sections.value[0]?.key || "";
 
 			for (const section of el.querySelectorAll<HTMLElement>("[data-section]")) {
-				if (section.offsetTop - el.offsetTop <= el.scrollTop + 8) {
+				if (section.offsetTop <= el.scrollTop + 8) {
 					current = section.dataset.section || current;
 				}
 			}
@@ -312,7 +313,7 @@ export default defineComponent({
 			const section = el?.querySelector<HTMLElement>(`[data-section="${CSS.escape(key)}"]`);
 
 			if (el && section) {
-				el.scrollTop = section.offsetTop - el.offsetTop;
+				el.scrollTop = section.offsetTop;
 			}
 
 			// Scrolling fires onScroll; the last section may not reach the top
@@ -414,6 +415,26 @@ export default defineComponent({
 			}
 		};
 
+		// Keep the active tab in view with a neighbour showing, so it's clear the row goes on
+		watch(activeTab, async () => {
+			await nextTick();
+			const row = tabs.value;
+			const tab = row?.querySelector<HTMLElement>(".sticker-tab.active");
+
+			if (!row || !tab) {
+				return;
+			}
+
+			const rowBox = row.getBoundingClientRect();
+			const box = tab.getBoundingClientRect();
+			const left = box.left - box.width - rowBox.left;
+			const right = box.right + box.width - rowBox.right;
+
+			if (left < 0 || right > 0) {
+				row.scrollTo({left: row.scrollLeft + (left < 0 ? left : right)});
+			}
+		});
+
 		// Packs arrive after opening: highlight the first tab once there is one
 		watch(
 			() => sections.value.length,
@@ -436,6 +457,7 @@ export default defineComponent({
 			query,
 			search,
 			scroller,
+			tabs,
 			packInput,
 			activeTab,
 			adding,

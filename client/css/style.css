@@ -2308,6 +2308,12 @@ textarea.input {
 	flex: 0 0 auto;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+	.sticker-picker-tabs {
+		scroll-behavior: smooth;
+	}
+}
+
 .sticker-tab {
 	flex: 0 0 auto;
 	width: 36px;
