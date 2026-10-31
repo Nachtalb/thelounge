@@ -2398,6 +2398,7 @@ textarea.input {
 	aspect-ratio: 1;
 	padding: 4px;
 	border-radius: 6px;
+	user-select: none;
 	-webkit-touch-callout: none;
 }
 
