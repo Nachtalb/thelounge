@@ -64,8 +64,15 @@
 							placeholder="Set channel topic"
 							enterkeyhint="done"
 							@keyup.enter="saveTopic"
-							@keyup.esc="channel.editTopic = false"
+							@keydown.esc.stop="channel.editTopic = false"
 						/>
+						<span
+							aria-label="Cancel"
+							class="cancel-topic"
+							@click="channel.editTopic = false"
+						>
+							<span type="button" aria-label="Cancel"></span>
+						</span>
 						<span aria-label="Save topic" class="save-topic" @click="saveTopic">
 							<span type="button" aria-label="Save topic"></span>
 						</span>
@@ -75,8 +82,7 @@
 							ref="topicScroller"
 							:class="['topic', {overflowing: topicShift > 0, manual: topicManual}]"
 							:style="topicStyle"
-							@click="toggleTopic"
-							@dblclick="editTopic"
+							@click="jumpToTopic"
 							@pointerenter="holdTopic"
 							@pointerleave="releaseTopic"
 						>
@@ -84,6 +90,13 @@
 								><ParsedMessage :network="network" :text="channel.topic"
 							/></span>
 						</div>
+						<button
+							v-if="topicShift > 0 || topicExpanded"
+							class="topic-expand"
+							type="button"
+							:aria-label="topicExpanded ? 'Collapse topic' : 'Expand topic'"
+							@click="topicExpanded = !topicExpanded"
+						/>
 						<button
 							v-if="channel.type === 'channel'"
 							class="topic-edit"
@@ -134,6 +147,7 @@
 		>
 			{{ store.state.currentUserVisibleError }}
 		</div>
+		<div v-if="toast" class="copy-toast" role="status">{{ toast }}</div>
 		<ChatInput :network="network" :channel="channel" />
 		<TypingIndicator :channel="channel" />
 	</div>
@@ -167,6 +181,8 @@ import {
 import type {ClientNetwork, ClientChan} from "../js/types";
 import {useStore} from "../js/store";
 import {SpecialChanType, ChanType} from "../../shared/types/chan";
+import jumpToMessage, {topicTarget} from "../js/helpers/jumpToMessage";
+import {chatSearch} from "../js/helpers/chatSearch";
 
 export default defineComponent({
 	name: "Chat",
@@ -264,13 +280,47 @@ export default defineComponent({
 			scroller.scrollLeft = 0;
 		};
 
-		const toggleTopic = (e: MouseEvent) => {
+		const toast = ref("");
+		let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const showToast = (message: string) => {
+			clearTimeout(toastTimer);
+			toast.value = message;
+			toastTimer = setTimeout(() => (toast.value = ""), 2000);
+		};
+
+		// Like a pinned message: tapping the topic jumps to where it was set
+		const jumpToTopic = (e: MouseEvent) => {
 			if ((e.target as HTMLElement).closest("a") || window.getSelection()?.toString()) {
 				return;
 			}
 
-			topicExpanded.value = !topicExpanded.value;
+			const target = topicTarget(props.channel.messages);
+
+			void (target ? jumpToMessage(props.channel, target) : Promise.resolve(false)).then(
+				(found) => !found && showToast("Topic message is not available anymore")
+			);
 		};
+
+		// Esc outside the topic input (the input handles its own), like the search bar.
+		// Registered before the search bar's listener, so an open search closes first
+		const onEscape = () => {
+			if (chatSearch.chanId === props.channel.id) {
+				return;
+			}
+
+			if (props.channel.editTopic) {
+				props.channel.editTopic = false;
+			} else {
+				topicExpanded.value = false;
+			}
+		};
+
+		eventbus.on("escapekey", onEscape);
+		onBeforeUnmount(() => {
+			eventbus.off("escapekey", onEscape);
+			clearTimeout(toastTimer);
+		});
 
 		const specialComponent = computed(() => {
 			switch (props.channel.special) {
@@ -385,7 +435,8 @@ export default defineComponent({
 			topicStyle,
 			holdTopic,
 			releaseTopic,
-			toggleTopic,
+			jumpToTopic,
+			toast,
 			specialComponent,
 			hideUserVisibleError,
 			editTopic,

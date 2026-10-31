@@ -28,6 +28,26 @@ export function findMessage<T extends Target>(messages: T[], target: Target) {
 	);
 }
 
+// Where the channel's topic was set: the last topic change, else the time from the
+// topic info sent on join (RPL_TOPICWHOTIME), else nothing
+export function topicTarget(
+	messages: {type?: string; from?: {nick?: string}; when?: Date | string}[]
+): Target | undefined {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const m = messages[i];
+
+		if (m.type === "topic" && m.from?.nick) {
+			return m as Target;
+		}
+
+		if (m.type === "topic_set_by" && m.when) {
+			return {time: m.when};
+		}
+	}
+
+	return undefined;
+}
+
 // Set while a jump loads older history, so the message list doesn't prefetch in between
 export const loadingBack = ref(false);
 
@@ -65,14 +85,14 @@ async function loadBackTo(channel: ClientChan, time: number) {
 }
 
 // Open the channel, load history back to the message if needed, scroll to it and highlight it.
-// Every jump to a message goes through here
+// Every jump to a message goes through here. Resolves false if the message isn't available
 export default async function jumpToMessage(channel: ClientChan, target: Target) {
 	// A msgid alone (a reply's parent) is only looked up in the loaded history
 	if (!target.time) {
 		const message = findMessage(channel.messages, target);
 
 		if (!message) {
-			return;
+			return false;
 		}
 
 		target = message;
@@ -85,14 +105,20 @@ export default async function jumpToMessage(channel: ClientChan, target: Target)
 		await nextTick();
 	}
 
+	const scrolledToBottom = channel.scrolledToBottom;
 	channel.scrolledToBottom = false;
 	await loadBackTo(channel, timeOf(target));
 	await nextTick();
 
-	const message = findMessage(channel.messages, target);
+	// History doesn't reach back that far (older than the database or buffer)
+	const message =
+		channel.messages.length > 0 && timeOf(channel.messages[0]) <= timeOf(target)
+			? findMessage(channel.messages, target)
+			: undefined;
 
 	if (!message) {
-		return;
+		channel.scrolledToBottom = scrolledToBottom;
+		return false;
 	}
 
 	// Highlight right away (the row gets it as soon as it renders), re-adding the class so
@@ -101,4 +127,5 @@ export default async function jumpToMessage(channel: ClientChan, target: Target)
 	await nextTick();
 	jumpTarget.value = message.id;
 	eventbus.emit("scroll-to-message", message.id);
+	return true;
 }
