@@ -22,6 +22,7 @@ import changelog from "./plugins/changelog";
 import inputs from "./plugins/inputs";
 import Auth from "./plugins/auth";
 import {VALID_TYPING_STATUSES} from "../shared/types/typing";
+import {normalizeProxyUrl} from "../shared/stickers";
 import {injectServerConfig} from "./plugins/html-config";
 import {sendFile, serveStatic} from "./sendFile";
 
@@ -448,24 +449,29 @@ function servePublic(req: Request, options = {}) {
 }
 
 function addSecurityHeaders(res: Response) {
+	// Sticker packs, images and videos load straight from the sticker proxy
+	const stickerProxy = normalizeProxyUrl(Config.values.stickers?.proxyUrl);
+	const stickerSrc = stickerProxy ? " " + new URL(stickerProxy).origin : "";
 	const policies = [
 		"default-src 'none'", // default to nothing
 		"base-uri 'none'", // disallow <base>, has no fallback to default-src
 		"form-action 'self'", // 'self' to fix saving passwords in Firefox, even though login is handled in javascript
-		"connect-src 'self' ws: wss:", // allow self for polling; websockets
+		"connect-src 'self' ws: wss:" + stickerSrc, // allow self for polling; websockets
 		"style-src 'self' https: 'unsafe-inline'", // allow inline due to use in irc hex colors
 		isDev ? "script-src 'self' 'unsafe-eval'" : "script-src 'self'", // javascript
 		"worker-src 'self'", // service worker
 		"manifest-src 'self'", // manifest.json
 		"font-src 'self' https:", // allow loading fonts from secure sites (e.g. google fonts)
-		"media-src 'self' https:", // self for notification sound; allow https media (audio previews)
+		"media-src 'self' https:" + stickerSrc, // self for notification sound; allow https media (audio previews)
 	];
 
 	// If prefetch is enabled, but storage is not, we have to allow mixed content
 	// - https://user-images.githubusercontent.com is where we currently push our changelog screenshots
 	// - data: is required for the HTML5 video player
 	if (Config.values.prefetchStorage || Config.values.prefetchCache || !Config.values.prefetch) {
-		policies.push("img-src 'self' data: https://user-images.githubusercontent.com");
+		policies.push(
+			"img-src 'self' data: https://user-images.githubusercontent.com" + stickerSrc
+		);
 		policies.unshift("block-all-mixed-content");
 	} else {
 		policies.push("img-src http: https: data:");
@@ -1043,6 +1049,7 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 		public: Config.values.public,
 		useHexIp: Config.values.useHexIp,
 		prefetch: Config.values.prefetch,
+		stickerProxyUrl: normalizeProxyUrl(Config.values.stickers?.proxyUrl),
 		fileUploadMaxFileSize: Uploader ? Uploader.getMaxFileSize() : undefined, // TODO can't be undefined?
 	};
 
