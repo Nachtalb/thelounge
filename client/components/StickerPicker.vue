@@ -23,7 +23,7 @@
 				@click="query = ''"
 			/>
 		</div>
-		<div ref="tabs" class="sticker-picker-tabs" role="tablist">
+		<div ref="tabs" class="sticker-picker-tabs" role="tablist" @wheel="onTabsWheel">
 			<button
 				v-for="section in sections"
 				:key="section.key"
@@ -435,6 +435,26 @@ export default defineComponent({
 			}
 		});
 
+		// A vertical wheel scrolls the tab row sideways until it hits an end
+		const onTabsWheel = (e: WheelEvent) => {
+			const row = tabs.value;
+
+			if (!row || e.deltaX || !e.deltaY) {
+				return;
+			}
+
+			const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? row.clientWidth : 1;
+			const delta = e.deltaY * unit;
+			const max = row.scrollWidth - row.clientWidth;
+
+			if (delta < 0 ? row.scrollLeft <= 0 : row.scrollLeft >= max - 1) {
+				return;
+			}
+
+			e.preventDefault();
+			row.scrollBy({left: delta, behavior: "instant"});
+		};
+
 		// Packs arrive after opening: highlight the first tab once there is one
 		watch(
 			() => sections.value.length,
@@ -475,6 +495,7 @@ export default defineComponent({
 			results,
 			addedPacks,
 			onScroll,
+			onTabsWheel,
 			scrollToSection,
 			toggleAdding,
 			addPack,
