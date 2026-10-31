@@ -148,6 +148,7 @@ import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
 import StickerPicker from "./StickerPicker.vue";
+import {closeOnBack} from "../js/helpers/closeOnBack";
 import StickerSuggest from "./StickerSuggest.vue";
 import {findEmojiMatches} from "../js/helpers/emoji";
 import {
@@ -476,7 +477,11 @@ export default defineComponent({
 		const stickerPickerAnimated = ref(true);
 		const stickerAnchorRight = ref(6);
 
+		let releaseBack: (() => void) | null = null;
+
 		function closeStickerPicker(focusInput = false) {
+			releaseBack?.();
+			releaseBack = null;
 			stickerPickerOpen.value = false;
 			document.removeEventListener("pointerdown", onDocumentPointerDown, true);
 
@@ -524,6 +529,10 @@ export default defineComponent({
 			stickerPickerAnimated.value = true;
 			stickerPickerOpen.value = true;
 			document.addEventListener("pointerdown", onDocumentPointerDown, true);
+			releaseBack = closeOnBack(() => {
+				releaseBack = null;
+				closeStickerPicker();
+			});
 
 			// The panel takes the on-screen keyboard's place; tapping the input brings it back
 			if (navigator.maxTouchPoints > 0) {
