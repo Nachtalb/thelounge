@@ -2180,6 +2180,25 @@ textarea.input {
 	flex: 0 0 auto;
 }
 
+.sticker-item:hover,
+.sticker-item:focus-visible {
+	background: color-mix(in srgb, currentcolor 12%, transparent);
+	outline: 0;
+}
+
+.sticker-item {
+	position: relative;
+	aspect-ratio: 1;
+	padding: 4px;
+	border-radius: 6px;
+	-webkit-touch-callout: none;
+}
+
+.sticker-item .sticker-media {
+	position: absolute;
+	inset: 4px;
+}
+
 .sticker-media {
 	display: block;
 	position: relative;
