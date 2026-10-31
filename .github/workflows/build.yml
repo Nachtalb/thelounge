@@ -47,32 +47,13 @@ jobs:
       - name: Test
         run: bun run ${{ runner.os == 'Linux' && 'test' || 'test:vitest' }}
 
-  package:
-    name: Packaged install smoke test
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-        env:
-          NODE_ENV: production
-
       - name: Pack the npm package
+        if: runner.os == 'Linux'
         run: bun pm pack
 
       # #5114: ensure the packed tarball contains every file needed at runtime.
       - name: Smoke-test the packaged binary
+        if: runner.os == 'Linux'
         run: |
           mkdir -p /tmp/thelounge-pack
           tar xzf thelounge-*.tgz -C /tmp/thelounge-pack
