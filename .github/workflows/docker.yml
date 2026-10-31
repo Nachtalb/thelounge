@@ -10,6 +10,11 @@ permissions:
   contents: read
   packages: write
 
+# Pushes get a group per commit so every merge still builds its own sha- image.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   image:
     runs-on: ubuntu-latest
