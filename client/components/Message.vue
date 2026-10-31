@@ -102,14 +102,17 @@
 					><span></span
 				></span>
 				<StatusmsgMarker :group="message.statusmsgGroup" />
-				<ParsedMessage :network="network" :message="message" :highlight="highlight" />
-				<LinkPreview
-					v-for="preview in previews"
-					:key="preview.link"
-					:keep-scroll-position="keepScrollPosition"
-					:link="preview"
-					:channel="channel"
-				/>
+				<StickerMessage v-if="sticker" :sticker="sticker" :text="message.text" />
+				<template v-else>
+					<ParsedMessage :network="network" :message="message" :highlight="highlight" />
+					<LinkPreview
+						v-for="preview in previews"
+						:key="preview.link"
+						:keep-scroll-position="keepScrollPosition"
+						:link="preview"
+						:channel="channel"
+					/>
+				</template>
 			</span>
 		</template>
 		<span v-if="swiping" class="msg-swipe-reply" aria-hidden="true" />
@@ -140,6 +143,10 @@ import jumpToMessage from "../js/helpers/jumpToMessage";
 import {replyMedia} from "../js/helpers/replyMedia";
 import MessageTypes from "./MessageTypes";
 import StatusmsgMarker from "./StatusmsgMarker.vue";
+import StickerMessage from "./StickerMessage.vue";
+import {proxyUrl} from "../js/stickers";
+import {parseStickerUrl} from "../../shared/stickers";
+import {cleanIrcMessage} from "../../shared/irc";
 
 import type {ClientChan, ClientMessage, ClientNetwork} from "../js/types";
 import {MessageType} from "../../shared/types/msg";
@@ -156,6 +163,7 @@ export default defineComponent({
 		...MessageTypes,
 		ReplyContext,
 		StatusmsgMarker,
+		StickerMessage,
 	},
 	props: {
 		message: {type: Object as PropType<ClientMessage>, required: true},
@@ -179,6 +187,12 @@ export default defineComponent({
 			props.message.previews.filter(
 				(preview) => !isPreviewFiltered(store.state.settings.previewFilters, preview.link)
 			)
+		);
+
+		const sticker = computed(() =>
+			props.message.type === MessageType.MESSAGE && proxyUrl.value
+				? parseStickerUrl(cleanIrcMessage(props.message.text), proxyUrl.value)
+				: null
 		);
 
 		const timeFormat = computed(() => {
@@ -227,7 +241,8 @@ export default defineComponent({
 		const parentMedia = computed(() => {
 			const replyTo = props.message.replyTo;
 			return replyMedia(
-				replyTo ? props.channel?.messages.find((m) => m.msgid === replyTo) : undefined
+				replyTo ? props.channel?.messages.find((m) => m.msgid === replyTo) : undefined,
+				proxyUrl.value
 			);
 		});
 
@@ -372,6 +387,7 @@ export default defineComponent({
 		});
 
 		return {
+			sticker,
 			previews,
 			timeFormat,
 			messageTime,

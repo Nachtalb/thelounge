@@ -31,4 +31,15 @@ describe("replyMedia", function () {
 			replyMedia({text: "https://a.b/v", previews: [img("https://a.b/v", "video")]})?.kind
 		).to.equal("Video");
 	});
+
+	it("shows a sticker as its thumbnail", function () {
+		expect(replyMedia({text: "https://s.naa.gg/Animals/x1"}, "https://s.naa.gg")).to.deep.equal(
+			{
+				thumb: "https://s.naa.gg/Animals/x1/thumb",
+				caption: "",
+				kind: "Sticker",
+			}
+		);
+		expect(replyMedia({text: "https://s.naa.gg/Animals/x1"})).to.equal(null);
+	});
 });

@@ -31,6 +31,8 @@ type SharedConfigurationBase = {
 	emojiSets: EmojiSetInfo[];
 	emojiDefaultStyle: string;
 	fileUploadMaxFileSize?: number;
+	// Base URL of the sticker proxy, "" = stickers off
+	stickerProxyUrl: string;
 };
 
 export type ConfigNetDefaults = {

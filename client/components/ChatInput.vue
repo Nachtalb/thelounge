@@ -40,6 +40,12 @@
 				&times;
 			</button>
 		</div>
+		<StickerSuggest
+			v-if="suggestions.length"
+			:items="suggestions"
+			:selected="suggestIndex"
+			@pick="pickSuggestion"
+		/>
 		<span id="upload-progressbar" />
 		<span id="nick">{{ network.nick }}</span>
 		<span id="input-label" class="sr-only">Message input</span>
@@ -55,8 +61,41 @@
 			enterkeyhint="send"
 			:data-placeholder="getInputPlaceholder(channel)"
 			@keypress.enter.exact.prevent="onSubmit"
+			@keydown.left.exact="moveSuggestion($event, -1)"
+			@keydown.right.exact="moveSuggestion($event, 1)"
+			@focus="onInputFocus"
 			@blur="onBlur"
 		/>
+		<span
+			v-if="stickerProxyUrl"
+			id="sticker-tooltip"
+			class="tooltipped tooltipped-w tooltipped-no-touch"
+			aria-label="Stickers"
+		>
+			<button
+				id="sticker"
+				ref="stickerButton"
+				type="button"
+				aria-label="Stickers"
+				:aria-expanded="stickerPickerOpen"
+				:class="{active: stickerPickerOpen}"
+				@click="toggleStickerPicker"
+			/>
+		</span>
+		<Transition
+			name="sticker-slide"
+			:css="stickerPickerAnimated"
+			@after-enter="stopKeepingChat"
+			@after-leave="stopKeepingChat"
+		>
+			<StickerPicker
+				v-if="stickerPickerOpen"
+				ref="stickerPicker"
+				:channel="channel"
+				:anchor-right="stickerAnchorRight"
+				@close="closeStickerPicker(true)"
+			/>
+		</Transition>
 		<span
 			v-if="store.state.serverConfiguration?.fileUpload"
 			id="upload-tooltip"
@@ -108,6 +147,17 @@ import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
+import StickerPicker from "./StickerPicker.vue";
+import {closeOnBack} from "../js/helpers/closeOnBack";
+import StickerSuggest from "./StickerSuggest.vue";
+import {findEmojiMatches} from "../js/helpers/emoji";
+import {
+	loadUserPacks,
+	proxyUrl as stickerProxyUrl,
+	sendSticker,
+	stickersForEmoji,
+} from "../js/stickers";
+import type {StickerRef} from "../../shared/stickers";
 import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
@@ -138,6 +188,8 @@ export default defineComponent({
 	components: {
 		LinkPreview,
 		ParsedMessage,
+		StickerPicker,
+		StickerSuggest,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -247,6 +299,47 @@ export default defineComponent({
 			return "";
 		};
 
+		// Quick select: one emoji alone in the input suggests the user's stickers for it
+		const suggestEmoji = computed(() => {
+			const text = props.channel.pendingMessage.trim();
+			const [match, more] = stickerProxyUrl.value ? findEmojiMatches(text) : [];
+			return match && !more && match.start === 0 && match.end === text.length ? text : "";
+		});
+		const suggestDismissed = ref("");
+		const suggestIndex = ref(-1);
+
+		watch(suggestEmoji, (emoji) => {
+			suggestIndex.value = -1;
+			suggestDismissed.value = "";
+
+			if (emoji) {
+				loadUserPacks();
+			}
+		});
+
+		const suggestions = computed<StickerRef[]>(() =>
+			suggestEmoji.value && suggestDismissed.value !== suggestEmoji.value
+				? stickersForEmoji(suggestEmoji.value)
+				: []
+		);
+
+		const pickSuggestion = (item: StickerRef) => {
+			sendSticker(props.channel, item);
+			props.channel.pendingMessage = "";
+			richInput?.setValue("", true);
+		};
+
+		const moveSuggestion = (e: KeyboardEvent, step: number) => {
+			const count = suggestions.value.length;
+
+			if (!count) {
+				return;
+			}
+
+			e.preventDefault();
+			suggestIndex.value = Math.min(Math.max(suggestIndex.value + step, -1), count - 1);
+		};
+
 		const onSubmit = () => {
 			if (!input.value) {
 				return;
@@ -259,6 +352,13 @@ export default defineComponent({
 
 			if (!store.state.isConnected) {
 				return false;
+			}
+
+			const picked = suggestions.value[suggestIndex.value];
+
+			if (picked) {
+				pickSuggestion(picked);
+				return;
 			}
 
 			const target = props.channel.id;
@@ -335,7 +435,10 @@ export default defineComponent({
 
 		const replyMedia = computed(() => {
 			const msgid = props.channel.replyingTo?.msgid;
-			return getReplyMedia(props.channel.messages.find((m) => m.msgid === msgid));
+			return getReplyMedia(
+				props.channel.messages.find((m) => m.msgid === msgid),
+				stickerProxyUrl.value
+			);
 		});
 
 		const jumpToReply = () => {
@@ -367,7 +470,124 @@ export default defineComponent({
 			input.value?.blur();
 		};
 
+		const stickerButton = ref<HTMLButtonElement>();
+		const stickerPicker = ref<{$el: HTMLElement}>();
+		const stickerPickerOpen = ref(false);
+		// Slides (mobile) unless the on-screen keyboard takes its place at once
+		const stickerPickerAnimated = ref(true);
+		const stickerAnchorRight = ref(6);
+
+		let releaseBack: (() => void) | null = null;
+
+		function closeStickerPicker(focusInput = false) {
+			releaseBack?.();
+			releaseBack = null;
+			stickerPickerOpen.value = false;
+			document.removeEventListener("pointerdown", onDocumentPointerDown, true);
+
+			if (focusInput && navigator.maxTouchPoints === 0) {
+				richInput?.focus();
+			}
+		}
+
+		function onDocumentPointerDown(e: PointerEvent) {
+			const target = e.target as Element;
+
+			// A tap on the input closes it once focused (onInputFocus): closing now moves the input
+			// down before the tap lands, so the keyboard wouldn't open
+			if (navigator.maxTouchPoints > 0 && input.value?.contains(target)) {
+				return;
+			}
+
+			// The pack view and the picker's own menu are on top of it
+			if (
+				!stickerPicker.value?.$el.contains(target) &&
+				!stickerButton.value?.contains(target) &&
+				!target.closest?.("#sticker-pack-overlay")
+			) {
+				closeStickerPicker();
+			}
+		}
+
+		// The keyboard takes the panel's place again
+		const onInputFocus = () => {
+			if (stickerPickerOpen.value && navigator.maxTouchPoints > 0) {
+				stickerPickerAnimated.value = false;
+				closeStickerPicker();
+			}
+		};
+
+		const toggleStickerPicker = () => {
+			if (stickerPickerOpen.value) {
+				closeStickerPicker(true);
+				return;
+			}
+
+			const form = input.value?.closest("form")?.getBoundingClientRect();
+			const button = stickerButton.value?.getBoundingClientRect();
+			stickerAnchorRight.value = form && button ? Math.max(6, form.right - button.right) : 6;
+			stickerPickerAnimated.value = true;
+			stickerPickerOpen.value = true;
+			document.addEventListener("pointerdown", onDocumentPointerDown, true);
+			releaseBack = closeOnBack(() => {
+				releaseBack = null;
+				closeStickerPicker();
+			});
+
+			// The panel takes the on-screen keyboard's place; tapping the input brings it back
+			if (navigator.maxTouchPoints > 0) {
+				blurInput();
+			}
+		};
+
+		watch(
+			() => props.channel.id,
+			() => {
+				stickerPickerAnimated.value = false;
+				closeStickerPicker();
+			}
+		);
+
+		// On mobile the panel sits below the input and shrinks the chat, like the on-screen
+		// keyboard: keep what was at the chat's bottom edge in place on every frame of its slide.
+		// The observer runs after layout and before paint, so the chat moves with the panel.
+		let chatObserver: ResizeObserver | null = null;
+		let chatObserverTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const stopKeepingChat = () => {
+			chatObserver?.disconnect();
+			chatObserver = null;
+			clearTimeout(chatObserverTimer);
+		};
+
+		watch(stickerPickerOpen, () => {
+			const chat = input.value?.closest(".window")?.querySelector<HTMLElement>("#chat .chat");
+			stopKeepingChat();
+
+			if (!chat) {
+				return;
+			}
+
+			const gap = chat.scrollHeight - chat.scrollTop - chat.clientHeight;
+			chatObserver = new ResizeObserver(() => {
+				chat.scrollTop = chat.scrollHeight - chat.clientHeight - gap;
+			});
+			chatObserver.observe(chat);
+			// In case the slide is cut short and no after-enter/leave comes
+			chatObserverTimer = setTimeout(stopKeepingChat, 1000);
+		});
+
 		const onEscape = () => {
+			if (stickerPickerOpen.value) {
+				closeStickerPicker(true);
+				return;
+			}
+
+			if (suggestions.value.length) {
+				suggestDismissed.value = suggestEmoji.value;
+				return;
+			}
+
 			cancelReply();
 			blurInput();
 		};
@@ -496,6 +716,8 @@ export default defineComponent({
 
 			richInput?.destroy();
 			richInput = null;
+			closeStickerPicker();
+			stopKeepingChat();
 
 			upload.unmounted();
 			upload.abort();
@@ -517,6 +739,20 @@ export default defineComponent({
 			cancelReply,
 			jumpToReply,
 			replyMedia,
+			stickerProxyUrl,
+			stickerButton,
+			stickerPicker,
+			stickerPickerOpen,
+			stickerPickerAnimated,
+			stickerAnchorRight,
+			stopKeepingChat,
+			toggleStickerPicker,
+			onInputFocus,
+			closeStickerPicker,
+			suggestions,
+			suggestIndex,
+			pickSuggestion,
+			moveSuggestion,
 		};
 	},
 });
