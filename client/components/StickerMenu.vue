@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="sticker-menu"
+		:class="['sticker-menu', {'sticker-menu-peek': peek}]"
 		@click.capture="ignoreOpeningPress"
 		@contextmenu.capture="ignoreOpeningPress"
 		@click.self="$emit('close')"
@@ -18,7 +18,7 @@
 			</div>
 			<StickerMedia :sticker="data" :thumb="thumb" :src="data?.url" :style="size" urgent />
 		</div>
-		<ul class="sticker-menu-actions" role="menu">
+		<ul v-if="!peek" class="sticker-menu-actions" role="menu">
 			<li>
 				<button
 					ref="first"
@@ -69,7 +69,16 @@
 </template>
 
 <script lang="ts">
-import {computed, defineComponent, onMounted, onUnmounted, PropType, ref} from "vue";
+import {
+	computed,
+	defineComponent,
+	nextTick,
+	onMounted,
+	onUnmounted,
+	PropType,
+	ref,
+	watch,
+} from "vue";
 import {
 	findSticker,
 	isFavorite,
@@ -95,6 +104,8 @@ export default defineComponent({
 		showViewPack: {type: Boolean, default: true},
 		// Opened from the Recently Used section
 		inRecent: {type: Boolean, default: false},
+		// Only the preview, while a long press peeks at stickers
+		peek: {type: Boolean, default: false},
 	},
 	emits: ["close", "send"],
 	setup(props, {emit}) {
@@ -188,6 +199,15 @@ export default defineComponent({
 			window.addEventListener("pointerdown", onPointerDown, true);
 			first.value?.focus();
 		});
+
+		// A peek that turned into the menu
+		watch(
+			() => props.peek,
+			async () => {
+				await nextTick();
+				first.value?.focus();
+			}
+		);
 
 		onUnmounted(() => window.removeEventListener("pointerdown", onPointerDown, true));
 

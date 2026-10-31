@@ -2398,6 +2398,7 @@ textarea.input {
 	aspect-ratio: 1;
 	padding: 4px;
 	border-radius: 6px;
+	user-select: none;
 	-webkit-touch-callout: none;
 }
 
@@ -2550,6 +2551,11 @@ textarea.input {
 	gap: 12px;
 	background: color-mix(in srgb, var(--window-bg-color) 92%, transparent);
 	z-index: 2;
+}
+
+/* Peeking: the stickers underneath keep receiving the sliding pointer */
+.sticker-menu-peek {
+	pointer-events: none;
 }
 
 .sticker-menu-preview {

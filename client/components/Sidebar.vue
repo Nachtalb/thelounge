@@ -216,7 +216,11 @@ export default defineComponent({
 		};
 
 		const onTouchStart = (e: TouchEvent) => {
-			if (!sidebar.value) {
+			// Sliding across stickers peeks at them (helpers/stickerPeek), so it must not drag the sidebar
+			if (
+				!sidebar.value ||
+				(e.target as Element).closest?.("#sticker-picker, #sticker-pack-overlay")
+			) {
 				return;
 			}
 
