@@ -1,6 +1,13 @@
 <template>
 	<form :class="['message-search', {opened: isOpen}]" @submit.prevent>
 		<div class="input-wrapper">
+			<button
+				class="search-back"
+				type="button"
+				aria-label="Close search (Esc)"
+				title="Close search (Esc)"
+				@click="back"
+			/>
 			<input
 				ref="searchInputField"
 				v-model="searchInput"
@@ -15,11 +22,12 @@
 				@keydown.meta.f.prevent="focusSearch"
 			/>
 			<button
-				class="close"
+				v-show="searchInput"
+				class="search-clear"
 				type="button"
-				aria-label="Close search"
-				title="Close search"
-				@click="close"
+				aria-label="Clear search"
+				title="Clear search"
+				@click="clear"
 			/>
 		</div>
 		<SearchResults v-if="isOpen && chatSearch.listOpen" :network="network" :channel="channel" />
@@ -88,13 +96,19 @@ form.message-search.opened .input-wrapper {
 	align-items: center;
 }
 
-#chat form.message-search .close::before {
+#chat form.message-search :is(.search-back, .search-clear)::before {
 	content: "";
 	width: 16px;
 	height: 16px;
 	background-color: currentcolor;
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
 		center / contain no-repeat;
+}
+
+#chat form.message-search .search-back::before {
+	width: 18px;
+	height: 18px;
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19-7-7 7-7M19 12H5'/%3E%3C/svg%3E");
 }
 </style>
 
@@ -157,6 +171,16 @@ export default defineComponent({
 			closeSearch();
 			// Imported here: closeWindow imports the router, which imports this component
 			void import("../js/closeWindow").then(({focusInput}) => focusInput());
+		};
+
+		const back = () => {
+			chatSearch.listOpen = false;
+			close();
+		};
+
+		const clear = () => {
+			void search(props.network, props.channel, "");
+			void focusField();
 		};
 
 		const toggleSearch = () => {
@@ -227,6 +251,8 @@ export default defineComponent({
 			searchInput,
 			searchInputField,
 			isOpen,
+			back,
+			clear,
 			close,
 			toggleSearch,
 			onEnter,
