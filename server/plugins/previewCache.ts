@@ -59,6 +59,7 @@ export async function imageInfo(data: Buffer | string) {
 }
 
 let salt = "";
+let saltFile = "";
 
 class PreviewCache {
 	isEnabled() {
@@ -66,11 +67,15 @@ class PreviewCache {
 	}
 
 	getSalt() {
-		if (salt) {
+		const file = path.join(Config.getPreviewCachePath(), "salt");
+
+		// Read again only if the cache moved (tests give every file its own)
+		if (salt && saltFile === file) {
 			return salt;
 		}
 
-		const file = path.join(Config.getPreviewCachePath(), "salt");
+		salt = "";
+		saltFile = file;
 
 		try {
 			salt = fs.readFileSync(file, "utf-8").trim();
