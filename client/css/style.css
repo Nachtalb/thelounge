@@ -2948,6 +2948,9 @@ textarea.input {
 	background: linear-gradient(rgb(0 0 0 / 70%), transparent);
 	color: #fff;
 	pointer-events: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 :is(#chat, #input-previews) .toggle-type-video .media-filename a {
