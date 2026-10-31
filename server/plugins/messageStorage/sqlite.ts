@@ -517,7 +517,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 			params.push(query.channelName.toLowerCase());
 		}
 
-		const maxResults = 100;
+		const maxResults = Math.min(Math.max(Math.floor(Number(query.limit)) || 100, 1), 50000);
 		// Times of all matches (newest first) for the date picker, sent with the first page
 		const timesQuery = `SELECT time${select.slice(
 			select.indexOf(" FROM ")

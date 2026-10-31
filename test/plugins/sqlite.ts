@@ -384,6 +384,17 @@ describe("SQLite Message Storage", function () {
 				offset: 100,
 			});
 			expect(page2.times).to.equal(undefined);
+
+			// A calendar jump loads every result up to the picked match at once
+			const upTo = store.search({
+				searchTerm: "msg",
+				networkUuid: "retrieval-order-test-network",
+				channelName: "",
+				offset: 100,
+				limit: 90,
+			});
+			expect(upTo.results).to.have.lengthOf(90);
+			expect(upTo.results[89].text).to.equal("msg 99");
 		} finally {
 			Config.values.maxHistory = originalMaxHistory;
 		}

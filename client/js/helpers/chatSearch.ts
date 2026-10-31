@@ -86,12 +86,13 @@ function found() {
 	return store.getters.findChannel(chatSearch.chanId);
 }
 
-function fetchResults(network: ClientNetwork, channel: ClientChan, offset: number) {
+function fetchResults(network: ClientNetwork, channel: ClientChan, offset: number, limit: number) {
 	const query: SearchQuery = {
 		networkUuid: network.uuid,
 		channelName: channel.name,
 		searchTerm: chatSearch.query,
 		offset,
+		limit,
 	};
 
 	store.commit("messageSearchPendingQuery", query);
@@ -138,7 +139,7 @@ export async function search(network: ClientNetwork, channel: ClientChan, query:
 		return;
 	}
 
-	await fetchResults(network, channel, 0);
+	await fetchResults(network, channel, 0, pageSize);
 
 	if (chatSearch.chanId === channel.id && chatSearch.query === query) {
 		chatSearch.more = searchResults.value.length === pageSize;
@@ -146,7 +147,8 @@ export async function search(network: ClientNetwork, channel: ClientChan, query:
 	}
 }
 
-export async function loadMore() {
+// Load the next page of older results, or all of them up to `pos`
+export async function loadMore(pos = 0) {
 	const target = found();
 
 	if (!target || !chatSearch.more || store.state.messageSearchPendingQuery) {
@@ -154,11 +156,17 @@ export async function loadMore() {
 	}
 
 	const before = searchResults.value.length;
-	await fetchResults(target.network, target.channel, before);
-	chatSearch.more = searchResults.value.length - before === pageSize;
+	const limit = Math.max(pageSize, pos + 1 - before);
+	await fetchResults(target.network, target.channel, before, limit);
+	chatSearch.more = searchResults.value.length - before === limit;
 }
 
 export async function goTo(pos: number) {
+	// Picked from the calendar: load the results up to that match first
+	if (pos >= searchResults.value.length) {
+		await loadMore(pos);
+	}
+
 	const target = found();
 	const message = searchResults.value[pos];
 
@@ -169,11 +177,11 @@ export async function goTo(pos: number) {
 }
 
 export async function step(dir: 1 | -1) {
-	let next = stepPos(chatSearch.pos, dir, searchResults.value.length, chatSearch.more);
+	let next = stepPos(chatSearch.pos, dir, total.value, chatSearch.more);
 
 	if (next === "load") {
 		await loadMore();
-		next = stepPos(chatSearch.pos, dir, searchResults.value.length, false);
+		next = stepPos(chatSearch.pos, dir, total.value, false);
 	}
 
 	if (next !== "load" && next !== chatSearch.pos) {

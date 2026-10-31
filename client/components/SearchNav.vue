@@ -30,6 +30,7 @@
 			v-if="matchTimes.length"
 			:times="matchTimes"
 			:current="matchTimes[chatSearch.pos]"
+			@pick="pickDate"
 		/>
 		<span class="search-counter" aria-live="polite">{{ counter }}</span>
 		<button
@@ -145,6 +146,7 @@ import {useStore} from "../js/store";
 import {
 	chatSearch,
 	counterText,
+	goTo,
 	matchTimes,
 	searchResults,
 	step,
@@ -175,8 +177,12 @@ export default defineComponent({
 		);
 
 		const canStep = (dir: 1 | -1) =>
-			stepPos(chatSearch.pos, dir, searchResults.value.length, chatSearch.more) !==
-			chatSearch.pos;
+			stepPos(chatSearch.pos, dir, total.value, chatSearch.more) !== chatSearch.pos;
+
+		const pickDate = (pos: number) => {
+			chatSearch.listOpen = false;
+			void goTo(pos);
+		};
 
 		return {
 			chatSearch,
@@ -185,6 +191,7 @@ export default defineComponent({
 			counter,
 			canStep,
 			step,
+			pickDate,
 		};
 	},
 });
