@@ -4,6 +4,8 @@ on:
   push:
     branches: [my-lounge-my-rules]
   pull_request:
+    paths-ignore:
+      - "**.md"
   workflow_dispatch:
 
 permissions:
