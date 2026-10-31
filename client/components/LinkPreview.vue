@@ -91,6 +91,7 @@
 				<span v-if="link.filename" class="media-filename"
 					><a
 						:href="link.link"
+						:title="link.filename"
 						target="_blank"
 						rel="noopener"
 						@click="onThumbnailClick"
