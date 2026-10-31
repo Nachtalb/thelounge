@@ -2552,6 +2552,11 @@ textarea.input {
 	z-index: 2;
 }
 
+/* Peeking: the stickers underneath keep receiving the sliding pointer */
+.sticker-menu-peek {
+	pointer-events: none;
+}
+
 .sticker-menu-preview {
 	display: flex;
 	flex-direction: column;
