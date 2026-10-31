@@ -3507,6 +3507,13 @@ part/quit messages where we don't load previews (adds a blank line otherwise) */
 	color: var(--icon-button-color);
 }
 
+/* FontAwesome draws these glyphs 1px above the middle of their em box */
+#form #upload::before,
+#form #submit::before {
+	position: relative;
+	top: 1px;
+}
+
 #form #upload[disabled],
 #form #submit[disabled] {
 	opacity: 0.5;
