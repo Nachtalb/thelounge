@@ -2191,6 +2191,35 @@ textarea.input {
 	color: var(--body-color);
 }
 
+/* Stickers: input button, picker above the input, pack view, sticker messages */
+#form #sticker {
+	color: var(--input-button-color);
+	height: 32px;
+	width: 32px;
+	flex: 0 0 auto;
+}
+
+.sticker-media {
+	display: block;
+	position: relative;
+}
+
+.sticker-media img,
+.sticker-media canvas,
+.sticker-media video {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+/* Only feeds the canvas, which draws it smoothly scaled */
+.sticker-media video {
+	opacity: 0;
+	pointer-events: none;
+}
+
 :is(#chat, #input-previews) .preview-size {
 	margin-left: 5px;
 	user-select: none;
