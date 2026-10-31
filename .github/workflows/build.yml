@@ -8,6 +8,12 @@ on:
     branches:
       - master
   pull_request:
+    paths-ignore:
+      - "**.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -21,7 +27,9 @@ jobs:
           - ubuntu-latest
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
+    # No bun package cache: restoring it took longer than a cold install on every OS.
     steps:
       - uses: actions/checkout@v6
 
@@ -29,12 +37,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
-
-      - name: Cache Bun packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
       - name: Install
         run: bun install --frozen-lockfile
@@ -44,41 +46,17 @@ jobs:
         env:
           NODE_ENV: production
 
+      # Lint results don't depend on the OS, so only Linux lints.
       - name: Test
-        run: bun run test
-
-  package:
-    name: Packaged install smoke test
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Cache Bun packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-        env:
-          NODE_ENV: production
+        run: bun run ${{ runner.os == 'Linux' && 'test' || 'test:vitest' }}
 
       - name: Pack the npm package
+        if: runner.os == 'Linux'
         run: bun pm pack
 
       # #5114: ensure the packed tarball contains every file needed at runtime.
       - name: Smoke-test the packaged binary
+        if: runner.os == 'Linux'
         run: |
           mkdir -p /tmp/thelounge-pack
           tar xzf thelounge-*.tgz -C /tmp/thelounge-pack
