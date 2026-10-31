@@ -2199,6 +2199,13 @@ textarea.input {
 	flex: 0 0 auto;
 }
 
+/* The theme's accent, like its buttons and focused inputs */
+#form #sticker[aria-expanded="true"] {
+	opacity: 1;
+	color: var(--button-color);
+}
+
+#form #sticker::before,
 .sticker-tab-favorites::before,
 .sticker-tab-recent::before,
 .sticker-tab-add::before {
@@ -2678,6 +2685,21 @@ textarea.input {
 		border-top: 1px solid var(--border-color);
 		border-radius: 0;
 		box-shadow: none;
+	}
+}
+
+/* Slides up from the bottom like the on-screen keyboard; the chat follows it (ChatInput) */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+	#sticker-picker.sticker-slide-enter-active,
+	#sticker-picker.sticker-slide-leave-active {
+		transition: height 180ms cubic-bezier(0.2, 0, 0, 1), margin 180ms cubic-bezier(0.2, 0, 0, 1);
+	}
+
+	#sticker-picker.sticker-slide-enter-from,
+	#sticker-picker.sticker-slide-leave-to {
+		height: 0;
+		margin-top: 0;
+		margin-bottom: 0;
 	}
 }
 

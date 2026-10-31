@@ -55,8 +55,39 @@
 			enterkeyhint="send"
 			:data-placeholder="getInputPlaceholder(channel)"
 			@keypress.enter.exact.prevent="onSubmit"
+			@focus="onInputFocus"
 			@blur="onBlur"
 		/>
+		<span
+			v-if="stickerProxyUrl"
+			id="sticker-tooltip"
+			class="tooltipped tooltipped-w tooltipped-no-touch"
+			aria-label="Stickers"
+		>
+			<button
+				id="sticker"
+				ref="stickerButton"
+				type="button"
+				aria-label="Stickers"
+				:aria-expanded="stickerPickerOpen"
+				:class="{active: stickerPickerOpen}"
+				@click="toggleStickerPicker"
+			/>
+		</span>
+		<Transition
+			name="sticker-slide"
+			:css="stickerPickerAnimated"
+			@after-enter="stopKeepingChat"
+			@after-leave="stopKeepingChat"
+		>
+			<StickerPicker
+				v-if="stickerPickerOpen"
+				ref="stickerPicker"
+				:channel="channel"
+				:anchor-right="stickerAnchorRight"
+				@close="closeStickerPicker(true)"
+			/>
+		</Transition>
 		<span
 			v-if="store.state.serverConfiguration?.fileUpload"
 			id="upload-tooltip"
@@ -108,6 +139,7 @@ import {isPreviewFiltered} from "../js/helpers/previewFilters";
 import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
+import StickerPicker from "./StickerPicker.vue";
 import {proxyUrl as stickerProxyUrl} from "../js/stickers";
 import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
@@ -139,6 +171,7 @@ export default defineComponent({
 	components: {
 		LinkPreview,
 		ParsedMessage,
+		StickerPicker,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -371,7 +404,111 @@ export default defineComponent({
 			input.value?.blur();
 		};
 
+		const stickerButton = ref<HTMLButtonElement>();
+		const stickerPicker = ref<{$el: HTMLElement}>();
+		const stickerPickerOpen = ref(false);
+		// Slides (mobile) unless the on-screen keyboard takes its place at once
+		const stickerPickerAnimated = ref(true);
+		const stickerAnchorRight = ref(6);
+
+		function closeStickerPicker(focusInput = false) {
+			stickerPickerOpen.value = false;
+			document.removeEventListener("pointerdown", onDocumentPointerDown, true);
+
+			if (focusInput && navigator.maxTouchPoints === 0) {
+				richInput?.focus();
+			}
+		}
+
+		function onDocumentPointerDown(e: PointerEvent) {
+			const target = e.target as Element;
+
+			// A tap on the input closes it once focused (onInputFocus): closing now moves the input
+			// down before the tap lands, so the keyboard wouldn't open
+			if (navigator.maxTouchPoints > 0 && input.value?.contains(target)) {
+				return;
+			}
+
+			// The pack view and the picker's own menu are on top of it
+			if (
+				!stickerPicker.value?.$el.contains(target) &&
+				!stickerButton.value?.contains(target) &&
+				!target.closest?.("#sticker-pack-overlay")
+			) {
+				closeStickerPicker();
+			}
+		}
+
+		// The keyboard takes the panel's place again
+		const onInputFocus = () => {
+			if (stickerPickerOpen.value && navigator.maxTouchPoints > 0) {
+				stickerPickerAnimated.value = false;
+				closeStickerPicker();
+			}
+		};
+
+		const toggleStickerPicker = () => {
+			if (stickerPickerOpen.value) {
+				closeStickerPicker(true);
+				return;
+			}
+
+			const form = input.value?.closest("form")?.getBoundingClientRect();
+			const button = stickerButton.value?.getBoundingClientRect();
+			stickerAnchorRight.value = form && button ? Math.max(6, form.right - button.right) : 6;
+			stickerPickerAnimated.value = true;
+			stickerPickerOpen.value = true;
+			document.addEventListener("pointerdown", onDocumentPointerDown, true);
+
+			// The panel takes the on-screen keyboard's place; tapping the input brings it back
+			if (navigator.maxTouchPoints > 0) {
+				blurInput();
+			}
+		};
+
+		watch(
+			() => props.channel.id,
+			() => {
+				stickerPickerAnimated.value = false;
+				closeStickerPicker();
+			}
+		);
+
+		// On mobile the panel sits below the input and shrinks the chat, like the on-screen
+		// keyboard: keep what was at the chat's bottom edge in place on every frame of its slide.
+		// The observer runs after layout and before paint, so the chat moves with the panel.
+		let chatObserver: ResizeObserver | null = null;
+		let chatObserverTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const stopKeepingChat = () => {
+			chatObserver?.disconnect();
+			chatObserver = null;
+			clearTimeout(chatObserverTimer);
+		};
+
+		watch(stickerPickerOpen, () => {
+			const chat = input.value?.closest(".window")?.querySelector<HTMLElement>("#chat .chat");
+			stopKeepingChat();
+
+			if (!chat) {
+				return;
+			}
+
+			const gap = chat.scrollHeight - chat.scrollTop - chat.clientHeight;
+			chatObserver = new ResizeObserver(() => {
+				chat.scrollTop = chat.scrollHeight - chat.clientHeight - gap;
+			});
+			chatObserver.observe(chat);
+			// In case the slide is cut short and no after-enter/leave comes
+			chatObserverTimer = setTimeout(stopKeepingChat, 1000);
+		});
+
 		const onEscape = () => {
+			if (stickerPickerOpen.value) {
+				closeStickerPicker(true);
+				return;
+			}
+
 			cancelReply();
 			blurInput();
 		};
@@ -500,6 +637,8 @@ export default defineComponent({
 
 			richInput?.destroy();
 			richInput = null;
+			closeStickerPicker();
+			stopKeepingChat();
 
 			upload.unmounted();
 			upload.abort();
@@ -521,6 +660,16 @@ export default defineComponent({
 			cancelReply,
 			jumpToReply,
 			replyMedia,
+			stickerProxyUrl,
+			stickerButton,
+			stickerPicker,
+			stickerPickerOpen,
+			stickerPickerAnimated,
+			stickerAnchorRight,
+			stopKeepingChat,
+			toggleStickerPicker,
+			onInputFocus,
+			closeStickerPicker,
 		};
 	},
 });

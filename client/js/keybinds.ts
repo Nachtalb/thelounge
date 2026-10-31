@@ -263,10 +263,10 @@ document.addEventListener("keydown", (e) => {
 		return;
 	}
 
-	// Let the confirm dialog's, the search bar's and the sticker pack's focused buttons handle Space/Enter themselves
+	// Let the confirm dialog's, the search bar's and the stickers' focused buttons handle Space/Enter themselves
 	if (
 		(e.target as HTMLElement).closest(
-			"#confirm-dialog, .message-search, .search-nav, #sticker-pack-overlay"
+			"#confirm-dialog, .message-search, .search-nav, #sticker-picker, #sticker-pack-overlay"
 		)
 	) {
 		return;
