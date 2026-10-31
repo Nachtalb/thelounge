@@ -2201,6 +2201,20 @@ textarea.input {
 	pointer-events: none;
 }
 
+#chat .sticker-message {
+	display: inline-block;
+	cursor: pointer;
+	line-height: 0;
+	margin: 2px 0;
+	vertical-align: top;
+	-webkit-touch-callout: none;
+}
+
+#chat .sticker-message .sticker-media {
+	max-width: 160px;
+	max-height: 160px;
+}
+
 :is(#chat, #input-previews) .preview-size {
 	margin-left: 5px;
 	user-select: none;
