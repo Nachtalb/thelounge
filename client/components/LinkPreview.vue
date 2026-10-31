@@ -88,7 +88,15 @@
 				</a>
 			</template>
 			<template v-else-if="link.type === 'video'">
-				<span v-if="link.filename" class="media-filename">{{ link.filename }}</span>
+				<span v-if="link.filename" class="media-filename"
+					><a
+						:href="link.link"
+						target="_blank"
+						rel="noopener"
+						@click="onThumbnailClick"
+						>{{ link.filename }}</a
+					></span
+				>
 				<video
 					v-show="link.sourceLoaded"
 					preload="metadata"

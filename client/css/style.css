@@ -2929,6 +2929,11 @@ textarea.input {
 	pointer-events: none;
 }
 
+:is(#chat, #input-previews) .toggle-type-video .media-filename a {
+	color: inherit;
+	pointer-events: auto;
+}
+
 :is(#chat, #input-previews) video {
 	max-width: 100%;
 	max-height: 128px; /* Same as image previews */
