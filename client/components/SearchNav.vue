@@ -26,6 +26,11 @@
 				<div class="scroll-down-arrow" />
 			</button>
 		</div>
+		<DatePicker
+			v-if="matchTimes.length"
+			:times="matchTimes"
+			:current="matchTimes[chatSearch.pos]"
+		/>
 		<span class="search-counter" aria-live="polite">{{ counter }}</span>
 		<button
 			class="search-list-toggle"
@@ -62,6 +67,24 @@
 .search-nav .search-step:disabled {
 	opacity: 0.4;
 	cursor: default;
+}
+
+.search-nav .date-picker-button {
+	width: 32px;
+	height: 32px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.search-nav .date-picker-button::before {
+	content: "";
+	width: 18px;
+	height: 18px;
+	background-color: currentcolor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E")
+		center / contain no-repeat;
 }
 
 .search-nav .search-counter {
@@ -128,11 +151,13 @@ import {
 	stepPos,
 	total,
 } from "../js/helpers/chatSearch";
+import DatePicker from "./DatePicker.vue";
 import type {ClientChan} from "../js/types";
 
 // Bottom bar replacing the message input while searching in a channel
 export default defineComponent({
 	name: "SearchNav",
+	components: {DatePicker},
 	props: {
 		channel: {type: Object as PropType<ClientChan>, required: true},
 	},

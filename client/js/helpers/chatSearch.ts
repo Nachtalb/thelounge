@@ -63,6 +63,25 @@ export function counterText(
 export const matchTimes = computed(() => store.state.messageSearchResults?.times || []);
 export const total = computed(() => Math.max(searchResults.value.length, matchTimes.value.length));
 
+// Local day of a timestamp ("2026-10-31")
+export function dayKey(time: number | Date) {
+	const d = new Date(time);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Day => position of the oldest match on that day
+export function matchDays(times: number[]) {
+	const days = new Map<string, number>();
+	times.forEach((time, pos) => days.set(dayKey(time), pos));
+	return days;
+}
+
+// Nearest key after (dir 1) or before (dir -1) `key` in sorted `keys` ("2026", "2026-10", "2026-10-31")
+export function neighbour(keys: string[], key: string, dir: 1 | -1) {
+	return dir > 0 ? keys.find((k) => k > key) : keys.findLast((k) => k < key);
+}
+
 function found() {
 	return store.getters.findChannel(chatSearch.chanId);
 }
