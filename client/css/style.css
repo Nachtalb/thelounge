@@ -2401,6 +2401,32 @@ textarea.input {
 	-webkit-touch-callout: none;
 }
 
+#form .sticker-suggest {
+	position: absolute;
+	bottom: calc(100% + 4px);
+	left: 6px;
+	right: 6px;
+	display: flex;
+	gap: 2px;
+	padding: 4px;
+	overflow-x: auto;
+	scrollbar-width: thin;
+	background: var(--window-bg-color);
+	color: var(--body-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	box-shadow: 0 3px 12px var(--shadow-color);
+	z-index: 3;
+}
+
+.sticker-suggest .sticker-item {
+	flex: 0 0 64px;
+}
+
+.sticker-suggest .sticker-item.selected {
+	background: color-mix(in srgb, currentcolor 20%, transparent);
+}
+
 .sticker-item .sticker-media {
 	position: absolute;
 	inset: 4px;

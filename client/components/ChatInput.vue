@@ -40,6 +40,12 @@
 				&times;
 			</button>
 		</div>
+		<StickerSuggest
+			v-if="suggestions.length"
+			:items="suggestions"
+			:selected="suggestIndex"
+			@pick="pickSuggestion"
+		/>
 		<span id="upload-progressbar" />
 		<span id="nick">{{ network.nick }}</span>
 		<span id="input-label" class="sr-only">Message input</span>
@@ -55,6 +61,8 @@
 			enterkeyhint="send"
 			:data-placeholder="getInputPlaceholder(channel)"
 			@keypress.enter.exact.prevent="onSubmit"
+			@keydown.left.exact="moveSuggestion($event, -1)"
+			@keydown.right.exact="moveSuggestion($event, 1)"
 			@focus="onInputFocus"
 			@blur="onBlur"
 		/>
@@ -140,7 +148,15 @@ import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
 import StickerPicker from "./StickerPicker.vue";
-import {proxyUrl as stickerProxyUrl} from "../js/stickers";
+import StickerSuggest from "./StickerSuggest.vue";
+import {findEmojiMatches} from "../js/helpers/emoji";
+import {
+	loadUserPacks,
+	proxyUrl as stickerProxyUrl,
+	sendSticker,
+	stickersForEmoji,
+} from "../js/stickers";
+import type {StickerRef} from "../../shared/stickers";
 import {replyMedia as getReplyMedia} from "../js/helpers/replyMedia";
 import {computed, watch, defineComponent, onMounted, PropType, ref, onUnmounted} from "vue";
 import type {ClientNetwork, ClientChan} from "../js/types";
@@ -172,6 +188,7 @@ export default defineComponent({
 		LinkPreview,
 		ParsedMessage,
 		StickerPicker,
+		StickerSuggest,
 	},
 	props: {
 		network: {type: Object as PropType<ClientNetwork>, required: true},
@@ -281,6 +298,47 @@ export default defineComponent({
 			return "";
 		};
 
+		// Quick select: one emoji alone in the input suggests the user's stickers for it
+		const suggestEmoji = computed(() => {
+			const text = props.channel.pendingMessage.trim();
+			const [match, more] = stickerProxyUrl.value ? findEmojiMatches(text) : [];
+			return match && !more && match.start === 0 && match.end === text.length ? text : "";
+		});
+		const suggestDismissed = ref("");
+		const suggestIndex = ref(-1);
+
+		watch(suggestEmoji, (emoji) => {
+			suggestIndex.value = -1;
+			suggestDismissed.value = "";
+
+			if (emoji) {
+				loadUserPacks();
+			}
+		});
+
+		const suggestions = computed<StickerRef[]>(() =>
+			suggestEmoji.value && suggestDismissed.value !== suggestEmoji.value
+				? stickersForEmoji(suggestEmoji.value)
+				: []
+		);
+
+		const pickSuggestion = (item: StickerRef) => {
+			sendSticker(props.channel, item);
+			props.channel.pendingMessage = "";
+			richInput?.setValue("", true);
+		};
+
+		const moveSuggestion = (e: KeyboardEvent, step: number) => {
+			const count = suggestions.value.length;
+
+			if (!count) {
+				return;
+			}
+
+			e.preventDefault();
+			suggestIndex.value = Math.min(Math.max(suggestIndex.value + step, -1), count - 1);
+		};
+
 		const onSubmit = () => {
 			if (!input.value) {
 				return;
@@ -293,6 +351,13 @@ export default defineComponent({
 
 			if (!store.state.isConnected) {
 				return false;
+			}
+
+			const picked = suggestions.value[suggestIndex.value];
+
+			if (picked) {
+				pickSuggestion(picked);
+				return;
 			}
 
 			const target = props.channel.id;
@@ -509,6 +574,11 @@ export default defineComponent({
 				return;
 			}
 
+			if (suggestions.value.length) {
+				suggestDismissed.value = suggestEmoji.value;
+				return;
+			}
+
 			cancelReply();
 			blurInput();
 		};
@@ -670,6 +740,10 @@ export default defineComponent({
 			toggleStickerPicker,
 			onInputFocus,
 			closeStickerPicker,
+			suggestions,
+			suggestIndex,
+			pickSuggestion,
+			moveSuggestion,
 		};
 	},
 });
