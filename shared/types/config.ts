@@ -33,6 +33,8 @@ type SharedConfigurationBase = {
 	fileUploadMaxFileSize?: number;
 	// Base URL of the sticker proxy, "" = stickers off
 	stickerProxyUrl: string;
+	// Users can pick memes from their own Nookle
+	nookle: boolean;
 };
 
 export type ConfigNetDefaults = {

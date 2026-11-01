@@ -454,11 +454,13 @@ function addSecurityHeaders(res: Response) {
 	const stickerProxy = normalizeProxyUrl(Config.values.stickers?.proxyUrl);
 	const stickerSrc = stickerProxy ? " " + new URL(stickerProxy).origin : "";
 	const stickerBlob = stickerProxy ? " blob:" : "";
+	// Each user's own Nookle, wherever it is hosted
+	const nookleSrc = Config.values.nookle?.enable ? " https:" : "";
 	const policies = [
 		"default-src 'none'", // default to nothing
 		"base-uri 'none'", // disallow <base>, has no fallback to default-src
 		"form-action 'self'", // 'self' to fix saving passwords in Firefox, even though login is handled in javascript
-		"connect-src 'self' ws: wss:" + stickerSrc, // allow self for polling; websockets
+		"connect-src 'self' ws: wss:" + stickerSrc + nookleSrc, // allow self for polling; websockets
 		"style-src 'self' https: 'unsafe-inline'", // allow inline due to use in irc hex colors
 		isDev ? "script-src 'self' 'unsafe-eval'" : "script-src 'self'", // javascript
 		"worker-src 'self'", // service worker
@@ -474,7 +476,8 @@ function addSecurityHeaders(res: Response) {
 		policies.push(
 			"img-src 'self' data: https://user-images.githubusercontent.com" +
 				stickerSrc +
-				stickerBlob
+				stickerBlob +
+				nookleSrc
 		);
 		policies.unshift("block-all-mixed-content");
 	} else {
@@ -1060,6 +1063,7 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 		useHexIp: Config.values.useHexIp,
 		prefetch: Config.values.prefetch,
 		stickerProxyUrl: normalizeProxyUrl(Config.values.stickers?.proxyUrl),
+		nookle: !!Config.values.nookle?.enable,
 		fileUploadMaxFileSize: Uploader ? Uploader.getMaxFileSize() : undefined, // TODO can't be undefined?
 	};
 
