@@ -81,6 +81,14 @@ const defaultConfig = {
 		default: "",
 		sync: "always",
 	},
+	nookleUrl: {
+		default: "https://i.naa.gg",
+		sync: "always",
+	},
+	nookleKey: {
+		default: "",
+		sync: "always",
+	},
 	typing: {
 		default: "receive",
 	},

@@ -28,6 +28,41 @@
 			/>
 		</SettingCard>
 
+		<!-- Nookle -->
+		<SettingCard v-if="store.state.serverConfiguration?.nookle" title="Nookle">
+			<div class="setting-card-intro">
+				Pick memes from your Nookle collection in the message input
+			</div>
+			<div>
+				<label for="nookleUrl" class="setting-row-text">
+					<div class="setting-row-label">Nookle URL</div>
+				</label>
+				<input
+					id="nookleUrl"
+					:value="store.state.settings.nookleUrl"
+					type="url"
+					name="nookleUrl"
+					class="input"
+					placeholder="https://i.naa.gg"
+				/>
+			</div>
+			<div>
+				<label for="nookleKey" class="setting-row-text">
+					<div class="setting-row-label">API key</div>
+					<div class="setting-row-description">A read-only key (nk_…)</div>
+				</label>
+				<input
+					id="nookleKey"
+					:value="store.state.settings.nookleKey"
+					type="password"
+					name="nookleKey"
+					class="input"
+					autocomplete="off"
+					spellcheck="false"
+				/>
+			</div>
+		</SettingCard>
+
 		<!-- Settings sync -->
 		<SettingCard v-if="!store.state.serverConfiguration?.public" title="Settings sync">
 			<SettingToggle
