@@ -161,6 +161,11 @@ class Client {
 					log.error(e);
 				}
 			}
+
+			// message ids are sqlite row ids, so they stay the same across restarts
+			if (client.messageProvider?.isEnabled) {
+				client.idMsg = client.messageProvider.nextId();
+			}
 		}
 
 		if (!_.isPlainObject(client.config.sessions)) {
@@ -611,17 +616,33 @@ class Client {
 		}
 
 		const chan = target.chan;
+		const until = typeof data.untilTime === "number" ? data.untilTime : undefined;
+
+		if (client.messageProvider?.isEnabled && chan.isLoggable()) {
+			const beforeId = data.lastId < 0 ? Number.MAX_SAFE_INTEGER : data.lastId;
+			const page = client.messageProvider.getHistory(
+				target.network,
+				chan,
+				beforeId,
+				Boolean(data.condensed),
+				until
+			);
+			// Messages still in memory keep their previews, and unstored ones (errors, modes) show too
+			const start = page.messages[0]?.id ?? 0;
+			const memory = chan.messages.filter((m) => m.id >= start && m.id < beforeId);
+			const inMemory = new Set(memory.map((m) => m.id));
+			const messages = page.messages
+				.filter((m) => !inMemory.has(m.id))
+				.concat(memory)
+				.sort((a, b) => a.id - b.id);
+			backfillPreviews(client, chan, messages);
+
+			return {chan: chan.id, messages, moreHistoryAvailable: page.more};
+		}
+
 		let messages: Msg[] = [];
 		let index = 0;
-		const until = typeof data.untilTime === "number" ? data.untilTime : undefined;
-		const first = chan.messages[0]?.time.getTime() ?? Date.now();
-
-		// Jumping to a message older than the in-memory history: load the gap from the database
-		if (until !== undefined && until < first && client.messageProvider) {
-			chan.messages = client.messageProvider
-				.getMessagesBetween(target.network, chan, until, first, 50, () => client.idMsg++)
-				.concat(chan.messages);
-		}
+		let moreHistoryAvailable = false;
 
 		// If client requests -1, send last 100 messages
 		if (data.lastId < 0) {
@@ -667,13 +688,14 @@ class Client {
 			}
 
 			messages = chan.messages.slice(startIndex, index);
+			moreHistoryAvailable = startIndex > 0;
 			backfillPreviews(client, chan, messages);
 		}
 
 		return {
 			chan: chan.id,
 			messages: messages,
-			totalMessages: chan.messages.length,
+			moreHistoryAvailable,
 		};
 	}
 

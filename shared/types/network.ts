@@ -6,7 +6,7 @@ export type SharedPrefixObject = {
 };
 
 export type SharedNetworkChan = SharedChan & {
-	totalMessages: number;
+	moreHistoryAvailable: boolean;
 };
 
 export type SharedPrefix = {

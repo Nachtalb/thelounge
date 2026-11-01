@@ -5,6 +5,9 @@ import Msg from "../../server/models/msg";
 import Network from "../../server/models/network";
 import Prefix from "../../server/models/prefix";
 import User from "../../server/models/user";
+import Config from "../../server/config";
+import {ChanType} from "../../shared/types/chan";
+
 describe("Chan", function () {
 	const network = {
 		network: {
@@ -24,6 +27,35 @@ describe("Chan", function () {
 
 	network.network.options.PREFIX.forEach((mode) => {
 		prefixLookup.modeToSymbol[mode.mode] = mode.symbol;
+	});
+
+	describe("#pushMessage(client, msg)", function () {
+		it("should keep only the newest messages in memory when sqlite has the history", function () {
+			const client = {
+				idMsg: 1,
+				emit() {},
+				attachedClients: {},
+				messageStorage: [],
+				messageProvider: {isEnabled: true},
+			} as any;
+			const chan = new Chan({name: "#chan"});
+			const lobby = new Chan({type: ChanType.LOBBY});
+			Config.values.public = false;
+
+			try {
+				for (let i = 0; i < 150; i++) {
+					chan.pushMessage(client, new Msg({text: `msg ${i}`}));
+					lobby.pushMessage(client, new Msg({text: `msg ${i}`}));
+				}
+			} finally {
+				Config.values.public = true;
+			}
+
+			expect(chan.messages).to.have.lengthOf(100);
+			expect(chan.messages[0].text).to.equal("msg 50");
+			expect(chan.getFilteredClone(true).moreHistoryAvailable).to.be.true;
+			expect(lobby.messages).to.have.lengthOf(150);
+		});
 	});
 
 	describe("#findMessage(id)", function () {
@@ -205,7 +237,7 @@ describe("Chan", function () {
 				"key",
 				"messages",
 				"muted",
-				"totalMessages",
+				"moreHistoryAvailable",
 				"name",
 				"state",
 				"topic",

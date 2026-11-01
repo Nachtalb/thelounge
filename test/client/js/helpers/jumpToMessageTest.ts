@@ -54,6 +54,11 @@ describe("jumpToMessage", () => {
 		expect(await jumpToMessage(channel, {time: 1500})).to.equal(true);
 		expect(scrolled).to.deep.equal([1, 2]);
 
+		// History is in arrival order: a replayed message can be older than the first one
+		channel.messages.push({id: 3, time: 900, text: "replayed"} as never);
+		expect(await jumpToMessage(channel, {time: 900, text: "replayed"})).to.equal(true);
+		expect(scrolled).to.deep.equal([1, 2, 3]);
+
 		eventbus.off("scroll-to-message", onScroll);
 	});
 });

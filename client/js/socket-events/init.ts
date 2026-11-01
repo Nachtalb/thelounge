@@ -124,7 +124,9 @@ function mergeChannelData(
 
 		// Reconnection only sends new messages, so merge it on the client
 		// Only concat if server sent us less than 100 messages so we don't introduce gaps
-		if (currentChannel.messages && newChannel.messages.length < 100) {
+		const concat = currentChannel.messages && newChannel.messages.length < 100;
+
+		if (concat) {
 			currentChannel.messages = currentChannel.messages.concat(newChannel.messages);
 		} else {
 			currentChannel.messages = newChannel.messages;
@@ -136,8 +138,8 @@ function mergeChannelData(
 				continue;
 			}
 
-			if (key === "messages") {
-				// already handled
+			// already handled; older history the client already has stays as it was
+			if (key === "messages" || (key === "moreHistoryAvailable" && concat)) {
 				continue;
 			}
 
