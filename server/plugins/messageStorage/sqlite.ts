@@ -570,38 +570,6 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		return {messages: rows.map((row) => rowToMsg(row)), more: more !== null};
 	}
 
-	// Messages from `context` messages before `from` up to `to` (exclusive), oldest first
-	getMessagesBetween(
-		network: Network,
-		channel: Channel,
-		from: number,
-		to: number,
-		context: number
-	): Message[] {
-		if (!this.isEnabled) {
-			return [];
-		}
-
-		const where = "network = ? AND channel = ?";
-		const rows = this.database
-			.query(
-				`SELECT id, msg, type, time, msgid FROM messages WHERE ${where} AND time < ? AND time >= COALESCE(` +
-					`(SELECT time FROM messages WHERE ${where} AND time < ? ORDER BY time DESC LIMIT 1 OFFSET ?), 0` +
-					") ORDER BY time ASC, id ASC"
-			)
-			.all(
-				network.uuid,
-				channel.name.toLowerCase(),
-				to,
-				network.uuid,
-				channel.name.toLowerCase(),
-				from,
-				context - 1
-			) as MessageRow[];
-
-		return rows.map((row) => rowToMsg(row));
-	}
-
 	// Time of the newest message `nick` sent anywhere on the network
 	lastSeen(network: Network, nick: string): number | null {
 		if (!this.isEnabled) {
