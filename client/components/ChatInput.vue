@@ -77,23 +77,44 @@
 				ref="stickerButton"
 				type="button"
 				aria-label="Stickers"
-				:aria-expanded="stickerPickerOpen"
-				:class="{active: stickerPickerOpen}"
-				@click="toggleStickerPicker"
+				:aria-expanded="openPicker === 'stickers'"
+				@click="togglePicker('stickers')"
+			/>
+		</span>
+		<span
+			v-if="nookleEnabled"
+			id="nookle-tooltip"
+			class="tooltipped tooltipped-w tooltipped-no-touch"
+			aria-label="Memes"
+		>
+			<button
+				id="nookle"
+				ref="nookleButton"
+				type="button"
+				aria-label="Memes"
+				:aria-expanded="openPicker === 'nookle'"
+				@click="togglePicker('nookle')"
 			/>
 		</span>
 		<Transition
 			name="sticker-slide"
-			:css="stickerPickerAnimated"
+			:css="pickerAnimated"
 			@after-enter="stopKeepingChat"
 			@after-leave="stopKeepingChat"
 		>
 			<StickerPicker
-				v-if="stickerPickerOpen"
-				ref="stickerPicker"
+				v-if="openPicker === 'stickers'"
+				ref="picker"
 				:channel="channel"
-				:anchor-right="stickerAnchorRight"
-				@close="closeStickerPicker(true)"
+				:anchor-right="pickerAnchorRight"
+				@close="closePicker(true)"
+			/>
+			<NooklePicker
+				v-else-if="openPicker === 'nookle'"
+				ref="picker"
+				:channel="channel"
+				:anchor-right="pickerAnchorRight"
+				@close="closePicker(true)"
 			/>
 		</Transition>
 		<span
@@ -148,6 +169,7 @@ import LinkPreview from "./LinkPreview.vue";
 import ParsedMessage from "./ParsedMessage.vue";
 import jumpToMessage from "../js/helpers/jumpToMessage";
 import StickerPicker from "./StickerPicker.vue";
+import NooklePicker from "./NooklePicker.vue";
 import {closeOnBack} from "../js/helpers/closeOnBack";
 import StickerSuggest from "./StickerSuggest.vue";
 import {findEmojiMatches} from "../js/helpers/emoji";
@@ -189,6 +211,7 @@ export default defineComponent({
 		LinkPreview,
 		ParsedMessage,
 		StickerPicker,
+		NooklePicker,
 		StickerSuggest,
 	},
 	props: {
@@ -471,18 +494,22 @@ export default defineComponent({
 		};
 
 		const stickerButton = ref<HTMLButtonElement>();
-		const stickerPicker = ref<{$el: HTMLElement}>();
-		const stickerPickerOpen = ref(false);
+		const nookleButton = ref<HTMLButtonElement>();
+		const picker = ref<{$el: HTMLElement}>();
+		const openPicker = ref<"" | "stickers" | "nookle">("");
 		// Slides (mobile) unless the on-screen keyboard takes its place at once
-		const stickerPickerAnimated = ref(true);
-		const stickerAnchorRight = ref(6);
+		const pickerAnimated = ref(true);
+		const pickerAnchorRight = ref(6);
+		const nookleEnabled = computed(
+			() => store.state.serverConfiguration?.nookle && !!store.state.settings.nookleKey
+		);
 
 		let releaseBack: (() => void) | null = null;
 
-		function closeStickerPicker(focusInput = false) {
+		function closePicker(focusInput = false) {
 			releaseBack?.();
 			releaseBack = null;
-			stickerPickerOpen.value = false;
+			openPicker.value = "";
 			document.removeEventListener("pointerdown", onDocumentPointerDown, true);
 
 			if (focusInput && navigator.maxTouchPoints === 0) {
@@ -501,38 +528,46 @@ export default defineComponent({
 
 			// The pack view and the picker's own menu are on top of it
 			if (
-				!stickerPicker.value?.$el.contains(target) &&
+				!picker.value?.$el.contains(target) &&
 				!stickerButton.value?.contains(target) &&
+				!nookleButton.value?.contains(target) &&
 				!target.closest?.("#sticker-pack-overlay")
 			) {
-				closeStickerPicker();
+				closePicker();
 			}
 		}
 
 		// The keyboard takes the panel's place again
 		const onInputFocus = () => {
-			if (stickerPickerOpen.value && navigator.maxTouchPoints > 0) {
-				stickerPickerAnimated.value = false;
-				closeStickerPicker();
+			if (openPicker.value && navigator.maxTouchPoints > 0) {
+				pickerAnimated.value = false;
+				closePicker();
 			}
 		};
 
-		const toggleStickerPicker = () => {
-			if (stickerPickerOpen.value) {
-				closeStickerPicker(true);
+		const togglePicker = (kind: "stickers" | "nookle") => {
+			if (openPicker.value === kind) {
+				closePicker(true);
 				return;
 			}
 
 			const form = input.value?.closest("form")?.getBoundingClientRect();
-			const button = stickerButton.value?.getBoundingClientRect();
-			stickerAnchorRight.value = form && button ? Math.max(6, form.right - button.right) : 6;
-			stickerPickerAnimated.value = true;
-			stickerPickerOpen.value = true;
-			document.addEventListener("pointerdown", onDocumentPointerDown, true);
-			releaseBack = closeOnBack(() => {
-				releaseBack = null;
-				closeStickerPicker();
-			});
+			const button = (
+				kind === "stickers" ? stickerButton : nookleButton
+			).value?.getBoundingClientRect();
+			pickerAnchorRight.value = form && button ? Math.max(6, form.right - button.right) : 6;
+			pickerAnimated.value = true;
+
+			// Switching from the other picker keeps its listeners
+			if (!openPicker.value) {
+				document.addEventListener("pointerdown", onDocumentPointerDown, true);
+				releaseBack = closeOnBack(() => {
+					releaseBack = null;
+					closePicker();
+				});
+			}
+
+			openPicker.value = kind;
 
 			// The panel takes the on-screen keyboard's place; tapping the input brings it back
 			if (navigator.maxTouchPoints > 0) {
@@ -543,8 +578,8 @@ export default defineComponent({
 		watch(
 			() => props.channel.id,
 			() => {
-				stickerPickerAnimated.value = false;
-				closeStickerPicker();
+				pickerAnimated.value = false;
+				closePicker();
 			}
 		);
 
@@ -560,7 +595,7 @@ export default defineComponent({
 			clearTimeout(chatObserverTimer);
 		};
 
-		watch(stickerPickerOpen, () => {
+		watch(openPicker, () => {
 			const chat = input.value?.closest(".window")?.querySelector<HTMLElement>("#chat .chat");
 			stopKeepingChat();
 
@@ -578,8 +613,8 @@ export default defineComponent({
 		});
 
 		const onEscape = () => {
-			if (stickerPickerOpen.value) {
-				closeStickerPicker(true);
+			if (openPicker.value) {
+				closePicker(true);
 				return;
 			}
 
@@ -716,7 +751,7 @@ export default defineComponent({
 
 			richInput?.destroy();
 			richInput = null;
-			closeStickerPicker();
+			closePicker();
 			stopKeepingChat();
 
 			upload.unmounted();
@@ -741,14 +776,16 @@ export default defineComponent({
 			replyMedia,
 			stickerProxyUrl,
 			stickerButton,
-			stickerPicker,
-			stickerPickerOpen,
-			stickerPickerAnimated,
-			stickerAnchorRight,
+			nookleButton,
+			nookleEnabled,
+			picker,
+			openPicker,
+			pickerAnimated,
+			pickerAnchorRight,
 			stopKeepingChat,
-			toggleStickerPicker,
+			togglePicker,
 			onInputFocus,
-			closeStickerPicker,
+			closePicker,
 			suggestions,
 			suggestIndex,
 			pickSuggestion,
