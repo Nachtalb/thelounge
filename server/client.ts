@@ -618,6 +618,7 @@ class Client {
 		const chan = target.chan;
 		let messages: Msg[] = [];
 		let index = 0;
+		let moreHistoryAvailable = false;
 		const until = typeof data.untilTime === "number" ? data.untilTime : undefined;
 		const first = chan.messages[0]?.time.getTime() ?? Date.now();
 
@@ -672,13 +673,14 @@ class Client {
 			}
 
 			messages = chan.messages.slice(startIndex, index);
+			moreHistoryAvailable = startIndex > 0;
 			backfillPreviews(client, chan, messages);
 		}
 
 		return {
 			chan: chan.id,
 			messages: messages,
-			totalMessages: chan.messages.length,
+			moreHistoryAvailable,
 		};
 	}
 

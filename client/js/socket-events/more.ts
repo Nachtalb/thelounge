@@ -14,8 +14,7 @@ socket.on("more", async (data) => {
 	channel.inputHistory = channel.inputHistory.concat(
 		extractInputHistory(data.messages, 100 - channel.inputHistory.length)
 	);
-	channel.moreHistoryAvailable =
-		data.totalMessages > channel.messages.length + data.messages.length;
+	channel.moreHistoryAvailable = data.moreHistoryAvailable;
 	channel.messages = data.messages.concat(channel.messages);
 
 	await nextTick();

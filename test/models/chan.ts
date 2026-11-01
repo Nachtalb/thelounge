@@ -205,7 +205,7 @@ describe("Chan", function () {
 				"key",
 				"messages",
 				"muted",
-				"totalMessages",
+				"moreHistoryAvailable",
 				"name",
 				"state",
 				"topic",

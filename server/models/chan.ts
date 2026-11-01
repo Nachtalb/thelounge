@@ -216,7 +216,7 @@ class Chan {
 		return {
 			id: this.id,
 			messages: msgs,
-			totalMessages: this.messages.length,
+			moreHistoryAvailable: this.messages.length > msgs.length,
 			name: this.name,
 			key: this.key,
 			topic: this.topic,
@@ -328,7 +328,7 @@ class Chan {
 			client.emit("more", {
 				chan: this.id,
 				messages: messages.slice(-100),
-				totalMessages: messages.length,
+				moreHistoryAvailable: messages.length > 100,
 			});
 
 			if (network.irc!.network.cap.isEnabled("znc.in/playback")) {
