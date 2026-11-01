@@ -8,6 +8,7 @@ import Config from "../../server/config";
 import MessageStorage, {
 	currentSchemaVersion,
 	getMessagesQuery,
+	historyStartQueries,
 	lastSeenQuery,
 	migrations,
 	necessaryMigrations,
@@ -174,6 +175,79 @@ describe("SQLite unit tests", function () {
 
 	afterEach(function () {
 		store.close();
+	});
+
+	it("pages older history by id, counting condensed messages only in the 1000-row window", function () {
+		const net = {uuid: "testnet"} as any;
+		const chan = {name: "#history"} as any;
+
+		// 300 messages, every message is followed by 4 joins: ids 1..1500
+		store.database.transaction(() => {
+			for (let i = 0; i < 300; i++) {
+				store.index(net, chan, new Msg({time: new Date(i * 5), text: `msg ${i}`}));
+
+				for (let j = 1; j < 5; j++) {
+					store.index(
+						net,
+						chan,
+						new Msg({time: new Date(i * 5 + j), type: MessageType.JOIN})
+					);
+				}
+			}
+		})();
+
+		// not condensed: 100 rows of any type
+		let page = store.getHistory(net, chan, 1501, false);
+		expect(page.messages).to.have.lengthOf(100);
+		expect(page.messages.at(-1)!.id).to.equal(1500);
+		expect(page.more).to.be.true;
+
+		// condensed: joins don't count, but at most 1000 rows are looked at
+		page = store.getHistory(net, chan, 1501, true);
+		expect(page.messages).to.have.lengthOf(500);
+		expect(page.messages.filter((m) => m.type === MessageType.MESSAGE)).to.have.lengthOf(100);
+		expect(page.messages[0].text).to.equal("msg 200");
+
+		// continues before the oldest loaded message, back to the very start
+		page = store.getHistory(net, chan, page.messages[0].id, true);
+		expect(page.messages[0].text).to.equal("msg 100");
+		page = store.getHistory(net, chan, page.messages[0].id, true);
+		expect(page.messages[0].text).to.equal("msg 0");
+		expect(page.more).to.be.false;
+		expect(store.getHistory(net, chan, 1, true)).to.deep.equal({messages: [], more: false});
+	});
+
+	it("loads history back to a requested time plus 50 messages of context", function () {
+		const net = {uuid: "testnet"} as any;
+		const chan = {name: "#history"} as any;
+
+		store.database.transaction(() => {
+			for (let i = 0; i < 1000; i++) {
+				store.index(net, chan, new Msg({time: new Date(1000 + i), text: `msg ${i}`}));
+			}
+		})();
+
+		let page = store.getHistory(net, chan, 901, false, 1000 + 300);
+		expect(page.messages[0].text).to.equal("msg 250");
+		expect(page.messages.at(-1)!.text).to.equal("msg 899");
+		expect(page.more).to.be.true;
+
+		// fewer than 50 messages before the time: everything
+		page = store.getHistory(net, chan, 901, false, 1000 + 10);
+		expect(page.messages[0].text).to.equal("msg 0");
+		expect(page.more).to.be.false;
+	});
+
+	it("serves history pages from the channel/id index", function () {
+		for (const query of Object.values(historyStartQueries)) {
+			const stmt = store.database.prepare(`EXPLAIN QUERY PLAN ${query}`);
+			const plan = stmt.all("testnet", "#history", 1e9) as {detail: string}[];
+			stmt.finalize();
+
+			const details = plan.map((row) => row.detail).join("\n");
+			expect(details).to.include("USING INDEX network_channel_id");
+			expect(details).to.not.include("TEMP B-TREE");
+		}
 	});
 
 	it("deletes messages when asked to", function () {

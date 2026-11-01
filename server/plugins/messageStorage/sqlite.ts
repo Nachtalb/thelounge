@@ -11,6 +11,7 @@ import type {SearchableMessageStorage, DeletionRequest} from "./types";
 import Network from "../../models/network";
 import {SearchQuery, SearchResponse} from "../../../shared/types/storage";
 import {parseSearchQuery} from "../../../shared/searchQuery";
+import {condensedTypes} from "../../../shared/irc";
 
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
@@ -183,6 +184,19 @@ function rowToMsg(row: MessageRow) {
 // exported for tests
 export const getMessagesQuery =
 	"SELECT id, msg, type, time, msgid FROM messages WHERE network = ? AND channel = ? AND id < ? ORDER BY id DESC LIMIT ?";
+
+// Where a page of older history starts: 100 messages back, or with condensed status messages
+// 100 messages not counting those, looking at most 1000 rows back
+const historyStartQuery = (counted: string) =>
+	`SELECT MIN(id) AS id FROM (SELECT id, SUM(${counted}) OVER (ORDER BY id DESC) - ${counted} AS newer ` +
+	"FROM (SELECT id, type FROM messages WHERE network = ? AND channel = ? AND id < ? ORDER BY id DESC LIMIT 1000)) " +
+	"WHERE newer < 100";
+export const historyStartQueries = {
+	all: historyStartQuery("1"),
+	condensed: historyStartQuery(
+		`(type NOT IN (${[...condensedTypes].map((t) => `'${t}'`).join(", ")}))`
+	),
+};
 
 class SqliteMessageStorage implements SearchableMessageStorage {
 	isEnabled: boolean;
@@ -506,6 +520,54 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 			.all(network.uuid, channel.name.toLowerCase(), beforeId, limit) as MessageRow[];
 
 		return rows.reverse().map((row) => rowToMsg(row));
+	}
+
+	// A page of history older than `beforeId`, reaching back to `untilTime` plus 50 messages
+	// if given, oldest first. `more` tells whether there is anything older still
+	getHistory(
+		network: Network,
+		channel: Channel,
+		beforeId: number,
+		condensed: boolean,
+		untilTime?: number
+	): {messages: Message[]; more: boolean} {
+		if (!this.isEnabled) {
+			return {messages: [], more: false};
+		}
+
+		const chan = channel.name.toLowerCase();
+		const page = this.database
+			.query(historyStartQueries[condensed ? "condensed" : "all"])
+			.get(network.uuid, chan, beforeId) as {id: number | null} | null;
+
+		if (!page?.id) {
+			return {messages: [], more: false};
+		}
+
+		let start = page.id;
+
+		if (untilTime !== undefined) {
+			// 50 rows before the first one that arrived at or after that time
+			const context = this.database
+				.query(
+					"SELECT id FROM messages WHERE network = ?1 AND channel = ?2 AND id < COALESCE(" +
+						"(SELECT MIN(id) FROM messages WHERE network = ?1 AND channel = ?2 AND time >= ?3), ?4" +
+						") ORDER BY id DESC LIMIT 1 OFFSET 49"
+				)
+				.get(network.uuid, chan, untilTime, beforeId) as {id: number} | null;
+			start = Math.min(start, context?.id ?? 0);
+		}
+
+		const rows = this.database
+			.query(
+				"SELECT id, msg, type, time, msgid FROM messages WHERE network = ? AND channel = ? AND id >= ? AND id < ? ORDER BY id"
+			)
+			.all(network.uuid, chan, start, beforeId) as MessageRow[];
+		const more = this.database
+			.query("SELECT 1 FROM messages WHERE network = ? AND channel = ? AND id < ? LIMIT 1")
+			.get(network.uuid, chan, rows[0]?.id ?? start);
+
+		return {messages: rows.map((row) => rowToMsg(row)), more: more !== null};
 	}
 
 	// Messages from `context` messages before `from` up to `to` (exclusive), oldest first
