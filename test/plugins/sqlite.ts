@@ -95,13 +95,13 @@ describe("SQLite migrations", function () {
 
 	it("migrated database serves getMessages from the index", function () {
 		const stmt = db.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`);
-		const plan = stmt.all("8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 100) as {
+		const plan = stmt.all("8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 1e9, 100) as {
 			detail: string;
 		}[];
 		stmt.finalize(); // bun:sqlite keeps EXPLAIN statements busy until finalized
 
 		const details = plan.map((row) => row.detail).join("\n");
-		expect(details).to.include("USING INDEX network_channel_time");
+		expect(details).to.include("USING INDEX network_channel_id");
 		expect(details).to.not.include("TEMP B-TREE");
 	});
 
@@ -203,16 +203,16 @@ describe("SQLite unit tests", function () {
 		let deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(limit, "number of deleted messages doesn't match");
 
-		let id = 0;
-		let messages = store.getMessages(net, chan, () => id++);
+		let messages = store.getMessages(net, chan, 100);
 		expect(messages.find((m) => m.text === "msg 13")).to.be.undefined; // oldest gets deleted first
 
 		// let's test if it properly cleans now
 		delReq.limit = 100;
 		deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(11, "number of deleted messages doesn't match");
-		messages = store.getMessages(net, chan, () => id++);
-		expect(messages.map((m) => m.text)).to.have.ordered.members(["msg 1", "msg 0"]);
+		messages = store.getMessages(net, chan, 100);
+		// in insertion (id) order
+		expect(messages.map((m) => m.text)).to.have.ordered.members(["msg 0", "msg 1"]);
 	});
 
 	it("deletes only the types it should", function () {
@@ -249,12 +249,11 @@ describe("SQLite unit tests", function () {
 		let deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(3, "number of deleted messages doesn't match");
 
-		let id = 0;
-		let messages = store.getMessages(net, chan, () => id++);
+		let messages = store.getMessages(net, chan, 100);
 		expect(messages.map((m) => m.type)).to.have.ordered.members([
-			MessageType.MESSAGE,
-			MessageType.PART,
 			MessageType.AWAY,
+			MessageType.PART,
+			MessageType.MESSAGE,
 		]);
 
 		delReq.messageTypes = [
@@ -264,7 +263,7 @@ describe("SQLite unit tests", function () {
 		];
 		deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(2, "number of deleted messages doesn't match");
-		messages = store.getMessages(net, chan, () => id++);
+		messages = store.getMessages(net, chan, 100);
 		expect(messages.map((m) => m.type)).to.have.ordered.members([MessageType.AWAY]);
 	});
 });
@@ -310,6 +309,7 @@ describe("SQLite Message Storage", function () {
 			"msg_from_idx",
 			"msg_search_idx",
 			"msgid_idx",
+			"network_channel_id",
 			"network_channel_time",
 			"time",
 		]);
@@ -317,7 +317,7 @@ describe("SQLite Message Storage", function () {
 
 	it("should resolve an empty array when disabled", function () {
 		store.isEnabled = false;
-		const messages = store.getMessages(null as any, null as any, null as any);
+		const messages = store.getMessages(null as any, null as any, 100);
 		expect(messages).to.be.empty;
 		store.isEnabled = true;
 	});
@@ -352,7 +352,6 @@ describe("SQLite Message Storage", function () {
 	});
 
 	it("should retrieve previously stored message", function () {
-		let msgid = 0;
 		const messages = store.getMessages(
 			{
 				uuid: "this-is-a-network-guid",
@@ -360,7 +359,7 @@ describe("SQLite Message Storage", function () {
 			{
 				name: "#thisisaCHANNEL",
 			} as any,
-			() => msgid++
+			100
 		);
 		expect(messages).to.have.lengthOf(1);
 		const msg = messages[0];
@@ -370,48 +369,51 @@ describe("SQLite Message Storage", function () {
 	});
 
 	it("should retrieve latest LIMIT messages in order", function () {
-		const originalMaxHistory = Config.values.maxHistory;
+		// one transaction instead of 200 synced commits
+		store.database.transaction(() => {
+			for (let i = 0; i < 200; ++i) {
+				store.index(
+					{uuid: "retrieval-order-test-network"} as any,
+					{name: "#channel"} as any,
+					new Msg({
+						time: 123456789 + i,
+						text: `msg ${i}`,
+					} as any)
+				);
+			}
+		})();
 
-		try {
-			Config.values.maxHistory = 2;
+		const net = {uuid: "retrieval-order-test-network"} as any;
+		const chan = {name: "#channel"} as any;
+		let messages = store.getMessages(net, chan, 2);
+		expect(messages.map((m) => m.text)).to.deep.equal(["msg 198", "msg 199"]);
 
-			// one transaction instead of 200 synced commits
-			store.database.transaction(() => {
-				for (let i = 0; i < 200; ++i) {
-					store.index(
-						{uuid: "retrieval-order-test-network"} as any,
-						{name: "#channel"} as any,
-						new Msg({
-							time: 123456789 + i,
-							text: `msg ${i}`,
-						} as any)
-					);
-				}
-			})();
+		// ids are row ids, so older messages can be asked for by id
+		messages = store.getMessages(net, chan, 2, messages[0].id);
+		expect(messages.map((m) => m.text)).to.deep.equal(["msg 196", "msg 197"]);
+	});
 
-			let msgId = 0;
-			const messages = store.getMessages(
-				{uuid: "retrieval-order-test-network"} as any,
-				{name: "#channel"} as any,
-				() => msgId++
-			);
-			expect(messages).to.have.lengthOf(2);
-			expect(messages.map((i_1) => i_1.text)).to.deep.equal(["msg 198", "msg 199"]);
-		} finally {
-			Config.values.maxHistory = originalMaxHistory;
-		}
+	it("should store messages under their id and continue after the highest", function () {
+		const net = {uuid: "id-test-network"} as any;
+		const chan = {name: "#ids"} as any;
+		const id = store.nextId();
+		store.index(net, chan, new Msg({id, text: "first"} as any));
+		store.index(net, chan, new Msg({id: id + 5, text: "second"} as any));
+
+		expect(store.getMessages(net, chan, 10).map((m) => m.id)).to.deep.equal([id, id + 5]);
+		expect(store.nextId()).to.equal(id + 6);
 	});
 
 	it("getMessages uses the index instead of sorting the whole channel", function () {
 		// #5103
 		const stmt = store.database.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`);
-		const plan = stmt.all("retrieval-order-test-network", "#channel", 10000) as {
+		const plan = stmt.all("retrieval-order-test-network", "#channel", 1e9, 10000) as {
 			detail: string;
 		}[];
 		stmt.finalize(); // bun:sqlite keeps EXPLAIN statements busy until finalized
 
 		const details = plan.map((row) => row.detail).join("\n");
-		expect(details).to.include("USING INDEX network_channel_time");
+		expect(details).to.include("USING INDEX network_channel_id");
 		expect(details).to.not.include("TEMP B-TREE");
 	});
 

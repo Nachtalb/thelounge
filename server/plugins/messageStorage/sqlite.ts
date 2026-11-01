@@ -15,7 +15,7 @@ import {parseSearchQuery} from "../../../shared/searchQuery";
 type Migration = {version: number; stmts: string[]};
 type Rollback = {version: number; rollback_forbidden?: boolean; stmts: string[]};
 
-export const currentSchemaVersion = 1793577600000; // use `new Date().getTime()`
+export const currentSchemaVersion = 1793664000000; // use `new Date().getTime()`
 
 // "last seen" of a nick across a network's channels and queries
 const lastSeenTypes = "type IN ('message', 'action', 'notice')";
@@ -40,6 +40,8 @@ const schema = [
 	"CREATE INDEX time ON messages (time)",
 	// needed for efficient getMessages queries
 	"CREATE INDEX network_channel_time ON messages (network, channel, time)",
+	// history is paged by message id, which is the row id
+	"CREATE INDEX network_channel_id ON messages (network, channel, id)",
 	"CREATE INDEX msgid_idx ON messages (msgid)",
 	// search only reads 'message' rows, this skips the other types without reading them
 	"CREATE INDEX msg_search_idx ON messages (network, channel, time) WHERE type = 'message'",
@@ -111,6 +113,10 @@ export const migrations: Migration[] = [
 		version: 1793577600000,
 		stmts: [lastSeenIndex],
 	},
+	{
+		version: 1793664000000,
+		stmts: ["CREATE INDEX IF NOT EXISTS network_channel_id ON messages (network, channel, id)"],
+	},
 ];
 
 // down migrations need to restore the state of the prior version.
@@ -151,11 +157,15 @@ export const rollbacks: Rollback[] = [
 		version: 1793577600000,
 		stmts: ["DROP INDEX IF EXISTS msg_from_idx"],
 	},
+	{
+		version: 1793664000000,
+		stmts: ["DROP INDEX IF EXISTS network_channel_id"],
+	},
 ];
 
-type MessageRow = {msg: string; type: string; time: number; msgid: string | null};
+type MessageRow = {id: number; msg: string; type: string; time: number; msgid: string | null};
 
-function rowToMsg(row: MessageRow, id: number) {
+function rowToMsg(row: MessageRow) {
 	const msg = JSON.parse(row.msg);
 	msg.time = row.time;
 	msg.type = row.type;
@@ -165,14 +175,14 @@ function rowToMsg(row: MessageRow, id: number) {
 	}
 
 	const newMsg = new Msg(msg);
-	newMsg.id = id;
+	newMsg.id = row.id;
 
 	return newMsg;
 }
 
 // exported for tests
 export const getMessagesQuery =
-	"SELECT msg, type, time, msgid FROM messages WHERE network = ? AND channel = ? ORDER BY time DESC, id DESC LIMIT ?";
+	"SELECT id, msg, type, time, msgid FROM messages WHERE network = ? AND channel = ? AND id < ? ORDER BY id DESC LIMIT ?";
 
 class SqliteMessageStorage implements SearchableMessageStorage {
 	isEnabled: boolean;
@@ -432,9 +442,8 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		}
 
 		const clonedMsg = Object.keys(msg).reduce((newMsg, prop) => {
-			// id is regenerated when messages are retrieved
 			// previews are not stored because storage is cleared on lounge restart
-			// type, time, and msgid are stored in separate columns
+			// id, type, time, and msgid are stored in separate columns
 			if (
 				prop !== "id" &&
 				prop !== "previews" &&
@@ -450,9 +459,10 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 
 		this.database
 			.query(
-				"INSERT INTO messages(network, channel, time, type, msg, msgid) VALUES(?, ?, ?, ?, ?, ?)"
+				"INSERT INTO messages(id, network, channel, time, type, msg, msgid) VALUES(?, ?, ?, ?, ?, ?, ?)"
 			)
 			.run(
+				msg.id || null,
 				network.uuid,
 				channel.name.toLowerCase(),
 				msg.time.getTime(),
@@ -472,19 +482,30 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 			.run(network.uuid, channel.name.toLowerCase());
 	}
 
-	getMessages(network: Network, channel: Channel, nextID: () => number): Message[] {
-		if (!this.isEnabled || Config.values.maxHistory === 0) {
+	// Id for the next message: ids are row ids, and AUTOINCREMENT never reuses deleted ones
+	nextId(): number {
+		const row = this.database
+			.query("SELECT seq FROM sqlite_sequence WHERE name = 'messages'")
+			.get() as {seq: number} | null;
+		return (row?.seq ?? 0) + 1;
+	}
+
+	// The newest `limit` messages older than `beforeId`, oldest first
+	getMessages(
+		network: Network,
+		channel: Channel,
+		limit: number,
+		beforeId = Number.MAX_SAFE_INTEGER
+	): Message[] {
+		if (!this.isEnabled || limit === 0) {
 			return [];
 		}
 
-		// If unlimited history is specified, load 100k messages
-		const limit = Config.values.maxHistory < 0 ? 100000 : Config.values.maxHistory;
-
 		const rows = this.database
 			.query(getMessagesQuery)
-			.all(network.uuid, channel.name.toLowerCase(), limit) as MessageRow[];
+			.all(network.uuid, channel.name.toLowerCase(), beforeId, limit) as MessageRow[];
 
-		return rows.reverse().map((row) => rowToMsg(row, nextID()));
+		return rows.reverse().map((row) => rowToMsg(row));
 	}
 
 	// Messages from `context` messages before `from` up to `to` (exclusive), oldest first
@@ -493,8 +514,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		channel: Channel,
 		from: number,
 		to: number,
-		context: number,
-		nextID: () => number
+		context: number
 	): Message[] {
 		if (!this.isEnabled) {
 			return [];
@@ -503,7 +523,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		const where = "network = ? AND channel = ?";
 		const rows = this.database
 			.query(
-				`SELECT msg, type, time, msgid FROM messages WHERE ${where} AND time < ? AND time >= COALESCE(` +
+				`SELECT id, msg, type, time, msgid FROM messages WHERE ${where} AND time < ? AND time >= COALESCE(` +
 					`(SELECT time FROM messages WHERE ${where} AND time < ? ORDER BY time DESC LIMIT 1 OFFSET ?), 0` +
 					") ORDER BY time ASC, id ASC"
 			)
@@ -517,7 +537,7 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 				context - 1
 			) as MessageRow[];
 
-		return rows.map((row) => rowToMsg(row, nextID()));
+		return rows.map((row) => rowToMsg(row));
 	}
 
 	// Time of the newest message `nick` sent anywhere on the network

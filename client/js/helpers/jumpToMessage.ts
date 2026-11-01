@@ -51,14 +51,17 @@ export function topicTarget(
 // Set while a jump loads older history, so the message list doesn't prefetch in between
 export const loadingBack = ref(false);
 
+// History is in arrival order, so the first message isn't always the oldest (replayed buffers)
+const reaches = (channel: ClientChan, time: number) =>
+	channel.messages.some((m) => timeOf(m) <= time);
+
 // Load history (from the database too) until the channel reaches back to `time`
 async function loadBackTo(channel: ClientChan, time: number) {
 	loadingBack.value = true;
 
 	for (
 		let asked = false;
-		!(channel.messages.length > 0 && timeOf(channel.messages[0]) <= time) &&
-		!(asked && !channel.moreHistoryAvailable);
+		!reaches(channel, time) && !(asked && !channel.moreHistoryAvailable);
 
 	) {
 		if (!channel.historyLoading) {
@@ -111,10 +114,9 @@ export default async function jumpToMessage(channel: ClientChan, target: Target)
 	await nextTick();
 
 	// History doesn't reach back that far (older than the database or buffer)
-	const message =
-		channel.messages.length > 0 && timeOf(channel.messages[0]) <= timeOf(target)
-			? findMessage(channel.messages, target)
-			: undefined;
+	const message = reaches(channel, timeOf(target))
+		? findMessage(channel.messages, target)
+		: undefined;
 
 	if (!message) {
 		channel.scrolledToBottom = scrolledToBottom;

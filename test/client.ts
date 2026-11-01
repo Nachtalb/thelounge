@@ -138,12 +138,11 @@ describe("Client", function () {
 		const chan = {id: 1, name: "#chan", messages: [] as Msg[]} as any;
 
 		for (let i = 0; i < 300; i++) {
-			const msg = new Msg({time: new Date(1000 + i), text: `msg ${i}`});
+			const msg = new Msg({id: i + 1, time: new Date(1000 + i), text: `msg ${i}`});
 			store.index(network, chan, msg);
 
 			// only the newest 200 are in memory
 			if (i >= 100) {
-				msg.id = i;
 				chan.messages.push(msg);
 			}
 		}
@@ -153,12 +152,12 @@ describe("Client", function () {
 			Client.prototype.more.call(fake as any, data)!.messages.map((m) => m.text);
 
 		// target in memory: everything from 50 messages before it up to lastId
-		let texts = more({target: 1, lastId: 290, untilTime: 1000 + 150});
+		let texts = more({target: 1, lastId: 291, untilTime: 1000 + 150});
 		expect(texts[0]).to.equal("msg 100");
 		expect(texts.at(-1)).to.equal("msg 289");
 
 		// target only in the database: loaded into memory with 50 messages of context
-		texts = more({target: 1, lastId: 100, untilTime: 1000 + 70});
+		texts = more({target: 1, lastId: 101, untilTime: 1000 + 70});
 		expect(texts[0]).to.equal("msg 20");
 		expect(texts.at(-1)).to.equal("msg 99");
 		expect(chan.messages).to.have.lengthOf(280);

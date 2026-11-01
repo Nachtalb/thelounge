@@ -161,6 +161,11 @@ class Client {
 					log.error(e);
 				}
 			}
+
+			// message ids are sqlite row ids, so they stay the same across restarts
+			if (client.messageProvider?.isEnabled) {
+				client.idMsg = client.messageProvider.nextId();
+			}
 		}
 
 		if (!_.isPlainObject(client.config.sessions)) {
@@ -619,7 +624,7 @@ class Client {
 		// Jumping to a message older than the in-memory history: load the gap from the database
 		if (until !== undefined && until < first && client.messageProvider) {
 			chan.messages = client.messageProvider
-				.getMessagesBetween(target.network, chan, until, first, 50, () => client.idMsg++)
+				.getMessagesBetween(target.network, chan, until, first, 50)
 				.concat(chan.messages);
 		}
 

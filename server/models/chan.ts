@@ -308,7 +308,7 @@ class Chan {
 			const messages = client.messageProvider.getMessages(
 				network,
 				this,
-				() => client.idMsg++
+				Config.values.maxHistory < 0 ? 100000 : Config.values.maxHistory
 			);
 
 			if (messages.length === 0) {
