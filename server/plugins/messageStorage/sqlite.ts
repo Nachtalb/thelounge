@@ -570,6 +570,20 @@ class SqliteMessageStorage implements SearchableMessageStorage {
 		return {messages: rows.map((row) => rowToMsg(row)), more: more !== null};
 	}
 
+	// The newest message in the channel with this IRCv3 msgid
+	findMessageByMsgid(network: Network, channel: Channel, msgid: string): Message | null {
+		if (!this.isEnabled) {
+			return null;
+		}
+
+		const row = this.database
+			.query(
+				"SELECT id, msg, type, time, msgid FROM messages WHERE msgid = ? AND network = ? AND channel = ? ORDER BY id DESC LIMIT 1"
+			)
+			.get(msgid, network.uuid, channel.name.toLowerCase()) as MessageRow | null;
+		return row ? rowToMsg(row) : null;
+	}
+
 	// Time of the newest message `nick` sent anywhere on the network
 	lastSeen(network: Network, nick: string): number | null {
 		if (!this.isEnabled) {

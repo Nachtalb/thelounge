@@ -5,8 +5,10 @@ import message from "../../../server/plugins/irc-events/message";
 import Network from "../../../server/models/network";
 import Chan from "../../../server/models/chan";
 import Config from "../../../server/config";
+import Msg from "../../../server/models/msg";
+import MessageStorage from "../../../server/plugins/messageStorage/sqlite";
 
-function setup(mediaPreviewBlocklist: string[]) {
+function setup(mediaPreviewBlocklist: string[], messageProvider?: MessageStorage) {
 	const irc = new EventEmitter() as any;
 	irc.user = {nick: "me"};
 
@@ -22,6 +24,7 @@ function setup(mediaPreviewBlocklist: string[]) {
 		idMsg: 1,
 		attachedClients: {},
 		messageStorage: [],
+		messageProvider,
 		config: {browser: {}},
 		emit(name: string, data: any) {
 			if (name === "msg") {
@@ -32,7 +35,7 @@ function setup(mediaPreviewBlocklist: string[]) {
 
 	message.call(client, irc, network as any);
 
-	return {irc, emitted};
+	return {irc, emitted, network, channel};
 }
 
 function say(irc: EventEmitter, nick: string) {
@@ -78,5 +81,31 @@ describe("message plugin link previews", function () {
 
 		expect(emitted).to.have.lengthOf(1);
 		expect(emitted[0].previews).to.be.empty;
+	});
+});
+
+describe("message plugin replies", function () {
+	it("should quote a parent that is only in the message storage", function () {
+		const store = new MessageStorage("testUser");
+		store._enable(":memory:");
+		const {irc, emitted, network, channel} = setup([], store);
+		store.index(
+			network,
+			channel,
+			new Msg({from: {nick: "alice"} as any, text: "old \x02news\x02", msgid: "parent-1"})
+		);
+
+		irc.emit("privmsg", {
+			nick: "bob",
+			hostname: "example.com",
+			ident: "user",
+			target: "#thelounge",
+			message: "indeed",
+			tags: {"+reply": "parent-1"},
+		});
+
+		expect(emitted[0].replyToNick).to.equal("alice");
+		expect(emitted[0].replyToText).to.equal("old news");
+		store.close();
 	});
 });
