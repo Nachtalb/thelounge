@@ -11,6 +11,9 @@ import {MessageType, SharedMsg} from "../../shared/types/msg";
 import {ChanType, SpecialChanType, ChanState} from "../../shared/types/chan";
 import {SharedNetworkChan} from "../../shared/types/network";
 
+// With sqlite storage only this many messages stay in memory, older history is read from it
+export const storedTailSize = 100;
+
 export type ChanConfig = {
 	name: string;
 	key?: string;
@@ -107,15 +110,17 @@ class Chan {
 
 		this.writeUserLog(client, msg);
 
-		if (Config.values.maxHistory >= 0 && this.messages.length > Config.values.maxHistory) {
-			const deleted = this.messages.splice(
-				0,
-				this.messages.length - Config.values.maxHistory
-			);
+		const maxHistory =
+			client.messageProvider?.isEnabled && this.isLoggable()
+				? storedTailSize
+				: Config.values.maxHistory;
+
+		if (maxHistory >= 0 && this.messages.length > maxHistory) {
+			const deleted = this.messages.splice(0, this.messages.length - maxHistory);
 
 			// If maxHistory is 0, image would be dereferenced before client had a chance to retrieve it,
 			// so for now, just don't implement dereferencing for this edge case.
-			if (Config.values.maxHistory > 0) {
+			if (maxHistory > 0) {
 				this.dereferencePreviews(deleted);
 			}
 		}
@@ -216,7 +221,9 @@ class Chan {
 		return {
 			id: this.id,
 			messages: msgs,
-			moreHistoryAvailable: this.messages.length > msgs.length,
+			// a full tail means sqlite most likely has older messages
+			moreHistoryAvailable:
+				this.messages.length > msgs.length || this.messages.length >= storedTailSize,
 			name: this.name,
 			key: this.key,
 			topic: this.topic,
@@ -308,7 +315,8 @@ class Chan {
 			const messages = client.messageProvider.getMessages(
 				network,
 				this,
-				Config.values.maxHistory < 0 ? 100000 : Config.values.maxHistory
+				storedTailSize,
+				this.messages[0]?.id
 			);
 
 			if (messages.length === 0) {
@@ -328,7 +336,7 @@ class Chan {
 			client.emit("more", {
 				chan: this.id,
 				messages: messages.slice(-100),
-				moreHistoryAvailable: messages.length > 100,
+				moreHistoryAvailable: messages.length === storedTailSize,
 			});
 
 			if (network.irc!.network.cap.isEnabled("znc.in/playback")) {
