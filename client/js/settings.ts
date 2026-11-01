@@ -82,7 +82,7 @@ const defaultConfig = {
 		sync: "always",
 	},
 	nookleUrl: {
-		default: "https://i.naa.gg",
+		default: "https://n.naa.gg",
 		sync: "always",
 	},
 	nookleKey: {

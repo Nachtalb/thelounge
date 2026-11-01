@@ -43,7 +43,7 @@
 					type="url"
 					name="nookleUrl"
 					class="input"
-					placeholder="https://i.naa.gg"
+					placeholder="https://n.naa.gg"
 				/>
 			</div>
 			<div>
