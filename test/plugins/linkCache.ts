@@ -5,7 +5,11 @@ import {expect, vi} from "vitest";
 import util from "../util";
 import Config from "../../server/config";
 import previewCache from "../../server/plugins/previewCache";
-import link, {backfillPreviews, routeCachedImage} from "../../server/plugins/irc-events/link";
+import link, {
+	backfillPreviews,
+	refillPreviews,
+	routeCachedImage,
+} from "../../server/plugins/irc-events/link";
 
 describe("Link plugin with preview cache", function () {
 	const testImagePath = path.resolve("client/public/img/logo-grey-bg-120x120px.png");
@@ -305,6 +309,37 @@ describe("Link plugin with preview cache", function () {
 
 			expect(fromNick.previews).to.deep.equal([]);
 			expect(inChan.previews).to.deep.equal([]);
+		});
+
+		it("should fetch the previews of a sender again when they are enabled", async function () {
+			const message = irc.createMessage({
+				id: 7,
+				type: "message",
+				text: _makeUrl("page"),
+				from: {nick: "Spammer"},
+			});
+			const other = irc.createMessage({id: 8, type: "message", text: _makeUrl("page")});
+			const chan = network.channels[0];
+			chan.messages = [message, other];
+			irc.networks = [network];
+			const emitted: any[] = [];
+			const done = new Promise<void>((resolve) => {
+				irc.on("msg:preview", (data) => {
+					emitted.push(data);
+
+					if (data.preview.type !== "loading") {
+						resolve();
+					}
+				});
+			});
+
+			refillPreviews(irc, network, "spammer");
+
+			expect(emitted[0]).to.deep.include({id: 7, chan: chan.id});
+			expect(emitted[0].preview.type).to.equal("loading");
+			await done;
+			expect(message.previews[0].head).to.equal("cached title");
+			expect(other.previews).to.deep.equal([]);
 		});
 
 		it("should fetch the most recently requested history first", async function () {

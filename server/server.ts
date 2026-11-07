@@ -13,7 +13,12 @@ import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
 import previewCache from "./plugins/previewCache";
 import * as prefetchBlocklist from "./plugins/prefetchBlocklist";
-import {backfillPreviews, prefetchInputLinks, routeCachedImage} from "./plugins/irc-events/link";
+import {
+	backfillPreviews,
+	prefetchInputLinks,
+	refillPreviews,
+	routeCachedImage,
+} from "./plugins/irc-events/link";
 import type Msg from "./models/msg";
 import Helper from "./helper";
 import Config from "./config";
@@ -662,6 +667,10 @@ function initializeClient(
 
 		network.toggleMediaPreviewBlock(data.name);
 		client.save();
+
+		if (!network.isMediaPreviewBlocked(data.name)) {
+			refillPreviews(client, network, data.name);
+		}
 
 		for (const attachedClient of Object.keys(client.attachedClients)) {
 			manager!.sockets.in(attachedClient).emit("network:info", {

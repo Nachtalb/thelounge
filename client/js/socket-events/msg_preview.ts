@@ -13,5 +13,8 @@ socket.on("msg:preview", function (data) {
 
 	if (previewIndex > -1) {
 		message.previews[previewIndex] = data.preview;
+	} else {
+		// Previews fetched after the fact, e.g. for a sender whose previews were enabled again
+		message.previews.push(data.preview);
 	}
 });
