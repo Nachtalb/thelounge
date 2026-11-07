@@ -55,7 +55,7 @@
 					:network="network"
 					:channel="channel"
 					dir="auto"
-				/>&#32;<ParsedMessage :message="message" />
+				/>&#32;<ParsedMessage :message="message" :previews="previews" />
 				<LinkPreview
 					v-for="preview in previews"
 					:key="preview.link"
@@ -104,7 +104,12 @@
 				<StatusmsgMarker :group="message.statusmsgGroup" />
 				<StickerMessage v-if="sticker" :sticker="sticker" :text="message.text" />
 				<template v-else>
-					<ParsedMessage :network="network" :message="message" :highlight="highlight" />
+					<ParsedMessage
+						:network="network"
+						:message="message"
+						:highlight="highlight"
+						:previews="previews"
+					/>
 					<LinkPreview
 						v-for="preview in previews"
 						:key="preview.link"

@@ -11,13 +11,15 @@ export default defineComponent({
 		message: {type: Object as PropType<ClientMessage | string>, required: false},
 		network: {type: Object as PropType<ClientNetwork>, required: false},
 		highlight: String,
+		previews: {type: Array as PropType<ClientMessage["previews"]>, required: false},
 	},
 	render(context) {
 		return parse(
 			typeof context.text !== "undefined" ? context.text : context.message.text,
 			context.message,
 			context.network,
-			context.highlight
+			context.highlight,
+			context.previews
 		);
 	},
 });
