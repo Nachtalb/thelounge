@@ -19,3 +19,13 @@ export function isPreviewFiltered(rules: unknown, link: string) {
 
 	return blocksLink(compiled.matcher, link);
 }
+
+// Whether previews were disabled for the sender or channel from its context menu. The server
+// stops fetching new ones; this hides those fetched before.
+export function isSenderPreviewBlocked(
+	network: {mediaPreviewBlocklist?: string[]} | undefined,
+	...names: (string | undefined)[]
+) {
+	const blocked = (network?.mediaPreviewBlocklist || []).map((name) => name.toLowerCase());
+	return names.some((name) => !!name && blocked.includes(name.toLowerCase()));
+}

@@ -15,6 +15,7 @@ class MockClient extends EventEmitter {
 	config: {
 		browser: any;
 	};
+	networks: Network[] = [];
 
 	constructor() {
 		super();

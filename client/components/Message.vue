@@ -151,7 +151,7 @@ import {cleanIrcMessage} from "../../shared/irc";
 import type {ClientChan, ClientMessage, ClientNetwork} from "../js/types";
 import {MessageType} from "../../shared/types/msg";
 import {useStore} from "../js/store";
-import {isPreviewFiltered} from "../js/helpers/previewFilters";
+import {isPreviewFiltered, isSenderPreviewBlocked} from "../js/helpers/previewFilters";
 
 MessageTypes.ParsedMessage = ParsedMessage;
 MessageTypes.LinkPreview = LinkPreview;
@@ -185,9 +185,12 @@ export default defineComponent({
 		let swipeDx = 0;
 
 		const previews = computed(() =>
-			props.message.previews.filter(
-				(preview) => !isPreviewFiltered(store.state.settings.previewFilters, preview.link)
-			)
+			isSenderPreviewBlocked(props.network, props.channel?.name, props.message.from?.nick)
+				? []
+				: props.message.previews.filter(
+						(preview) =>
+							!isPreviewFiltered(store.state.settings.previewFilters, preview.link)
+				  )
 		);
 
 		const sticker = computed(() =>
@@ -241,8 +244,14 @@ export default defineComponent({
 
 		const parentMedia = computed(() => {
 			const replyTo = props.message.replyTo;
+			const parent = replyTo
+				? props.channel?.messages.find((m) => m.msgid === replyTo)
+				: undefined;
 			return replyMedia(
-				replyTo ? props.channel?.messages.find((m) => m.msgid === replyTo) : undefined,
+				parent &&
+					isSenderPreviewBlocked(props.network, props.channel?.name, parent.from?.nick)
+					? {...parent, previews: []}
+					: parent,
 				proxyUrl.value
 			);
 		});

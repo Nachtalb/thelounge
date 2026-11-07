@@ -152,11 +152,14 @@ export function backfillPreviews(client: Client, chan: Chan, messages: Msg[]) {
 		return;
 	}
 
+	const network = client.networks.find((n) => n.channels.includes(chan));
+
 	for (const msg of messages) {
 		if (
 			backfilled.has(msg) ||
 			msg.previews.length ||
-			![MessageType.MESSAGE, MessageType.ACTION].includes(msg.type)
+			![MessageType.MESSAGE, MessageType.ACTION].includes(msg.type) ||
+			network?.isMediaPreviewBlocked(chan.name, msg.from?.nick ?? "")
 		) {
 			continue;
 		}

@@ -289,6 +289,24 @@ describe("Link plugin with preview cache", function () {
 			expect(message.previews).to.deep.equal([]);
 		});
 
+		it("should skip senders and channels with previews disabled", function () {
+			const fromNick = irc.createMessage({
+				type: "message",
+				text: _makeUrl("page"),
+				from: {nick: "Spammer"},
+			});
+			const inChan = irc.createMessage({type: "message", text: _makeUrl("page")});
+			irc.networks = [network];
+
+			network.mediaPreviewBlocklist = ["spammer"];
+			backfillPreviews(irc, network.channels[0], [fromNick]);
+			network.mediaPreviewBlocklist = [network.channels[0].name.toUpperCase()];
+			backfillPreviews(irc, network.channels[0], [inChan]);
+
+			expect(fromNick.previews).to.deep.equal([]);
+			expect(inChan.previews).to.deep.equal([]);
+		});
+
 		it("should fetch the most recently requested history first", async function () {
 			const started: string[] = [];
 			let release!: () => void;
