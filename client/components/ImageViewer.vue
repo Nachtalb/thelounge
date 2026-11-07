@@ -105,7 +105,7 @@ import jumpToMessage from "../js/helpers/jumpToMessage";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
 import {ClientChan, ClientLinkPreview} from "../js/types";
 import {useStore} from "../js/store";
-import {isPreviewFiltered} from "../js/helpers/previewFilters";
+import {isPreviewFiltered, isSenderPreviewBlocked} from "../js/helpers/previewFilters";
 import {browserEnv, copyImage, copyResultMessages} from "../js/helpers/copyImage";
 import cancelLoad from "../js/helpers/cancelLoad";
 
@@ -124,17 +124,22 @@ export default defineComponent({
 		let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 		// All images of the channel in order, with the message they belong to
-		const images = computed(() =>
-			(channel.value?.messages || []).flatMap((message) =>
-				(message.previews || [])
+		const images = computed(() => {
+			const chan = channel.value;
+			const network = chan ? store.getters.findChannel(chan.id)?.network : undefined;
+			return (chan?.messages || []).flatMap((message) =>
+				(isSenderPreviewBlocked(network, chan?.name, message.from?.nick)
+					? []
+					: message.previews || []
+				)
 					.filter(
 						(preview) =>
 							(preview.thumb || (preview.type === "video" && preview.media)) &&
 							!isPreviewFiltered(store.state.settings.previewFilters, preview.link)
 					)
 					.map((preview) => ({message, preview}))
-			)
-		);
+			);
+		});
 		const currentIndex = computed(() =>
 			images.value.findIndex((item) => item.preview === link.value)
 		);

@@ -28,6 +28,7 @@ import {
 import Client from "../../client";
 import Chan from "../../models/chan";
 import Msg from "../../models/msg";
+import type Network from "../../models/network";
 
 type FetchRequest = {
 	data: Buffer;
@@ -152,17 +153,40 @@ export function backfillPreviews(client: Client, chan: Chan, messages: Msg[]) {
 		return;
 	}
 
+	const network = client.networks.find((n) => n.channels.includes(chan));
+
 	for (const msg of messages) {
 		if (
 			backfilled.has(msg) ||
 			msg.previews.length ||
-			![MessageType.MESSAGE, MessageType.ACTION].includes(msg.type)
+			![MessageType.MESSAGE, MessageType.ACTION].includes(msg.type) ||
+			network?.isMediaPreviewBlocked(chan.name, msg.from?.nick ?? "")
 		) {
 			continue;
 		}
 
 		backfilled.add(msg);
 		prefetch(client, chan, msg, cleanIrcMessage(msg.text), true);
+	}
+}
+
+// Previews of a sender or channel whose previews were just enabled again: fetch the ones its
+// messages never got, and send the placeholders right away since clients have none.
+export function refillPreviews(client: Client, network: Network, name: string) {
+	const lowerName = name.toLowerCase();
+
+	for (const chan of network.channels) {
+		const inChan = chan.name.toLowerCase() === lowerName;
+		const messages = chan.messages.filter(
+			(msg) => !msg.previews.length && (inChan || msg.from?.nick?.toLowerCase() === lowerName)
+		);
+		backfillPreviews(client, chan, messages);
+
+		for (const msg of messages) {
+			for (const preview of msg.previews) {
+				client.emit("msg:preview", {id: msg.id, chan: chan.id, preview});
+			}
+		}
 	}
 }
 

@@ -133,7 +133,14 @@ function markQuery<T extends {start: number; end: number; text: string}>(
 
 // Transform an IRC message potentially filled with styling control codes, URLs,
 // nicknames, and channels into a string of HTML elements to display on the client.
-function parse(text: string, message?: ClientMessage, network?: ClientNetwork, highlight?: string) {
+// `previews` are the ones the message shows, if it hides some (filtered or disabled sender)
+function parse(
+	text: string,
+	message?: ClientMessage,
+	network?: ClientNetwork,
+	highlight?: string,
+	previews = message?.previews
+) {
 	// Each line of a draft/multiline message is its own PRIVMSG on the wire, so
 	// parse them separately and join them with a <br>, which keeps per-line
 	// styling and lets the text wrap as usual.
@@ -142,19 +149,23 @@ function parse(text: string, message?: ClientMessage, network?: ClientNetwork, h
 			.split("\n")
 			.flatMap((line, i) =>
 				i === 0
-					? parseLine(line, message, network, highlight)
-					: [createElement("br"), ...parseLine(line, message, network, highlight)]
+					? parseLine(line, message, network, highlight, previews)
+					: [
+							createElement("br"),
+							...parseLine(line, message, network, highlight, previews),
+					  ]
 			);
 	}
 
-	return parseLine(text, message, network, highlight);
+	return parseLine(text, message, network, highlight, previews);
 }
 
 function parseLine(
 	text: string,
 	message?: ClientMessage,
 	network?: ClientNetwork,
-	highlight?: string
+	highlight?: string,
+	previews = message?.previews
 ) {
 	// Extract the styling information and get the plain text version from it
 	let styleFragments = parseStyle(text);
@@ -188,10 +199,7 @@ function parseLine(
 
 		// Wrap these potentially styled fragments with links and channel buttons
 		if (textPart.link) {
-			const preview =
-				message &&
-				message.previews &&
-				message.previews.find((p) => p.link === textPart.link);
+			const preview = previews?.find((p) => p.link === textPart.link);
 			const link = createElement(
 				"a",
 				{
