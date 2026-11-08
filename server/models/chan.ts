@@ -341,6 +341,16 @@ class Chan {
 		}
 	}
 
+	// Ask ZNC for everything it buffered after the newest line we already have
+	requestPlayback(network: Network) {
+		if (!this.isLoggable()) {
+			return;
+		}
+
+		const last = this.messages[this.messages.length - 1];
+		requestZncPlayback(this, network, last ? last.time.getTime() / 1000 : 0);
+	}
+
 	isLoggable() {
 		return this.type === ChanType.CHANNEL || this.type === ChanType.QUERY;
 	}
