@@ -18,6 +18,17 @@ class Uploader {
 
 	init() {
 		socket.on("upload:auth", (token) => this.uploadNextFileInQueue(token));
+
+		// Files picked while reconnecting (e.g. a phone backgrounds the app for the file picker)
+		// wait in the queue; token requests sent while offline are dropped, so ask again here
+		store.watch(
+			(state) => state.isConnected,
+			(connected) => {
+				if (connected && this.xhr === null && this.fileQueue.length > 0) {
+					this.requestToken();
+				}
+			}
+		);
 	}
 
 	mounted() {
@@ -113,14 +124,6 @@ class Uploader {
 			return;
 		}
 
-		if (!store.state.isConnected) {
-			this.handleResponse({
-				error: `You are currently disconnected, unable to initiate upload process.`,
-			});
-
-			return;
-		}
-
 		const wasQueueEmpty = this.fileQueue.length === 0;
 		const maxFileSize = store.state.serverConfiguration?.fileUploadMaxFileSize || 0;
 
@@ -142,7 +145,12 @@ class Uploader {
 
 		// if the queue was empty and we added some files to it, and there currently
 		// is no upload in process, request a token to start the upload process
-		if (wasQueueEmpty && this.xhr === null && this.fileQueue.length > 0) {
+		if (
+			wasQueueEmpty &&
+			this.xhr === null &&
+			this.fileQueue.length > 0 &&
+			store.state.isConnected
+		) {
 			this.requestToken();
 		}
 	}
