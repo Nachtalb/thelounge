@@ -101,6 +101,12 @@ export default <IrcEventHandler>function (irc, network) {
 			delay += 1000;
 		});
 
+		// Channels restored from storage loaded their history before the connection was up, when
+		// the playback cap wasn't known yet, so what ZNC buffered meanwhile was never requested
+		if (irc.network.cap.isEnabled("znc.in/playback")) {
+			network.channels.forEach((chan) => chan.requestPlayback(network));
+		}
+
 		monitorSyncPending = true;
 		syncMonitorList();
 	});
