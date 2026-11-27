@@ -391,6 +391,20 @@ module.exports = {
 		proxyUrl: "",
 	},
 
+	// ### `nookle`
+	//
+	// A picker in the message input for a
+	// [Nookle](https://github.com/Nachtalb/nookle) meme collection. Users set
+	// their Nookle URL and a read-only API key in Settings > General; picking
+	// a meme sends its link. Search and thumbnails load in the browser straight
+	// from the user's Nookle, so enabling this lets the page connect to and
+	// load images from any `https:` origin.
+	//
+	// This value is set to `{enable: false}` by default.
+	nookle: {
+		enable: false,
+	},
+
 	// ### `transports`
 	//
 	// Set `socket.io` transports.

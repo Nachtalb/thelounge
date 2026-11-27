@@ -225,7 +225,7 @@ export default defineComponent({
 			if (
 				!sidebar.value ||
 				(e.target as Element).closest?.(
-					"#sticker-picker, #sticker-pack-overlay, .sticker-suggest"
+					"#sticker-picker, #nookle-picker, #sticker-pack-overlay, .sticker-suggest"
 				)
 			) {
 				return;

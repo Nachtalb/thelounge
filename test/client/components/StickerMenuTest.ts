@@ -54,6 +54,29 @@ describe("StickerMenu", () => {
 		menu.unmount();
 	});
 
+	it("shows other media with only Send and Open URL", () => {
+		const menu = mount(StickerMenu, {
+			props: {
+				item: {pack: "nookle", id: "1"},
+				media: {
+					thumb: "https://n.example/1/thumb.webp",
+					src: "",
+					kind: "image",
+					direct: true,
+				},
+				openUrl: "https://n.example/1.webp",
+			},
+		});
+		expect(menu.findAll(".sticker-menu-item").map((b) => b.classes()[1])).toEqual([
+			"sticker-menu-send",
+			"sticker-menu-open",
+		]);
+		expect(menu.find(".sticker-menu-preview img").attributes("src")).toBe(
+			"https://n.example/1/thumb.webp"
+		);
+		menu.unmount();
+	});
+
 	it("leaves the focus alone when a peek turns into it with keepFocus", async () => {
 		const input = document.createElement("input");
 		document.body.append(input);

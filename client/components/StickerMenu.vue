@@ -16,7 +16,7 @@
 					>{{ e.emoji }}</span
 				>
 			</div>
-			<StickerMedia :sticker="data" :thumb="thumb" :src="data?.url" :style="size" urgent />
+			<StickerMedia :media="shown" :style="size" urgent />
 		</div>
 		<ul v-if="!peek" class="sticker-menu-actions" role="menu">
 			<li>
@@ -26,10 +26,10 @@
 					class="sticker-menu-item sticker-menu-send"
 					@click="send"
 				>
-					Send Sticker
+					{{ media ? "Send" : "Send Sticker" }}
 				</button>
 			</li>
-			<li>
+			<li v-if="!media">
 				<button
 					type="button"
 					:class="[
@@ -64,7 +64,7 @@
 					Open URL
 				</button>
 			</li>
-			<li v-if="showViewPack">
+			<li v-if="showViewPack && !media">
 				<button type="button" class="sticker-menu-item sticker-menu-set" @click="viewPack">
 					View Sticker Set
 				</button>
@@ -90,7 +90,9 @@ import {
 	openPack,
 	proxyUrl,
 	removeRecent,
+	stickerMedia,
 	toggleFavorite,
+	type Media,
 } from "../js/stickers";
 import {normalizeEmoji, type StickerRef} from "../../shared/stickers";
 import {loadStickerFile} from "../js/helpers/stickerFiles";
@@ -100,12 +102,14 @@ import StickerMedia from "./StickerMedia.vue";
 const MAX = 200;
 
 // Telegram's long-press menu: a large preview with Send, Favorites and View Sticker Set.
-// The sticker loads ahead of every other one.
+// The sticker loads ahead of every other one. Given `media`, it shows that instead, with Send only
+// (and Open URL).
 export default defineComponent({
 	name: "StickerMenu",
 	components: {StickerMedia},
 	props: {
 		item: {type: Object as PropType<StickerRef>, required: true},
+		media: {type: Object as PropType<Media | null>, default: null},
 		showViewPack: {type: Boolean, default: true},
 		// Adds Open URL, opening this link in a new tab
 		openUrl: {type: String, default: ""},
@@ -119,8 +123,16 @@ export default defineComponent({
 	emits: ["close", "send"],
 	setup(props, {emit}) {
 		const first = ref<HTMLButtonElement>();
-		const data = computed(() => findSticker(props.item));
-		const thumb = computed(() => `${proxyUrl.value}/${props.item.pack}/${props.item.id}/thumb`);
+		const data = computed(() => (props.media ? null : findSticker(props.item)));
+		const shown = computed(
+			() =>
+				props.media ||
+				stickerMedia(
+					data.value,
+					`${proxyUrl.value}/${props.item.pack}/${props.item.id}/thumb`,
+					true
+				)
+		);
 		const fav = computed(() => isFavorite(props.item));
 
 		// The sticker's emoji, shown above it like Telegram
@@ -132,7 +144,7 @@ export default defineComponent({
 		);
 
 		const size = computed(() => {
-			const s = data.value;
+			const s = shown.value;
 			const scale = s?.width && s.height ? Math.min(MAX / s.width, MAX / s.height, 1) : 1;
 			return {
 				width: Math.round((s?.width || MAX) * scale) + "px",
@@ -231,7 +243,7 @@ export default defineComponent({
 		return {
 			first,
 			data,
-			thumb,
+			shown,
 			fav,
 			emoji,
 			size,

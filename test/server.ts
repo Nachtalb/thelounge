@@ -154,6 +154,21 @@ describe("Server", function () {
 			expect(response.headers.get("cache-control")).to.equal("no-cache, no-transform");
 		});
 
+		it("should let the page reach https: origins only with nookle enabled", async () => {
+			const csp = async () => (await fetch(webURL)).headers.get("content-security-policy");
+			expect(await csp()).not.to.match(/connect-src[^;]* https:(?!\/)/);
+
+			Config.values.nookle = {enable: true};
+
+			try {
+				const policy = await csp();
+				expect(policy).to.match(/connect-src[^;]* https:(?!\/)/);
+				expect(policy).to.match(/img-src[^;]* https:(?!\/)/);
+			} finally {
+				Config.values.nookle = {enable: false};
+			}
+		});
+
 		it("should 404 unknown paths and paths outside public/", async () => {
 			for (const p of ["nope.js", "%2e%2e/package.json", "..%2fpackage.json", ".hidden"]) {
 				const response = await fetch(webURL + p);

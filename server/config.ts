@@ -110,6 +110,7 @@ export type ConfigType = {
 	prefetchBlocklist: string[];
 	fileUpload: FileUpload;
 	stickers: {proxyUrl: string};
+	nookle: {enable: boolean};
 	transports: string[];
 	leaveMessage: string;
 	defaults: Defaults;

@@ -28,6 +28,30 @@ export type Sticker = {
 	format: string;
 };
 
+// What StickerMedia shows: a static thumb until `src` (the full picture, an animated picture or a
+// video; none shows only the thumb) is there
+export type Media = {
+	thumb: string;
+	src: string;
+	kind: "image" | "animated" | "video";
+	width?: number;
+	height?: number;
+	// Loaded by the element itself: the host doesn't allow fetch (no CORS) for the file cache
+	direct?: boolean;
+};
+
+// The full picture only with `full`; video stickers always play
+export function stickerMedia(sticker: Sticker | null, thumb: string, full: boolean): Media {
+	const video = sticker?.format === "webm";
+	return {
+		thumb,
+		src: sticker && (video || full) ? sticker.url : "",
+		kind: video ? "video" : "image",
+		width: sticker?.width,
+		height: sticker?.height,
+	};
+}
+
 export type StickerPack = {
 	name: string;
 	title: string;
