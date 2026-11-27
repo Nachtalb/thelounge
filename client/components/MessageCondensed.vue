@@ -1,5 +1,5 @@
 <template>
-	<div :class="['msg', {closed: isCollapsed}]" data-type="condensed">
+	<div ref="row" :class="['msg', {closed: isCollapsed}]" data-type="condensed">
 		<div class="condensed-summary">
 			<span class="time" />
 			<span class="from" />
@@ -35,18 +35,22 @@ export default defineComponent({
 			type: Array as PropType<ClientMessage[]>,
 			required: true,
 		},
-		keepScrollPosition: {
-			type: Function as PropType<() => void>,
+		keepInPlace: {
+			type: Function as PropType<(row: HTMLElement) => void>,
 			required: true,
 		},
 		focused: Boolean,
 	},
 	setup(props) {
 		const isCollapsed = ref(true);
+		const row = ref<HTMLElement | null>(null);
 
 		const onCollapseClick = () => {
+			if (row.value) {
+				props.keepInPlace(row.value);
+			}
+
 			isCollapsed.value = !isCollapsed.value;
-			props.keepScrollPosition();
 		};
 
 		const condensedText = computed(() => {
@@ -156,6 +160,7 @@ export default defineComponent({
 		});
 
 		return {
+			row,
 			isCollapsed,
 			condensedText,
 			onCollapseClick,
