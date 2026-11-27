@@ -1,6 +1,7 @@
 <template>
 	<span ref="root" class="sticker-media" @mouseenter="hover = true" @mouseleave="hover = false">
 		<img v-if="picture" v-show="!ready" :src="picture" alt="" draggable="false" />
+		<img v-if="animating" :src="animatedSrc" alt="" draggable="false" @load="ready = true" />
 		<template v-if="videoSrc">
 			<video
 				ref="videoEl"
@@ -29,7 +30,7 @@ import {
 	ref,
 	watch,
 } from "vue";
-import type {Sticker} from "../js/stickers";
+import type {Media} from "../js/stickers";
 import {loadStickerFile, type StickerFile} from "../js/helpers/stickerFiles";
 import {watchInView} from "../js/helpers/stickerInView";
 
@@ -51,8 +52,31 @@ const releaseMedia: ObjectDirective<HTMLVideoElement> = {
 
 // The object URL of `url` while `wanted`, through the sticker file queue. A picture that finished
 // stays (no flicker when scrolling back); one still loading is cancelled once it isn't wanted.
-function useFile(url: Ref<string>, wanted: Ref<boolean>, rank: Ref<number>, keep: boolean) {
+// `direct` files skip the queue: the element loads `url` itself.
+function useFile(
+	url: Ref<string>,
+	wanted: Ref<boolean>,
+	rank: Ref<number>,
+	keep: boolean,
+	direct: Ref<boolean>
+) {
 	const href = ref("");
+
+	if (direct.value) {
+		watch(
+			[url, wanted],
+			() => {
+				if (wanted.value) {
+					href.value = url.value;
+				} else if (!keep || href.value !== url.value) {
+					href.value = "";
+				}
+			},
+			{immediate: true}
+		);
+		return href;
+	}
+
 	let file: StickerFile | null = null;
 	let fileUrl = "";
 
@@ -88,11 +112,11 @@ function useFile(url: Ref<string>, wanted: Ref<boolean>, rank: Ref<number>, keep
 	return href;
 }
 
-// A sticker picture, or a video sticker. Files load once the sticker is near the screen (visible
-// ones first) and video stickers play only while on screen (on hover only with reduced motion),
-// pausing when scrolled away. The static thumbnail shows until the first video frame is drawn,
-// then is hidden (kept, so it shows again at once without decoding), so a transparent video never
-// shows it underneath. Only a presented frame counts: drawing at `loadeddata` can draw nothing yet,
+// A sticker picture, an animated picture or a video. Files load once the sticker is near the screen
+// (visible ones first); videos and animated pictures play only while on screen (on hover only with
+// reduced motion), pausing when scrolled away. The static thumbnail shows until the first video frame
+// is drawn, then is hidden (kept, so it shows again at once without decoding), so a transparent video
+// never shows it underneath. Only a presented frame counts: drawing at `loadeddata` can draw nothing yet,
 // which left the tile blank until the next frame.
 // Frames are drawn into a canvas with high quality smoothing: Chromium scales
 // <video> with plain bilinear filtering, which looks blocky at 512px → ~70px.
@@ -100,10 +124,7 @@ export default defineComponent({
 	name: "StickerMedia",
 	directives: {releaseMedia},
 	props: {
-		sticker: {type: Object as PropType<Sticker | null>, default: null},
-		thumb: {type: String, required: true},
-		// Picture for non-video stickers, the thumb if empty
-		src: {type: String, default: ""},
+		media: {type: Object as PropType<Media>, required: true},
 		// Loads at once, ahead of every other sticker (the one opened in its menu)
 		urgent: {type: Boolean, default: false},
 	},
@@ -118,15 +139,18 @@ export default defineComponent({
 		const visible = computed(() => props.urgent || seenVisible.value);
 		const ready = ref(false);
 
-		const video = computed(() => props.sticker?.format === "webm");
+		const video = computed(() => props.media.kind === "video");
+		const animated = computed(() => props.media.kind === "animated");
+		const direct = computed(() => !!props.media.direct);
+		const motion = computed(() => !reducedMotion?.matches || hover.value);
 		// Has one of the video slots; visible stickers always get one
 		const wantVideo = ref(false);
 		const playing = computed(() => wantVideo.value && visible.value);
 
 		watch(
-			[video, near, visible, hover],
+			[video, near, visible, motion],
 			() => {
-				const want = video.value && near.value && (!reducedMotion?.matches || hover.value);
+				const want = video.value && near.value && motion.value;
 
 				if (!want && wantVideo.value) {
 					wantVideo.value = false;
@@ -144,19 +168,34 @@ export default defineComponent({
 		);
 
 		const picture = useFile(
-			computed(() => (video.value ? props.thumb : props.src || props.thumb)),
+			computed(() =>
+				props.media.kind === "image"
+					? props.media.src || props.media.thumb
+					: props.media.thumb
+			),
 			near,
 			computed(() => (props.urgent ? -1 : visible.value ? 0 : 2)),
-			true
+			true,
+			direct
 		);
+		const movingRank = computed(() => (props.urgent ? -1 : visible.value ? 1 : 3));
 		const videoSrc = useFile(
-			computed(() => (video.value ? props.sticker!.url : "")),
+			computed(() => (video.value ? props.media.src : "")),
 			wantVideo,
-			computed(() => (props.urgent ? -1 : visible.value ? 1 : 3)),
-			false
+			movingRank,
+			false,
+			direct
 		);
+		const animatedSrc = useFile(
+			computed(() => (animated.value ? props.media.src : "")),
+			computed(() => near.value && motion.value),
+			movingRank,
+			false,
+			direct
+		);
+		const animating = computed(() => !!animatedSrc.value && visible.value && motion.value);
 
-		watch(videoSrc, () => (ready.value = false));
+		watch([videoSrc, animating], () => (ready.value = false));
 
 		const play = () => {
 			const v = videoEl.value;
@@ -247,7 +286,18 @@ export default defineComponent({
 			}
 		});
 
-		return {root, videoEl, canvas, hover, ready, picture, videoSrc, onLoaded};
+		return {
+			root,
+			videoEl,
+			canvas,
+			hover,
+			ready,
+			picture,
+			videoSrc,
+			animatedSrc,
+			animating,
+			onLoaded,
+		};
 	},
 });
 </script>

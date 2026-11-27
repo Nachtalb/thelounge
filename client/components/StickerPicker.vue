@@ -41,7 +41,7 @@
 			>
 				<StickerMedia
 					v-if="section.kind === 'pack' && section.icon"
-					:thumb="section.icon"
+					:media="{thumb: section.icon, src: '', kind: 'image'}"
 				/>
 			</button>
 			<button

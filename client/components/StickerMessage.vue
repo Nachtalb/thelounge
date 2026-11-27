@@ -11,7 +11,7 @@
 		@contextmenu.prevent="openMenu"
 		@keydown.enter.prevent="openPack(sticker.pack)"
 	>
-		<StickerMedia :sticker="data" :thumb="thumb" :src="data?.url" :style="size" />
+		<StickerMedia :media="media" :style="size" />
 		<span class="only-copy">{{ text }}</span>
 		<Teleport to="body">
 			<StickerMenu
@@ -30,7 +30,15 @@
 <script lang="ts">
 import {computed, defineComponent, onMounted, onUnmounted, PropType, ref} from "vue";
 import eventbus from "../js/eventbus";
-import {findSticker, loadPack, openPack, packs, proxyUrl, sendStickerHere} from "../js/stickers";
+import {
+	findSticker,
+	loadPack,
+	openPack,
+	packs,
+	proxyUrl,
+	sendStickerHere,
+	stickerMedia,
+} from "../js/stickers";
 import {stickerShareUrl, type StickerRef} from "../../shared/stickers";
 import {useStickerPeek} from "../js/helpers/stickerPeek";
 import StickerMedia from "./StickerMedia.vue";
@@ -53,8 +61,12 @@ export default defineComponent({
 		const peeking = ref(false);
 		const data = computed(() => findSticker(props.sticker));
 		const shareUrl = computed(() => stickerShareUrl(proxyUrl.value, props.sticker));
-		const thumb = computed(
-			() => `${proxyUrl.value}/${props.sticker.pack}/${props.sticker.id}/thumb`
+		const media = computed(() =>
+			stickerMedia(
+				data.value,
+				`${proxyUrl.value}/${props.sticker.pack}/${props.sticker.id}/thumb`,
+				true
+			)
 		);
 
 		// Fit the pack's size into the box, so nothing jumps once the file loads
@@ -115,7 +127,7 @@ export default defineComponent({
 			peeking,
 			data,
 			shareUrl,
-			thumb,
+			media,
 			size,
 			openPack,
 			openMenu,
