@@ -55,7 +55,8 @@ module.exports = {
 	//
 	// Defines the maximum number of history lines that will be kept in memory per
 	// channel/query, in order to reduce the memory usage of the server. Setting
-	// this to `-1` will keep unlimited amount.
+	// this to `-1` will keep unlimited amount. With `sqlite` message storage only
+	// the newest 100 are kept and older history is read from the database.
 	//
 	// This value is set to `10000` by default.
 	maxHistory: 10000,

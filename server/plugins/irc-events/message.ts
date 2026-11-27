@@ -164,7 +164,9 @@ export default <IrcEventHandler>function (irc, network) {
 		});
 
 		if (data.replyTo && chan) {
-			const parentMsg = chan.messages.find((m) => m.msgid === data.replyTo);
+			const parentMsg =
+				chan.messages.find((m) => m.msgid === data.replyTo) ??
+				client.messageProvider?.findMessageByMsgid(network, chan, data.replyTo);
 
 			if (parentMsg) {
 				msg.replyToNick = parentMsg.from?.nick;

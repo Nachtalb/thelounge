@@ -41,11 +41,6 @@ type ClientChan = Omit<SharedChan, "messages"> & {
 	users: ClientUser[];
 };
 
-type InitClientChan = ClientChan & {
-	// total messages is deleted after its use when init event is sent/handled
-	totalMessages?: number;
-};
-
 // We omit channels so we can use ClientChan[] instead of Chan[]
 type ClientNetwork = Omit<SharedNetwork, "channels"> & {
 	isJoinChannelShown: boolean;

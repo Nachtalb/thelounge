@@ -6,8 +6,7 @@ import {extractInputHistory} from "./helpers/inputHistory";
 
 export function toClientChan(shared: SharedNetworkChan): ClientChan {
 	const history: string[] = [""].concat(extractInputHistory(shared.messages, 99));
-	// filter the unused vars
-	const {messages, totalMessages: _, ...props} = shared;
+	const {messages, ...props} = shared;
 	const channel: ClientChan = {
 		...props,
 		editTopic: false,
@@ -18,7 +17,6 @@ export function toClientChan(shared: SharedNetworkChan): ClientChan {
 		typingNicks: [],
 		users: [],
 		usersOutdated: shared.type === ChanType.CHANNEL ? true : false,
-		moreHistoryAvailable: shared.totalMessages > shared.messages.length,
 		inputHistory: history,
 		replyingTo: null,
 		inputPreviews: [],

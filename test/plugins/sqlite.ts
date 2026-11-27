@@ -8,6 +8,7 @@ import Config from "../../server/config";
 import MessageStorage, {
 	currentSchemaVersion,
 	getMessagesQuery,
+	historyStartQueries,
 	lastSeenQuery,
 	migrations,
 	necessaryMigrations,
@@ -95,13 +96,13 @@ describe("SQLite migrations", function () {
 
 	it("migrated database serves getMessages from the index", function () {
 		const stmt = db.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`);
-		const plan = stmt.all("8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 100) as {
+		const plan = stmt.all("8f650427-79a2-4950-b8af-94088b61b37c", "##linux", 1e9, 100) as {
 			detail: string;
 		}[];
 		stmt.finalize(); // bun:sqlite keeps EXPLAIN statements busy until finalized
 
 		const details = plan.map((row) => row.detail).join("\n");
-		expect(details).to.include("USING INDEX network_channel_time");
+		expect(details).to.include("USING INDEX network_channel_id");
 		expect(details).to.not.include("TEMP B-TREE");
 	});
 
@@ -176,6 +177,79 @@ describe("SQLite unit tests", function () {
 		store.close();
 	});
 
+	it("pages older history by id, counting condensed messages only in the 1000-row window", function () {
+		const net = {uuid: "testnet"} as any;
+		const chan = {name: "#history"} as any;
+
+		// 300 messages, every message is followed by 4 joins: ids 1..1500
+		store.database.transaction(() => {
+			for (let i = 0; i < 300; i++) {
+				store.index(net, chan, new Msg({time: new Date(i * 5), text: `msg ${i}`}));
+
+				for (let j = 1; j < 5; j++) {
+					store.index(
+						net,
+						chan,
+						new Msg({time: new Date(i * 5 + j), type: MessageType.JOIN})
+					);
+				}
+			}
+		})();
+
+		// not condensed: 100 rows of any type
+		let page = store.getHistory(net, chan, 1501, false);
+		expect(page.messages).to.have.lengthOf(100);
+		expect(page.messages.at(-1)!.id).to.equal(1500);
+		expect(page.more).to.be.true;
+
+		// condensed: joins don't count, but at most 1000 rows are looked at
+		page = store.getHistory(net, chan, 1501, true);
+		expect(page.messages).to.have.lengthOf(500);
+		expect(page.messages.filter((m) => m.type === MessageType.MESSAGE)).to.have.lengthOf(100);
+		expect(page.messages[0].text).to.equal("msg 200");
+
+		// continues before the oldest loaded message, back to the very start
+		page = store.getHistory(net, chan, page.messages[0].id, true);
+		expect(page.messages[0].text).to.equal("msg 100");
+		page = store.getHistory(net, chan, page.messages[0].id, true);
+		expect(page.messages[0].text).to.equal("msg 0");
+		expect(page.more).to.be.false;
+		expect(store.getHistory(net, chan, 1, true)).to.deep.equal({messages: [], more: false});
+	});
+
+	it("loads history back to a requested time plus 50 messages of context", function () {
+		const net = {uuid: "testnet"} as any;
+		const chan = {name: "#history"} as any;
+
+		store.database.transaction(() => {
+			for (let i = 0; i < 1000; i++) {
+				store.index(net, chan, new Msg({time: new Date(1000 + i), text: `msg ${i}`}));
+			}
+		})();
+
+		let page = store.getHistory(net, chan, 901, false, 1000 + 300);
+		expect(page.messages[0].text).to.equal("msg 250");
+		expect(page.messages.at(-1)!.text).to.equal("msg 899");
+		expect(page.more).to.be.true;
+
+		// fewer than 50 messages before the time: everything
+		page = store.getHistory(net, chan, 901, false, 1000 + 10);
+		expect(page.messages[0].text).to.equal("msg 0");
+		expect(page.more).to.be.false;
+	});
+
+	it("serves history pages from the channel/id index", function () {
+		for (const query of Object.values(historyStartQueries)) {
+			const stmt = store.database.prepare(`EXPLAIN QUERY PLAN ${query}`);
+			const plan = stmt.all("testnet", "#history", 1e9) as {detail: string}[];
+			stmt.finalize();
+
+			const details = plan.map((row) => row.detail).join("\n");
+			expect(details).to.include("USING INDEX network_channel_id");
+			expect(details).to.not.include("TEMP B-TREE");
+		}
+	});
+
 	it("deletes messages when asked to", function () {
 		const baseDate = new Date();
 
@@ -203,16 +277,16 @@ describe("SQLite unit tests", function () {
 		let deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(limit, "number of deleted messages doesn't match");
 
-		let id = 0;
-		let messages = store.getMessages(net, chan, () => id++);
+		let messages = store.getMessages(net, chan, 100);
 		expect(messages.find((m) => m.text === "msg 13")).to.be.undefined; // oldest gets deleted first
 
 		// let's test if it properly cleans now
 		delReq.limit = 100;
 		deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(11, "number of deleted messages doesn't match");
-		messages = store.getMessages(net, chan, () => id++);
-		expect(messages.map((m) => m.text)).to.have.ordered.members(["msg 1", "msg 0"]);
+		messages = store.getMessages(net, chan, 100);
+		// in insertion (id) order
+		expect(messages.map((m) => m.text)).to.have.ordered.members(["msg 0", "msg 1"]);
 	});
 
 	it("deletes only the types it should", function () {
@@ -249,12 +323,11 @@ describe("SQLite unit tests", function () {
 		let deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(3, "number of deleted messages doesn't match");
 
-		let id = 0;
-		let messages = store.getMessages(net, chan, () => id++);
+		let messages = store.getMessages(net, chan, 100);
 		expect(messages.map((m) => m.type)).to.have.ordered.members([
-			MessageType.MESSAGE,
-			MessageType.PART,
 			MessageType.AWAY,
+			MessageType.PART,
+			MessageType.MESSAGE,
 		]);
 
 		delReq.messageTypes = [
@@ -264,7 +337,7 @@ describe("SQLite unit tests", function () {
 		];
 		deleted = store.deleteMessages(delReq);
 		expect(deleted).to.equal(2, "number of deleted messages doesn't match");
-		messages = store.getMessages(net, chan, () => id++);
+		messages = store.getMessages(net, chan, 100);
 		expect(messages.map((m) => m.type)).to.have.ordered.members([MessageType.AWAY]);
 	});
 });
@@ -310,6 +383,7 @@ describe("SQLite Message Storage", function () {
 			"msg_from_idx",
 			"msg_search_idx",
 			"msgid_idx",
+			"network_channel_id",
 			"network_channel_time",
 			"time",
 		]);
@@ -317,7 +391,7 @@ describe("SQLite Message Storage", function () {
 
 	it("should resolve an empty array when disabled", function () {
 		store.isEnabled = false;
-		const messages = store.getMessages(null as any, null as any, null as any);
+		const messages = store.getMessages(null as any, null as any, 100);
 		expect(messages).to.be.empty;
 		store.isEnabled = true;
 	});
@@ -352,7 +426,6 @@ describe("SQLite Message Storage", function () {
 	});
 
 	it("should retrieve previously stored message", function () {
-		let msgid = 0;
 		const messages = store.getMessages(
 			{
 				uuid: "this-is-a-network-guid",
@@ -360,7 +433,7 @@ describe("SQLite Message Storage", function () {
 			{
 				name: "#thisisaCHANNEL",
 			} as any,
-			() => msgid++
+			100
 		);
 		expect(messages).to.have.lengthOf(1);
 		const msg = messages[0];
@@ -370,48 +443,51 @@ describe("SQLite Message Storage", function () {
 	});
 
 	it("should retrieve latest LIMIT messages in order", function () {
-		const originalMaxHistory = Config.values.maxHistory;
+		// one transaction instead of 200 synced commits
+		store.database.transaction(() => {
+			for (let i = 0; i < 200; ++i) {
+				store.index(
+					{uuid: "retrieval-order-test-network"} as any,
+					{name: "#channel"} as any,
+					new Msg({
+						time: 123456789 + i,
+						text: `msg ${i}`,
+					} as any)
+				);
+			}
+		})();
 
-		try {
-			Config.values.maxHistory = 2;
+		const net = {uuid: "retrieval-order-test-network"} as any;
+		const chan = {name: "#channel"} as any;
+		let messages = store.getMessages(net, chan, 2);
+		expect(messages.map((m) => m.text)).to.deep.equal(["msg 198", "msg 199"]);
 
-			// one transaction instead of 200 synced commits
-			store.database.transaction(() => {
-				for (let i = 0; i < 200; ++i) {
-					store.index(
-						{uuid: "retrieval-order-test-network"} as any,
-						{name: "#channel"} as any,
-						new Msg({
-							time: 123456789 + i,
-							text: `msg ${i}`,
-						} as any)
-					);
-				}
-			})();
+		// ids are row ids, so older messages can be asked for by id
+		messages = store.getMessages(net, chan, 2, messages[0].id);
+		expect(messages.map((m) => m.text)).to.deep.equal(["msg 196", "msg 197"]);
+	});
 
-			let msgId = 0;
-			const messages = store.getMessages(
-				{uuid: "retrieval-order-test-network"} as any,
-				{name: "#channel"} as any,
-				() => msgId++
-			);
-			expect(messages).to.have.lengthOf(2);
-			expect(messages.map((i_1) => i_1.text)).to.deep.equal(["msg 198", "msg 199"]);
-		} finally {
-			Config.values.maxHistory = originalMaxHistory;
-		}
+	it("should store messages under their id and continue after the highest", function () {
+		const net = {uuid: "id-test-network"} as any;
+		const chan = {name: "#ids"} as any;
+		const id = store.nextId();
+		store.index(net, chan, new Msg({id, text: "first"} as any));
+		store.index(net, chan, new Msg({id: id + 5, text: "second"} as any));
+
+		expect(store.getMessages(net, chan, 10).map((m) => m.id)).to.deep.equal([id, id + 5]);
+		expect(store.nextId()).to.equal(id + 6);
 	});
 
 	it("getMessages uses the index instead of sorting the whole channel", function () {
 		// #5103
 		const stmt = store.database.prepare(`EXPLAIN QUERY PLAN ${getMessagesQuery}`);
-		const plan = stmt.all("retrieval-order-test-network", "#channel", 10000) as {
+		const plan = stmt.all("retrieval-order-test-network", "#channel", 1e9, 10000) as {
 			detail: string;
 		}[];
 		stmt.finalize(); // bun:sqlite keeps EXPLAIN statements busy until finalized
 
 		const details = plan.map((row) => row.detail).join("\n");
-		expect(details).to.include("USING INDEX network_channel_time");
+		expect(details).to.include("USING INDEX network_channel_id");
 		expect(details).to.not.include("TEMP B-TREE");
 	});
 

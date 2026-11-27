@@ -22,7 +22,7 @@ interface MessageStorage {
 
 	deleteChannel(network: Network, channel: Channel): void;
 
-	getMessages(network: Network, channel: Channel, nextID: () => number): Message[];
+	getMessages(network: Network, channel: Channel, limit: number, beforeId?: number): Message[];
 
 	canProvideMessages(): boolean;
 }
