@@ -5,7 +5,7 @@ import {expect, vi} from "vitest";
 document.body.dataset.transports = '["polling"]';
 const {store} = await import("../../../client/js/store");
 const {default: socket} = await import("../../../client/js/socket");
-const {default: upload} = await import("../../../client/js/upload");
+const {default: upload, pastedJpegName} = await import("../../../client/js/upload");
 
 describe("upload while disconnected", function () {
 	it("keeps the file and asks for a token once connected again", async function () {
@@ -25,5 +25,14 @@ describe("upload while disconnected", function () {
 		expect(emit).toHaveBeenCalledWith("upload:auth");
 		emit.mockRestore();
 		upload.abort();
+	});
+});
+
+describe("pasted images", function () {
+	it("uploads PNGs as JPEG and leaves other types alone", function () {
+		expect(pastedJpegName(new File(["x"], "image.png", {type: "image/png"}))).to.equal(
+			"image.jpg"
+		);
+		expect(pastedJpegName(new File(["x"], "a.jpg", {type: "image/jpeg"}))).to.equal(null);
 	});
 });

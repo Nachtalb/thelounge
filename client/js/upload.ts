@@ -2,9 +2,14 @@ import socket from "./socket";
 import {store} from "./store";
 import {richInputFor} from "./richinput/RichInput";
 
+export function pastedJpegName(file: File) {
+	return file.type === "image/png" ? file.name.replace(/\.png$/i, "") + ".jpg" : null;
+}
+
 class Uploader {
 	xhr: XMLHttpRequest | null = null;
 	fileQueue: File[] = [];
+	pasted = new WeakSet<File>();
 	tokenKeepAlive: ReturnType<typeof setTimeout> | null = null;
 
 	overlay: HTMLDivElement | null = null;
@@ -107,7 +112,12 @@ class Uploader {
 
 		for (let i = 0; i < items.length; i++) {
 			if (items[i].kind === "file") {
-				files.push(items[i].getAsFile());
+				const file = items[i].getAsFile();
+				files.push(file);
+
+				if (file) {
+					this.pasted.add(file);
+				}
 			}
 		}
 
@@ -181,7 +191,11 @@ class Uploader {
 		// as it may buffer the upload before the upload request will be processed by The Lounge.
 		this.tokenKeepAlive = setInterval(() => socket.emit("upload:ping", token), 40 * 1000);
 
-		if (
+		const jpegName = this.pasted.has(file) && pastedJpegName(file);
+
+		if (jpegName) {
+			this.renderImage(file, (newFile) => this.performUpload(token, newFile), jpegName);
+		} else if (
 			store.state.settings.uploadCanvas &&
 			file.type.startsWith("image/") &&
 			!file.type.includes("svg") &&
@@ -193,7 +207,7 @@ class Uploader {
 		}
 	}
 
-	renderImage(file: File, callback: (file: File) => void) {
+	renderImage(file: File, callback: (file: File) => void, jpegName?: string) {
 		const fileReader = new FileReader();
 
 		fileReader.onabort = () => callback(file);
@@ -216,9 +230,26 @@ class Uploader {
 
 				ctx.drawImage(img, 0, 0);
 
-				canvas.toBlob((blob) => {
-					callback(new File([blob!], file.name));
-				}, file.type);
+				// JPEG has no alpha: transparent pixels would turn black
+				if (jpegName) {
+					const {data} = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+					for (let i = 3; i < data.length; i += 4) {
+						if (data[i] < 255) {
+							return callback(file);
+						}
+					}
+				}
+
+				canvas.toBlob(
+					(blob) => {
+						callback(
+							blob ? new File([blob], jpegName || file.name, {type: blob.type}) : file
+						);
+					},
+					jpegName ? "image/jpeg" : file.type,
+					jpegName ? 0.9 : undefined
+				);
 			};
 
 			img.src = String(fileReader.result);
