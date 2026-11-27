@@ -100,6 +100,7 @@
 <script lang="ts">
 import Mousetrap from "mousetrap";
 import {computed, defineComponent, nextTick, ref, watch} from "vue";
+import {viewerSwipe} from "../js/helpers/viewerSwipe";
 import eventbus from "../js/eventbus";
 import jumpToMessage from "../js/helpers/jumpToMessage";
 import requestOlderMessages from "../js/helpers/requestOlderMessages";
@@ -399,6 +400,8 @@ export default defineComponent({
 			return false;
 		};
 
+		let fitScale = 1;
+
 		const prepareImage = () => {
 			const viewerEl = viewer.value;
 
@@ -413,6 +416,7 @@ export default defineComponent({
 			position.value.x = Math.floor(-size.value.width / 2);
 			position.value.y = Math.floor(-size.value.height / 2);
 			transform.value.scale = Math.max(scale, 0.1);
+			fitScale = transform.value.scale;
 			transform.value.x = width / 2;
 			transform.value.y = height / 2;
 		};
@@ -597,9 +601,56 @@ export default defineComponent({
 			};
 		};
 
+		const runSwipe = (gesture: Parameters<typeof viewerSwipe>[0]) => {
+			const action = viewerSwipe(gesture);
+
+			if (action === "next") {
+				next();
+			} else if (action === "previous") {
+				previous();
+			} else if (action === "close") {
+				closeViewer();
+			}
+		};
+
 		const onTouchStart = (e: TouchEvent) => {
 			// prevent sidebar touchstart event, we don't want to interact with sidebar while in image viewer
 			e.stopImmediatePropagation();
+
+			// Swipes on the backdrop around the image; the image itself is handled in onImageTouchStart
+			const el = viewer.value;
+
+			if (!el || e.target === image.value || e.touches.length !== 1) {
+				return;
+			}
+
+			const start = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+			let fingers = 1;
+
+			const move = (moveEvent: TouchEvent) => {
+				fingers = Math.max(fingers, moveEvent.touches.length);
+			};
+
+			const end = (endEvent: TouchEvent) => {
+				if (endEvent.touches.length > 0) {
+					return;
+				}
+
+				el.removeEventListener("touchmove", move);
+				el.removeEventListener("touchend", end);
+				const point = endEvent.changedTouches[0];
+				runSwipe({
+					dx: point.clientX - start.x,
+					dy: point.clientY - start.y,
+					movedX: 0,
+					movedY: 0,
+					fingers,
+					zoomed: transform.value.scale > fitScale + 0.01,
+				});
+			};
+
+			el.addEventListener("touchmove", move, {passive: true});
+			el.addEventListener("touchend", end, {passive: true});
 		};
 
 		// Touch image manipulation:
@@ -610,6 +661,12 @@ export default defineComponent({
 			let touch = reduceTouches(e.touches);
 			let currentTouches = e.touches;
 			let touchEndFingers = 0;
+
+			// For swipes: where the finger started, and how far the image itself got panned
+			const swipeStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+			let swipeFingers = e.touches.length;
+			let movedX = 0;
+			let movedY = 0;
 
 			const currentTransform = {
 				x: touch.x,
@@ -623,8 +680,11 @@ export default defineComponent({
 				scale: transform.value.scale,
 			};
 
-			const touchMove = (moveEvent) => {
+			const touchMove = (moveEvent: TouchEvent) => {
 				touch = reduceTouches(moveEvent.touches);
+				swipeFingers = Math.max(swipeFingers, moveEvent.touches.length);
+				const beforeX = transform.value.x;
+				const beforeY = transform.value.y;
 
 				if (currentTouches.length !== moveEvent.touches.length) {
 					currentTransform.x = touch.x;
@@ -658,6 +718,8 @@ export default defineComponent({
 				transform.value.y = fixedPosition.y + deltaY;
 				transform.value.scale = newScale;
 				correctPosition();
+				movedX += Math.abs(transform.value.x - beforeX);
+				movedY += Math.abs(transform.value.y - beforeY);
 			};
 
 			const touchEnd = (endEvent: TouchEvent) => {
@@ -668,18 +730,20 @@ export default defineComponent({
 					return;
 				}
 
-				// todo: this is swipe to close, but it's not working very well due to unfinished delta calculation
-				/* if (
-					transform.value.scale <= 1 &&
-					endEvent.changedTouches[0].clientY - startTransform.y <= -70
-				) {
-					return this.closeViewer();
-				}*/
-
 				correctPosition();
 
 				img?.removeEventListener("touchmove", touchMove);
 				img?.removeEventListener("touchend", touchEnd);
+
+				const end = endEvent.changedTouches[0];
+				runSwipe({
+					dx: end.clientX - swipeStart.x,
+					dy: end.clientY - swipeStart.y,
+					movedX,
+					movedY,
+					fingers: swipeFingers,
+					zoomed: transform.value.scale > fitScale + 0.01,
+				});
 			};
 
 			img?.addEventListener("touchmove", touchMove, {passive: true});
